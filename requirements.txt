@@ -1,0 +1,12 @@
+langchain
+qdrant-client
+sentence-transformers
+streamlit
+huggingface_hub
+langchain-community
+langchain-huggingface
+libmagic
+unstructured[md]
+uv
+python-dotenv
+huggingface-cli
