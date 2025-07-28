@@ -120,5 +120,4 @@ verification/
 # Log files
 logs/
 
-# Architecture documents
-architecture/
+docs/sample_questions.txt
