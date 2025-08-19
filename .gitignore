@@ -116,8 +116,16 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+architecture/
+logs/
+research/
 verification/
 # Log files
-logs/
+# llama.cpp repository
+llama.cpp/
+
+# LLM models
+models/
 
 docs/sample_questions.txt
+docs/servicenow/
