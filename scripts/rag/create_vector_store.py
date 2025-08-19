@@ -2,11 +2,11 @@ import sys
 import os
 
 # Add the src directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from src.data_loader import load_documents, chunk_documents
-from src.vector_store import get_embedding_model, get_vector_store, add_documents_to_store
-from src.logger import get_logger
+from src.rag.data_loader import load_documents, chunk_documents
+from src.rag.vector_store import get_embedding_model, get_vector_store, add_documents_to_store
+from src.rag.logger import get_logger
 
 logger = get_logger(__name__)
 

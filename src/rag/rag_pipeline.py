@@ -25,7 +25,8 @@ def create_rag_chain():
     # Define the prompt template
     template = """
     Answer the following question based on the provided context.
-    If the context does not contain the answer, state that you don't know.
+    If the context does not contain the answer, try your best to answer in a general manner and tell the user to refer to 
+    the user guide and contact helpdesk support.
 
     Context:
     {context}
