@@ -17,3 +17,7 @@ QDRANT_COLLECTION_NAME = "rag_system_collection"
 # Hugging Face API configuration
 HF_API_TOKEN = os.environ.get("HUGGINGFACE_API_TOKEN")
 HF_MODEL_NAME = "meta-llama/Llama-3.1-8B-Instruct"
+
+# Llama.cpp server configuration
+LLAMA_CPP_MODEL_PATH = "models/phi-3-mini-4k-instruct-q4_k_m.gguf"
+LLAMA_CPP_SERVER_URL = "http://localhost:8080"

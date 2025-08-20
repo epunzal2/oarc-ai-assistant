@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_huggingface.chat_models import ChatHuggingFace
-from src.config import HF_API_TOKEN, HF_MODEL_NAME
+from langchain_community.llms import LlamaCpp
+from src.config import HF_API_TOKEN, HF_MODEL_NAME, LLAMA_CPP_MODEL_PATH
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -38,12 +39,37 @@ class HuggingFaceAPIProvider(LLMProvider):
         )
         return ChatHuggingFace(llm=llm)
 
+class LlamaCPPProvider(LLMProvider):
+    """
+    LLM provider for a local Llama.cpp server.
+    """
+    def __init__(self, model_path=LLAMA_CPP_MODEL_PATH):
+        self.model_path = model_path
+        logger.info(f"Initialized LlamaCPPProvider with model: {self.model_path}")
+
+    def get_llm(self):
+        """
+        Returns the Llama.cpp LLM instance.
+        """
+        logger.info("Creating Llama.cpp LLM instance.")
+        llm = LlamaCpp(
+            model_path=self.model_path,
+            n_gpu_layers=-1,  # Offload all layers to GPU
+            n_batch=512,
+            n_ctx=2048,
+            f16_kv=True,  # Use half-precision for KV cache
+            verbose=True,
+        )
+        return llm
+
 def get_llm_provider(provider_name="huggingface_api"):
     """
     Factory function to get an LLM provider.
     """
     if provider_name == "huggingface_api":
         return HuggingFaceAPIProvider()
+    elif provider_name == "llama_cpp":
+        return LlamaCPPProvider()
     # Add other providers here in the future
     else:
         raise ValueError(f"Unknown LLM provider: {provider_name}")

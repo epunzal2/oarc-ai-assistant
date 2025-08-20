@@ -7,11 +7,11 @@ from src.logger import get_logger
 
 logger = get_logger(__name__)
 
-def create_rag_chain():
+def create_rag_chain(llm_provider_name="huggingface_api"):
     """
     Creates the RAG chain.
     """
-    logger.info("Creating RAG chain...")
+    logger.info(f"Creating RAG chain with LLM provider: {llm_provider_name}...")
 
     # Get the embedding model and vector store
     embeddings = get_embedding_model()
@@ -19,7 +19,7 @@ def create_rag_chain():
     retriever = vector_store.as_retriever()
 
     # Get the LLM provider
-    llm_provider = get_llm_provider()
+    llm_provider = get_llm_provider(llm_provider_name)
     llm = llm_provider.get_llm()
 
     # Define the prompt template

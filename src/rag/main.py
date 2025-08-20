@@ -1,18 +1,35 @@
 import sys
 import os
+import argparse
 import streamlit as st
 
 # Add the project root to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from src.rag_pipeline import create_rag_chain
-from src.logger import get_logger
+from src.rag.rag_pipeline import create_rag_chain
+from src.rag.logger import get_logger
 
 logger = get_logger(__name__)
 
+def get_llm_provider_from_args():
+    """
+    Parses command-line arguments to determine the LLM provider.
+    """
+    parser = argparse.ArgumentParser(description="Run the RAG System Chatbot.")
+    parser.add_argument(
+        "--provider",
+        type=str,
+        choices=["huggingface_api", "llama_cpp"],
+        default="huggingface_api",
+        help="The LLM provider to use."
+    )
+    args = parser.parse_args()
+    return args.provider
+
 # Initialize the RAG chain
 try:
-    rag_chain = create_rag_chain()
+    provider = get_llm_provider_from_args()
+    rag_chain = create_rag_chain(llm_provider_name=provider)
 except Exception as e:
     logger.error(f"Failed to create RAG chain: {e}")
     st.error("Failed to initialize the RAG pipeline. Please check the logs for more details.")
