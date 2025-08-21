@@ -20,7 +20,7 @@ def get_llm_provider_from_args():
         "--provider",
         type=str,
         choices=["huggingface_api", "llama_cpp"],
-        default="huggingface_api",
+        default="llama_cpp",
         help="The LLM provider to use."
     )
     args = parser.parse_args()

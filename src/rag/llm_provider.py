@@ -2,29 +2,35 @@ from abc import ABC, abstractmethod
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_huggingface.chat_models import ChatHuggingFace
 from langchain_community.llms import LlamaCpp
-from src.config import HF_API_TOKEN, HF_MODEL_NAME, LLAMA_CPP_MODEL_PATH
-from src.logger import get_logger
+from src.rag.config import HF_API_TOKEN, HF_MODEL_NAME, LLAMA_CPP_MODEL_PATH
+from src.rag.logger import get_logger
 
 logger = get_logger(__name__)
+
 
 class LLMProvider(ABC):
     """
     Abstract base class for LLM providers.
     """
+
     @abstractmethod
     def get_llm(self):
         pass
+
 
 class HuggingFaceAPIProvider(LLMProvider):
     """
     LLM provider for the Hugging Face API.
     """
+
     def __init__(self, api_token=HF_API_TOKEN, model_name=HF_MODEL_NAME):
         if not api_token:
             raise ValueError("Hugging Face API token is required.")
         self.api_token = api_token
         self.model_name = model_name
-        logger.info(f"Initialized HuggingFaceAPIProvider with model: {self.model_name}")
+        logger.info(
+            f"Initialized HuggingFaceAPIProvider with model: {self.model_name}"
+        )
 
     def get_llm(self):
         """
@@ -39,10 +45,12 @@ class HuggingFaceAPIProvider(LLMProvider):
         )
         return ChatHuggingFace(llm=llm)
 
+
 class LlamaCPPProvider(LLMProvider):
     """
-    LLM provider for a local Llama.cpp server.
+    LLM provider for a local Llama.cpp model.
     """
+
     def __init__(self, model_path=LLAMA_CPP_MODEL_PATH):
         self.model_path = model_path
         logger.info(f"Initialized LlamaCPPProvider with model: {self.model_path}")
@@ -62,7 +70,8 @@ class LlamaCPPProvider(LLMProvider):
         )
         return llm
 
-def get_llm_provider(provider_name="huggingface_api"):
+
+def get_llm_provider(provider_name="llama_cpp"):
     """
     Factory function to get an LLM provider.
     """

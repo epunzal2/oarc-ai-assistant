@@ -126,6 +126,7 @@ llama.cpp/
 
 # LLM models
 models/
+*.gguf
 
 docs/sample_questions.txt
 docs/servicenow/

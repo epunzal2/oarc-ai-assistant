@@ -9,7 +9,7 @@ libmagic
 unstructured[md]
 uv
 python-dotenv
-huggingface-cli
 presidio-analyzer
 presidio-anonymizer
 llama-cpp-python
+flask
