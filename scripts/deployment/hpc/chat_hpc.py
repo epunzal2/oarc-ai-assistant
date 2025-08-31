@@ -4,13 +4,14 @@ import os
 import argparse
 from flask import Flask, render_template_string, request, jsonify
 
-# Add the src directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
+from src.rag.config import LLAMA_CPP_MODEL_PATH
 
-from rag.config import LLAMA_CPP_MODEL_PATH
-
-# Initialize the Llama model instance globally
-llm = Llama(model_path=LLAMA_CPP_MODEL_PATH, chat_format="llama-3")
+# Initialize the Llama model instance with GPU offloading
+llm = Llama(
+    model_path=LLAMA_CPP_MODEL_PATH,
+    chat_format="llama-3",
+    n_gpu_layers=-1  # Offload all possible layers to the GPU
+)
 
 def start_cli_chat():
     """
@@ -25,6 +26,7 @@ def start_cli_chat():
                 break
 
             formatted_prompt = f"<|user|>\n{prompt}<|end|>\n<|assistant|>"
+            # Within the start_cli_chat() function, the LLM is called to process user input from the terminal.
             response = llm(formatted_prompt, max_tokens=1024, stop=["<|end|>"], echo=False)
             print(f"Assistant: {response['choices'][0]['text'].strip()}")
 
@@ -101,12 +103,14 @@ def start_web_chat():
     def chat():
         user_message = request.json["message"]
         formatted_prompt = f"<|user|>\n{user_message}<|end|>\n<|assistant|>"
+        # In the chat() function, which handles the /chat route for the Flask web application, 
+        # the LLM is called to generate a response to a user's message sent from the web browser.
         response = llm(formatted_prompt, max_tokens=1024, stop=["<|end|>"], echo=False)
         bot_response = response['choices'][0]['text'].strip()
         return jsonify({"response": bot_response})
 
-    print("Starting web server at http://127.0.0.1:5000")
-    app.run(host="0.0.0.0", port=5000)
+    print("Starting web server at http://127.0.0.1:8088")
+    app.run(host="0.0.0.0", port=8088)
 
 def main():
     parser = argparse.ArgumentParser(description="Chat with a local Llama model.")

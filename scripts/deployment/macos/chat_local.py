@@ -4,10 +4,7 @@ import os
 import argparse
 from flask import Flask, render_template_string, request, jsonify
 
-# Add the src directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
-
-from rag.config import LLAMA_CPP_MODEL_PATH
+from src.rag.config import LLAMA_CPP_MODEL_PATH
 
 # Initialize the Llama model instance globally
 llm = Llama(model_path=LLAMA_CPP_MODEL_PATH, chat_format="llama-3")
@@ -105,8 +102,8 @@ def start_web_chat():
         bot_response = response['choices'][0]['text'].strip()
         return jsonify({"response": bot_response})
 
-    print("Starting web server at http://127.0.0.1:5000")
-    app.run(host="0.0.0.0", port=5000)
+    print("Starting web server at http://127.0.0.1:8088")
+    app.run(host="0.0.0.0", port=8088)
 
 def main():
     parser = argparse.ArgumentParser(description="Chat with a local Llama model.")
