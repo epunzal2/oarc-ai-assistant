@@ -13,3 +13,5 @@ presidio-analyzer
 presidio-anonymizer
 llama-cpp-python
 flask
+torch
+faiss-cpu
