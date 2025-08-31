@@ -7,15 +7,15 @@ from src.logger import get_logger
 
 logger = get_logger(__name__)
 
-def create_rag_chain(llm_provider_name="huggingface_api"):
+def create_rag_chain(llm_provider_name="huggingface_api", vector_store_type="qdrant"):
     """
     Creates the RAG chain.
     """
-    logger.info(f"Creating RAG chain with LLM provider: {llm_provider_name}...")
+    logger.info(f"Creating RAG chain with LLM provider: {llm_provider_name} and vector store: {vector_store_type}...")
 
     # Get the embedding model and vector store
     embeddings = get_embedding_model()
-    vector_store = get_vector_store(embeddings)
+    vector_store = get_vector_store(embeddings, vector_store_type=vector_store_type)
     retriever = vector_store.as_retriever()
 
     # Get the LLM provider

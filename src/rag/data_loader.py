@@ -1,9 +1,30 @@
+import json
+from langchain_core.documents import Document
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from src.config import DATA_PATH
-from src.logger import get_logger
+from src.rag.config import DATA_PATH, SERVICE_NOW_DATA_PATH
+from src.rag.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def load_servicenow_documents():
+    """
+    Loads documents from the ServiceNow JSONL file.
+    """
+    logger.info(f"Loading documents from {SERVICE_NOW_DATA_PATH}")
+    documents = []
+    with open(SERVICE_NOW_DATA_PATH, 'r') as f:
+        for line in f:
+            data = json.loads(line)
+            document = Document(
+                page_content=data.get("text", ""),
+                metadata=data.get("metadata", {})
+            )
+            documents.append(document)
+    logger.info(f"Loaded {len(documents)} documents from ServiceNow.")
+    return documents
+
 
 def load_documents():
     """
@@ -11,8 +32,13 @@ def load_documents():
     """
     logger.info(f"Loading documents from {DATA_PATH}")
     loader = DirectoryLoader(DATA_PATH, glob="**/*.md", show_progress=True)
-    documents = loader.load()
-    logger.info(f"Loaded {len(documents)} documents.")
+    markdown_documents = loader.load()
+    logger.info(f"Loaded {len(markdown_documents)} documents.")
+
+    servicenow_documents = load_servicenow_documents()
+
+    documents = markdown_documents + servicenow_documents
+    logger.info(f"Loaded a total of {len(documents)} documents.")
     return documents
 
 def chunk_documents(documents):

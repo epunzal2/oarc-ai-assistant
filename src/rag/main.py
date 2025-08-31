@@ -11,9 +11,9 @@ from src.rag.logger import get_logger
 
 logger = get_logger(__name__)
 
-def get_llm_provider_from_args():
+def parse_args():
     """
-    Parses command-line arguments to determine the LLM provider.
+    Parses command-line arguments for the RAG System Chatbot.
     """
     parser = argparse.ArgumentParser(description="Run the RAG System Chatbot.")
     parser.add_argument(
@@ -23,13 +23,23 @@ def get_llm_provider_from_args():
         default="llama_cpp",
         help="The LLM provider to use."
     )
+    parser.add_argument(
+        "--vector-store",
+        type=str,
+        choices=["qdrant", "in_memory"],
+        default="in_memory",
+        help="The vector store to use."
+    )
     args = parser.parse_args()
-    return args.provider
+    return args
 
 # Initialize the RAG chain
 try:
-    provider = get_llm_provider_from_args()
-    rag_chain = create_rag_chain(llm_provider_name=provider)
+    args = parse_args()
+    rag_chain = create_rag_chain(
+        llm_provider_name=args.provider,
+        vector_store_type=args.vector_store
+    )
 except Exception as e:
     logger.error(f"Failed to create RAG chain: {e}")
     st.error("Failed to initialize the RAG pipeline. Please check the logs for more details.")
