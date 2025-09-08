@@ -1,19 +1,49 @@
 #!/bin/bash
-#SBATCH --job-name=hpc_chat
-#SBATCH --output=hpc_chat_%j.out
-#SBATCH --error=hpc_chat_%j.err
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --gres=gpu:1
-#SBATCH --mem=8G
-#SBATCH --time=01:00:00
+
+# Slurm Directives
+# ----------------
+#SBATCH --job-name=rag_chat_hpc                 # Job name
+#SBATCH --output=logs/rag_chat_hpc_%j.out       # Standard output log
+#SBATCH --error=logs/rag_chat_hpc_%j.err        # Standard error log
+#SBATCH --partition=gpu                         # Partition (queue) name
+#SBATCH --gres=gpu:1                            # Request one GPU
+#SBATCH --cpus-per-task=8                       # Request 8 CPUs per task
+#SBATCH --mem=32G                               # Memory allocation
+#SBATCH --time=01:00:00                         # Time limit
+
+# Environment Setup
+# -----------------
+echo "Setting up the environment..."
 
 # Create a logs directory if it doesn't exist
 mkdir -p logs
 
-# Activate the virtual environment
+# Load necessary modules (e.g., CUDA)
+# module load cuda/11.8  # Adjust the version as per your cluster's configuration
+
+# Activate the Python virtual environment
+echo "Activating virtual environment..."
 source hpc_env/bin/activate
 
-# By default, this script runs the command-line interface and logs to logs/chat_hpc.log
-# To run the web server instead, use: python -m scripts.deployment.hpc.chat_hpc --web > logs/chat_hpc_web.log 2>&1
-python -m scripts.deployment.hpc.chat_hpc > logs/chat_hpc.log 2>&1
+# Set the number of threads for OpenMP
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+# Define environment variables for paths and configurations
+export MODEL_PATH="/path/to/your/model"  # TODO: Update with the actual model path
+export FAISS_INDEX_PATH="faiss_index"
+export DB_PATH="vector_store.db"
+export DOC_DIR="data/docs"
+
+echo "Environment setup complete."
+echo "Running the chat application..."
+
+# Execute the Python script
+# -------------------------
+# This command runs the chat application with the specified FAISS directory.
+# The output will be logged to the files defined by the SBATCH directives.
+python -m scripts.deployment.hpc.chat_hpc \
+    --faiss_dir "$FAISS_INDEX_PATH" \
+    --db_path "$DB_PATH" \
+    --doc_dir "$DOC_DIR"
+
+echo "Script execution finished."

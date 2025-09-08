@@ -2,6 +2,7 @@ import json
 import re
 import os
 import logging
+import argparse
 from datetime import datetime
 
 # --- Logging Setup ---
@@ -122,10 +123,26 @@ def process_servicenow_data(input_path, output_path):
 
     logging.info(f"Anonymized data successfully written to {output_path}")
 
+def main():
+    """
+    Main function to parse arguments and run the cleaning process.
+    """
+    parser = argparse.ArgumentParser(description="Clean ServiceNow data.")
+    parser.add_argument(
+        "--input-path",
+        type=str,
+        required=True,
+        help="Path to the input JSON file."
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        required=True,
+        help="Path to save the cleaned JSON file."
+    )
+    args = parser.parse_args()
+
+    process_servicenow_data(args.input_path, args.output_path)
+
 if __name__ == '__main__':
-    # Note: The input file task.json is in .rooignore, so this script
-    # cannot be run directly in this environment.
-    # It is provided as a solution to be run by the user.
-    input_file = os.path.join('docs', 'servicenow', 'task.json')
-    output_file = os.path.join('docs', 'servicenow', 'task_cleaned.json')
-    process_servicenow_data(input_file, output_file)
+    main()

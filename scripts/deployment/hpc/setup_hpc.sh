@@ -1,25 +1,42 @@
 #!/bin/bash
 
-# This script sets up the environment for Phase 2 HPC deployment.
+# Exit immediately if a command exits with a non-zero status.
+set -e
 
-# 1. Load the CUDA module
-echo "Loading CUDA module..."
-module load cuda
+# --- Environment Setup ---
+# Define the directory for the virtual environment.
+VENV_DIR=".venv"
+echo "Virtual environment directory: $VENV_DIR"
 
-# 2. Create a Python virtual environment using uv
-echo "Creating Python virtual environment..."
-uv venv hpc_env
+# --- Virtual Environment ---
+# Check if the virtual environment directory already exists.
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv $VENV_DIR
+else
+    echo "Virtual environment already exists."
+fi
 
-# 3. Activate the virtual environment
+# Activate the virtual environment.
 echo "Activating virtual environment..."
-source hpc_env/bin/activate
+source $VENV_DIR/bin/activate
 
-# 4. Install dependencies from requirements.txt
-echo "Installing dependencies..."
+# --- CUDA and Dependencies ---
+# Load the appropriate CUDA module for the HPC cluster.
+# This line is a placeholder and may need to be adjusted for your specific cluster.
+# Example: module load cuda/11.8
+echo "Loading CUDA module (placeholder)..."
+# module load cuda/11.8
+
+# Install Python dependencies from requirements.txt.
+echo "Installing Python dependencies from requirements.txt..."
 pip install -r requirements.txt
 
-# 5. Reinstall llama-cpp-python with GPU support
-echo "Reinstalling llama-cpp-python with CUDA support..."
+# Install llama-cpp-python with cuBLAS support.
+# The CMAKE_ARGS environment variable is set to enable CUDA support.
+# --force-reinstall and --no-cache-dir ensure a clean build.
+echo "Installing llama-cpp-python with cuBLAS support..."
 CMAKE_ARGS="-DLLAMA_CUBLAS=on" pip install --force-reinstall --no-cache-dir llama-cpp-python
 
-echo "HPC environment setup is complete."
+# --- Completion ---
+echo "Setup complete. The virtual environment is ready and dependencies are installed."

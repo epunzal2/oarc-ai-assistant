@@ -1,19 +1,14 @@
-from llama_cpp import Llama
-import sys
-import os
 import argparse
 from flask import Flask, render_template_string, request, jsonify
 
-from src.rag.config import LLAMA_CPP_MODEL_PATH
+from src.rag.vector_store import load_faiss_index, get_embedding_model
+from src.rag.rag_pipeline import create_rag_chain
+from src.rag.logger import get_logger
+from src.rag import config
 
-# Initialize the Llama model instance with GPU offloading
-llm = Llama(
-    model_path=LLAMA_CPP_MODEL_PATH,
-    chat_format="llama-3",
-    n_gpu_layers=-1  # Offload all possible layers to the GPU
-)
+logger = get_logger(__name__)
 
-def start_cli_chat():
+def start_cli_chat(chain):
     """
     Starts an interactive command-line chat session.
     """
@@ -25,10 +20,8 @@ def start_cli_chat():
             if prompt.lower() in ["exit", "quit"]:
                 break
 
-            formatted_prompt = f"<|user|>\n{prompt}<|end|>\n<|assistant|>"
-            # Within the start_cli_chat() function, the LLM is called to process user input from the terminal.
-            response = llm(formatted_prompt, max_tokens=1024, stop=["<|end|>"], echo=False)
-            print(f"Assistant: {response['choices'][0]['text'].strip()}")
+            response = chain.invoke(prompt)
+            print(f"Assistant: {response.strip()}")
 
         except KeyboardInterrupt:
             break
@@ -37,7 +30,7 @@ def start_cli_chat():
             break
     print("\nChat ended.")
 
-def start_web_chat():
+def start_web_chat(chain):
     """
     Starts a web-based chat interface using Flask.
     """
@@ -102,25 +95,39 @@ def start_web_chat():
     @app.route("/chat", methods=["POST"])
     def chat():
         user_message = request.json["message"]
-        formatted_prompt = f"<|user|>\n{user_message}<|end|>\n<|assistant|>"
-        # In the chat() function, which handles the /chat route for the Flask web application, 
-        # the LLM is called to generate a response to a user's message sent from the web browser.
-        response = llm(formatted_prompt, max_tokens=1024, stop=["<|end|>"], echo=False)
-        bot_response = response['choices'][0]['text'].strip()
-        return jsonify({"response": bot_response})
+        bot_response = chain.invoke(user_message)
+        return jsonify({"response": bot_response.strip()})
 
     print("Starting web server at http://127.0.0.1:8088")
     app.run(host="0.0.0.0", port=8088)
 
 def main():
-    parser = argparse.ArgumentParser(description="Chat with a local Llama model.")
+    parser = argparse.ArgumentParser(description="Chat with a local Llama model using RAG.")
+    parser.add_argument("--vector-store", type=str, default="faiss", help="The vector store to use.")
+    parser.add_argument("--faiss-dir", type=str, default="vector_index/faiss_amarel", help="Path to the saved FAISS index.")
+    parser.add_argument("--k", type=int, default=5, help="The number of documents to retrieve.")
     parser.add_argument("--web", action="store_true", help="Start the web-based chat interface.")
     args = parser.parse_args()
 
+    logger.info("Starting chat with the following configuration:")
+    logger.info(f"  Model path: {config.LLAMA_CPP_MODEL_PATH}")
+    logger.info(f"  Embedding model name: {config.EMBEDDING_MODEL}")
+    logger.info(f"  FAISS index path: {args.faiss_dir}")
+    logger.info(f"  k: {args.k}")
+    logger.info(f"  Maximum context length: 2048")
+
+    # Load the FAISS retriever
+    embedding_model = get_embedding_model()
+    retriever = load_faiss_index(args.faiss_dir, embedding_model)
+    retriever.search_kwargs["k"] = args.k
+
+    # Create the RAG chain
+    chain = create_rag_chain(retriever=retriever, llm_provider_name="llama_cpp")
+
     if args.web:
-        start_web_chat()
+        start_web_chat(chain)
     else:
-        start_cli_chat()
+        start_cli_chat(chain)
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+import argparse
 from datetime import datetime
 
 # --- Logging Setup ---
@@ -68,8 +69,26 @@ def prepare_for_embedding(input_path, output_path):
         logging.error(f"Error writing to output file {output_path}: {e}")
 
 
+def main():
+    """
+    Main function to parse arguments and run the data preparation process.
+    """
+    parser = argparse.ArgumentParser(description="Prepare ServiceNow data for embedding.")
+    parser.add_argument(
+        "--input-path",
+        type=str,
+        required=True,
+        help="Path to the cleaned JSON file."
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        required=True,
+        help="Path to save the prepared JSONL file."
+    )
+    args = parser.parse_args()
+
+    prepare_for_embedding(args.input_path, args.output_path)
+
 if __name__ == '__main__':
-    # This script can be run after clean_data.py
-    input_file = os.path.join('docs', 'servicenow', 'task_cleaned.json')
-    output_file = os.path.join('docs', 'servicenow', 'task_prepared.jsonl')
-    prepare_for_embedding(input_file, output_file)
+    main()
