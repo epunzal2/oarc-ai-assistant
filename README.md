@@ -69,8 +69,18 @@ python -m scripts.rag.create_vector_store --vector-store qdrant
 python -m scripts.rag.create_vector_store --vector-store in_memory
 ```
 
+## Data Preparation Pipeline
+ 
+The `run_pipeline.sh` script automates the data preparation process, which includes cleaning the data, preparing it for ingestion, and creating the vector store.
+ 
+To run the pipeline, execute the following command:
+ 
+```bash
+./scripts/rag/run_pipeline.sh
+```
+ 
 ## Running the Chatbot
-
+ 
 Once the setup is complete, you can run the Streamlit chatbot interface. The script now accepts command-line arguments to select the LLM provider and the vector store.
 
 -   `--llm-provider`: Choose between `huggingface` (default) and `ollama`.

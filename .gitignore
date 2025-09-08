@@ -132,3 +132,5 @@ docs/sample_questions.txt
 docs/servicenow/
 .rooignore
 .DS_Store
+repo_export*
+CHANGELOG.md
