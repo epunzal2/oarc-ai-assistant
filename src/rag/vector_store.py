@@ -49,11 +49,20 @@ def get_vector_store(embeddings, vector_store_type="qdrant", documents=None):
         logger.info(f"Connected to Qdrant collection: {QDRANT_COLLECTION_NAME}")
         return vector_store
     
-    elif vector_store_type == "in_memory":
+    elif vector_store_type == "faiss":
         if documents is None:
             raise ValueError("Documents must be provided for in-memory vector store.")
         logger.info("Creating in-memory FAISS vector store.")
         return FAISS.from_documents(documents, embeddings)
+
+def load_faiss_index(persist_dir, embedding_model):
+    """
+    Loads a persisted FAISS index from disk.
+    """
+    logger.info(f"Loading FAISS index from '{persist_dir}'...")
+    vector_store = FAISS.load_local(persist_dir, embedding_model, allow_dangerous_deserialization=True)
+    logger.info("FAISS index loaded successfully.")
+    return vector_store.as_retriever()
 
 def add_documents_to_store(vector_store, documents, vector_store_type="qdrant"):
     """

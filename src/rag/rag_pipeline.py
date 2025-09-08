@@ -1,22 +1,26 @@
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
-from src.vector_store import get_vector_store, get_embedding_model
-from src.llm_provider import get_llm_provider
-from src.logger import get_logger
+from src.rag.vector_store import get_vector_store, get_embedding_model
+from src.rag.llm_provider import get_llm_provider
+from src.rag.logger import get_logger
 
 logger = get_logger(__name__)
 
-def create_rag_chain(llm_provider_name="huggingface_api", vector_store_type="qdrant"):
+def create_rag_chain(llm_provider_name="huggingface_api", vector_store_type="qdrant", retriever=None):
     """
     Creates the RAG chain.
     """
     logger.info(f"Creating RAG chain with LLM provider: {llm_provider_name} and vector store: {vector_store_type}...")
 
     # Get the embedding model and vector store
-    embeddings = get_embedding_model()
-    vector_store = get_vector_store(embeddings, vector_store_type=vector_store_type)
-    retriever = vector_store.as_retriever()
+    if retriever is None:
+        logger.info("No retriever provided, creating a new one...")
+        embeddings = get_embedding_model()
+        vector_store = get_vector_store(embeddings, vector_store_type=vector_store_type)
+        retriever = vector_store.as_retriever()
+    else:
+        logger.info("Using the provided retriever.")
 
     # Get the LLM provider
     llm_provider = get_llm_provider(llm_provider_name)
@@ -39,9 +43,17 @@ def create_rag_chain(llm_provider_name="huggingface_api", vector_store_type="qdr
     prompt = PromptTemplate.from_template(template)
 
     # Create the RAG chain
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+
     rag_chain = (
         {"context": retriever, "question": RunnablePassthrough()}
-        | prompt
+        | RunnablePassthrough.assign(
+            context=lambda x: format_docs(x["context"])
+        )
+        | RunnableLambda(
+            lambda x: prompt.invoke(x) if x["context"] else "I couldn't find any relevant documents to answer your question. Please try rephrasing it."
+        )
         | llm
         | StrOutputParser()
     )
