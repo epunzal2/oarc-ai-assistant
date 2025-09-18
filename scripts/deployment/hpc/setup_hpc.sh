@@ -4,39 +4,56 @@
 set -e
 
 # --- Environment Setup ---
-# Define the directory for the virtual environment.
-VENV_DIR=".venv"
-echo "Virtual environment directory: $VENV_DIR"
+# Define the name for the conda environment.
+CONDA_ENV_NAME="oarc-ai-assistant-env"
+echo "Conda environment name: $CONDA_ENV_NAME"
 
-# --- Virtual Environment ---
-# Check if the virtual environment directory already exists.
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv $VENV_DIR
+# --- Conda Environment ---
+# Check if the conda environment already exists.
+if conda env list | grep -q "$CONDA_ENV_NAME"; then
+    echo "Conda environment '$CONDA_ENV_NAME' already exists."
 else
-    echo "Virtual environment already exists."
+    echo "Creating conda environment '$CONDA_ENV_NAME'..."
+    # Create the conda environment with Python 3.10
+    conda create -n $CONDA_ENV_NAME python=3.10 -y
 fi
 
-# Activate the virtual environment.
-echo "Activating virtual environment..."
-source $VENV_DIR/bin/activate
+# Activate the conda environment.
+echo "Activating conda environment '$CONDA_ENV_NAME'..."
+conda activate $CONDA_ENV_NAME
+conda config --env --set channel_priority strict
+
+# Install mamba if not already installed in the environment
+if ! command -v mamba &> /dev/null
+then
+    echo "Mamba not found, installing mamba..."
+    conda install -n $CONDA_ENV_NAME mamba -y
+fi
 
 # --- CUDA and Dependencies ---
 # Load the appropriate CUDA module for the HPC cluster.
-# This line is a placeholder and may need to be adjusted for your specific cluster.
-# Example: module load cuda/11.8
-echo "Loading CUDA module (placeholder)..."
-# module load cuda/11.8
+# echo "Loading CUDA module..."
+# module load gcc/14.2.0-cermak
+# module load cuda/12.1.0
+# module load cmake/3.31.8-rdp135
 
-# Install Python dependencies from requirements.txt.
-echo "Installing Python dependencies from requirements.txt..."
-pip install -r requirements.txt
+# Install PyTorch, TorchVision, and Sentence-Transformers with Mamba
+echo "Installing PyTorch, TorchVision, and Sentence-Transformers with Mamba..."
+mamba clean --all
 
-# Install llama-cpp-python with cuBLAS support.
-# The CMAKE_ARGS environment variable is set to enable CUDA support.
-# --force-reinstall and --no-cache-dir ensure a clean build.
-echo "Installing llama-cpp-python with cuBLAS support..."
-CMAKE_ARGS="-DLLAMA_CUBLAS=on" pip install --force-reinstall --no-cache-dir llama-cpp-python
+mamba remove -y pytorch libtorch torchvision torchaudio pytorch-cuda torchtriton
+mamba install -y --override-channels -c pytorch -c nvidia -c conda-forge \
+  pytorch=2.5.1 torchvision=0.20.1 torchaudio=2.5.1 pytorch-cuda=12.1
+
+# Optional (only if you actually need local LLaMA inference)
+pip uninstall -y llama-cpp-python
+# build from source
+sbatch /scratch/ep523/oarc-ai-assistant/env_check/build_llama_cpp.sbatch
+# wait
+
+# Install remaining dependencies with pip
+echo "Installing remaining Python dependencies from requirements_hpc.txt using pip..."
+pip install -r requirements_hpc.txt -c constraints_hpc.txt --upgrade-strategy only-if-needed
 
 # --- Completion ---
-echo "Setup complete. The virtual environment is ready and dependencies are installed."
+echo "Setup complete. The conda environment is ready and dependencies are installed."
