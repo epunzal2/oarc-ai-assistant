@@ -9,4 +9,5 @@
 
 echo "Running on host: $(hostname)"
 
-./llama.cpp/server -m ./models/mistral-7b-instruct-v0.2.Q5_K_M.gguf --n-gpu-layers 99 --host 0.0.0.0 --port 8080
+# ./llama.cpp/server -m ./models/mistral-7b-instruct-v0.2.Q5_K_M.gguf --n-gpu-layers 99 --host 0.0.0.0 --port 8080
+/scratch/$USER/llama.cpp/server -m /scratch/$USER/oarc-ai-assistant/models/mistral-7b-instruct-v0.2.Q5_K_M.gguf --n-gpu-layers 99 --host 0.0.0.0 --port 8080

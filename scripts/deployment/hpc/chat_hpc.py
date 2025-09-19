@@ -1,4 +1,5 @@
 import argparse
+import socket
 from flask import Flask, render_template_string, request, jsonify
 
 from src.rag.vector_store import load_faiss_index, get_embedding_model
@@ -30,7 +31,7 @@ def start_cli_chat(chain):
             break
     print("\nChat ended.")
 
-def start_web_chat(chain):
+def start_web_chat(chain, host: str = "0.0.0.0", port: int = 8088):
     """
     Starts a web-based chat interface using Flask.
     """
@@ -98,8 +99,13 @@ def start_web_chat(chain):
         bot_response = chain.invoke(user_message)
         return jsonify({"response": bot_response.strip()})
 
-    print("Starting web server at http://127.0.0.1:8088")
-    app.run(host="0.0.0.0", port=8088)
+    @app.route("/health")
+    def health():
+        return jsonify({"status": "ok"}), 200
+
+    node = socket.getfqdn() or "localhost"
+    print(f"Starting web server at http://{host}:{port} (node: {node})", flush=True)
+    app.run(host=host, port=port, debug=False)
 
 def main():
     parser = argparse.ArgumentParser(description="Chat with a local Llama model using RAG.")
@@ -107,6 +113,8 @@ def main():
     parser.add_argument("--faiss-dir", type=str, default="vector_index/faiss_amarel", help="Path to the saved FAISS index.")
     parser.add_argument("--k", type=int, default=5, help="The number of documents to retrieve.")
     parser.add_argument("--web", action="store_true", help="Start the web-based chat interface.")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the web server to.")
+    parser.add_argument("--port", type=int, default=8088, help="Port to bind the web server to.")
     args = parser.parse_args()
 
     logger.info("Starting chat with the following configuration:")
@@ -115,6 +123,9 @@ def main():
     logger.info(f"  FAISS index path: {args.faiss_dir}")
     logger.info(f"  k: {args.k}")
     logger.info(f"  Maximum context length: 2048")
+
+    if args.web:
+        logger.info(f"  Web bind: http://{args.host}:{args.port}")
 
     # Load the FAISS retriever
     embedding_model = get_embedding_model()
@@ -125,7 +136,7 @@ def main():
     chain = create_rag_chain(retriever=retriever, llm_provider_name="llama_cpp")
 
     if args.web:
-        start_web_chat(chain)
+        start_web_chat(chain, host=args.host, port=args.port)
     else:
         start_cli_chat(chain)
 
