@@ -1,0 +1,53 @@
+# Phase 3c Embedding Bake-Off configuration
+experiment:
+  name: "phase3c_embedding_bakeoff"
+  output_dir: "results/embedding_bakeoff"
+  per_run_metrics_file: "per_run_metrics.jsonl"
+  summary_file: "summary_metrics.json"
+  detailed_results_dir: "runs"
+
+dataset:
+  queries_path: "data/evaluation/gold/queries.jsonl"
+  answers_path: "data/evaluation/gold/answers.jsonl"
+  qrels_path: "data/evaluation/gold/qrels.tsv"
+  document_source:
+    markdown_dir: "docs/google_sites_guide"
+    servicenow_jsonl: "docs/servicenow/task_prepared.jsonl"
+
+frozen:
+  generator:
+    provider: "llama_cpp"
+    llm_name: "Qwen2.5-14B-Instruct"
+    temperature: 0.0
+    max_new_tokens: 256
+  index:
+    type: "faiss"
+    metric: "cosine"
+  metrics:
+    retrieval_k: 10
+
+sweeps:
+  embedding_models:
+    - name: "sentence-transformers/all-MiniLM-L6-v2"
+      source: "huggingface"
+      langchain_class: "HuggingFaceEmbeddings"
+    - name: "bge-small-en-v1.5"
+      source: "registry"
+    - name: "bge-large-en-v1.5"
+      source: "registry"
+    - name: "gte-large-en-v1.5"
+      source: "registry"
+  chunk_size: [256, 320]
+  chunk_overlap: [32, 48]
+  top_k: [10, 20]
+
+judge:
+  provider: "llama_cpp"
+  llm_name: "Qwen2.5-14B-Instruct"
+  prompt: |
+    You are an expert RAG evaluator. Assess whether the generated answer is supported by the retrieved context.
+    Score faithfulness on a scale of 1 (hallucinated) to 5 (fully grounded in the context).
+    Provide a JSON object with keys "score" (integer 1-5) and "justification" (short explanation).
+
+  faithfulness_threshold: 4
+  hallucination_threshold: 2

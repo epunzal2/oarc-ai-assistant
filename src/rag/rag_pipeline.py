@@ -1,13 +1,22 @@
+from typing import Optional, Dict, Any
+
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+
 from src.rag.vector_store import get_vector_store, get_embedding_model
 from src.rag.llm_provider import get_llm_provider
 from src.rag.logger import get_logger
 
 logger = get_logger(__name__)
 
-def create_rag_chain(llm_provider_name="huggingface_api", vector_store_type="qdrant", retriever=None):
+def create_rag_chain(
+    llm_provider_name: str = "huggingface_api",
+    vector_store_type: str = "qdrant",
+    retriever=None,
+    llm=None,
+    llm_provider_kwargs: Optional[Dict[str, Any]] = None,
+):
     """
     Creates the RAG chain.
     """
@@ -22,9 +31,11 @@ def create_rag_chain(llm_provider_name="huggingface_api", vector_store_type="qdr
     else:
         logger.info("Using the provided retriever.")
 
-    # Get the LLM provider
-    llm_provider = get_llm_provider(llm_provider_name)
-    llm = llm_provider.get_llm()
+    # Get the LLM provider unless an explicit LLM instance was supplied
+    if llm is None:
+        kwargs = llm_provider_kwargs or {}
+        llm_provider = get_llm_provider(llm_provider_name, **kwargs)
+        llm = llm_provider.get_llm()
 
     # Define the prompt template
     template = """

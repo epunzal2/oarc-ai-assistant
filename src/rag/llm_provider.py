@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
+from typing import Any, Dict
+
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_huggingface.chat_models import ChatHuggingFace
 from langchain_community.llms import LlamaCpp
+
 from src.rag.config import HF_API_TOKEN, HF_MODEL_NAME, LLAMA_CPP_MODEL_PATH
 from src.rag.logger import get_logger
 
@@ -23,11 +26,16 @@ class HuggingFaceAPIProvider(LLMProvider):
     LLM provider for the Hugging Face API.
     """
 
-    def __init__(self, api_token=HF_API_TOKEN, model_name=HF_MODEL_NAME):
+    def __init__(self, api_token=HF_API_TOKEN, model_name=HF_MODEL_NAME, **generation_kwargs):
         if not api_token:
             raise ValueError("Hugging Face API token is required.")
         self.api_token = api_token
         self.model_name = model_name
+        self.generation_kwargs = {
+            "temperature": 0.1,
+            "max_new_tokens": 512,
+        }
+        self.generation_kwargs.update(generation_kwargs)
         logger.info(
             f"Initialized HuggingFaceAPIProvider with model: {self.model_name}"
         )
@@ -40,8 +48,7 @@ class HuggingFaceAPIProvider(LLMProvider):
         llm = HuggingFaceEndpoint(
             repo_id=self.model_name,
             huggingfacehub_api_token=self.api_token,
-            temperature=0.1,
-            max_new_tokens=512,
+            **self.generation_kwargs,
         )
         return ChatHuggingFace(llm=llm)
 
@@ -51,9 +58,20 @@ class LlamaCPPProvider(LLMProvider):
     LLM provider for a local Llama.cpp model.
     """
 
-    def __init__(self, model_path=LLAMA_CPP_MODEL_PATH):
+    def __init__(self, model_path=LLAMA_CPP_MODEL_PATH, **model_kwargs):
         self.model_path = model_path
-        logger.info(f"Initialized LlamaCPPProvider with model: {self.model_path}")
+        defaults: Dict[str, Any] = {
+            "n_gpu_layers": -1,
+            "n_batch": 512,
+            "n_ctx": 2048,
+            "f16_kv": True,
+            "verbose": True,
+        }
+        defaults.update(model_kwargs)
+        self.model_kwargs = defaults
+        logger.info(
+            "Initialized LlamaCPPProvider with model: %s", self.model_path
+        )
 
     def get_llm(self):
         """
@@ -62,23 +80,19 @@ class LlamaCPPProvider(LLMProvider):
         logger.info("Creating Llama.cpp LLM instance.")
         llm = LlamaCpp(
             model_path=self.model_path,
-            n_gpu_layers=-1,  # Offload all layers to GPU
-            n_batch=512,
-            n_ctx=2048,
-            f16_kv=True,  # Use half-precision for KV cache
-            verbose=True,
+            **self.model_kwargs,
         )
         return llm
 
 
-def get_llm_provider(provider_name="llama_cpp"):
+def get_llm_provider(provider_name="llama_cpp", **kwargs):
     """
     Factory function to get an LLM provider.
     """
     if provider_name == "huggingface_api":
-        return HuggingFaceAPIProvider()
+        return HuggingFaceAPIProvider(**kwargs)
     elif provider_name == "llama_cpp":
-        return LlamaCPPProvider()
+        return LlamaCPPProvider(**kwargs)
     # Add other providers here in the future
     else:
         raise ValueError(f"Unknown LLM provider: {provider_name}")

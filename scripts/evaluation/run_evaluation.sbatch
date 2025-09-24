@@ -9,7 +9,7 @@
 #SBATCH --gres=gpu:1                            # Request one GPU
 #SBATCH --constraint='volta|adalovelace|ampere' # V100 32G, L40S 48G, A100 40G
 #SBATCH --cpus-per-task=8                       # Request 8 CPUs per task
-#SBATCH --mem=32G                               # Memory allocation
+#SBATCH --mem=48G                               # Memory allocation
 #SBATCH --time=01:00:00                         # Time limit
 
 # Environment Setup
@@ -41,7 +41,7 @@ export PYTHONUNBUFFERED=1
 
 # --- Script arguments ---
 # Default configuration file
-CONFIG_FILE="configs/evaluation/default.yml"
+CONFIG_FILE="configs/evaluation/embedding_bakeoff.yml"
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do

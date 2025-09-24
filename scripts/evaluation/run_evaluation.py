@@ -1,6 +1,10 @@
 import argparse
+
 import yaml
+
 from src.evaluation.batch_runner import BatchRunner
+
+DEFAULT_CONFIG = "configs/evaluation/embedding_bakeoff.yml"
 
 def main(config_path: str):
     """
@@ -17,6 +21,11 @@ def main(config_path: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run RAG pipeline evaluation.")
-    parser.add_argument("--config", type=str, required=True, help="Path to the evaluation configuration file.")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=DEFAULT_CONFIG,
+        help=f"Path to the evaluation configuration file (default: {DEFAULT_CONFIG}).",
+    )
     args = parser.parse_args()
     main(args.config)
