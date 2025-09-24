@@ -1,0 +1,23 @@
+{"id": "q1", "text": "You can submit a job to Slurm using the `sbatch` command followed by your job script file. For example: `sbatch my_job.sbatch`."}
+{"id": "q2", "text": "The command to check the status of your jobs is `squeue -u <your_username>`."}
+{"id": "q3", "text": "To request a GPU for your job, you need to add the `--gres=gpu:1` flag to your `sbatch` command or in your job script."}
+{"id": "q4", "text": "You can cancel a running job using the `scancel` command followed by the job ID. For example: `scancel 12345`."}
+{"id": "q5", "text": "The `#SBATCH` directive is used to specify job submission options within your job script."}
+{"id": "q6", "text": "You can specify the number of nodes for your job using the `--nodes` flag. For example: `--nodes=2`."}
+{"id": "q7", "text": "You can set a time limit for your job using the `--time` flag. For example: `--time=01:00:00` for one hour."}
+{"id": "q8", "text": "A job array is a collection of jobs that differ only by an index."}
+{"id": "q9", "text": "You can submit a job array using the `--array` flag. For example: `--array=1-10`."}
+{"id": "q10", "text": "The output of your job is typically written to a file named `slurm-<job_id>.out` in the directory where you submitted the job."}
+{"id": "q11", "text": "`sbatch` is used to submit a job script for later execution, while `srun` is used to run a job step in real time."}
+{"id": "q12", "text": "You can get information about a completed job using the `sacct` command. For example: `sacct -j <job_id>`."}
+{"id": "q13", "text": "Partitions are logical groups of nodes in a Slurm cluster."}
+{"id": "q14", "text": "You can specify a partition for your job using the `--partition` flag. For example: `--partition=debug`."}
+{"id": "q15", "text": "You can get a list of available partitions using the `sinfo` command."}
+{"id": "q16", "text": "The `sinfo` command is used to view information about Slurm nodes and partitions."}
+{"id": "q17", "text": "You can hold a job in the queue using the `scontrol hold <job_id>` command."}
+{"id": "q18", "text": "You can release a held job using the `scontrol release <job_id>` command."}
+{"id": "q19", "text": "The `scancel` command is used to cancel a pending or running job."}
+{"id": "q20", "text": "You can set job dependencies to control the execution order of your jobs."}
+{"id": "q21", "text": "The `--dependency` flag is used to specify dependencies between jobs. For example: `--dependency=afterok:<job_id>`."}
+{"id": "q22", "text": "You can run a command on a compute node without submitting a job using the `srun` command with the `--pty` flag. For example: `srun --pty bash`."}
+{"id": "q23", "text": "Interactive mode in Slurm allows you to get a shell on a compute node and run commands interactively."}

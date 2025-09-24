@@ -1,0 +1,5 @@
+Evaluation Report
+=================
+
+recall@5: 1.0000
+precision@5: 0.2000

@@ -47,15 +47,20 @@ def create_rag_chain(llm_provider_name="huggingface_api", vector_store_type="qdr
         return "\n\n".join(doc.page_content for doc in docs)
 
     rag_chain = (
-        {"context": retriever, "question": RunnablePassthrough()}
+        {
+            "context": retriever,
+            "question": RunnablePassthrough()
+        }
         | RunnablePassthrough.assign(
-            context=lambda x: format_docs(x["context"])
+            answer=(
+                RunnablePassthrough.assign(
+                    context=(lambda x: format_docs(x["context"]))
+                )
+                | prompt
+                | llm
+                | StrOutputParser()
+            )
         )
-        | RunnableLambda(
-            lambda x: prompt.invoke(x) if x["context"] else "I couldn't find any relevant documents to answer your question. Please try rephrasing it."
-        )
-        | llm
-        | StrOutputParser()
     )
 
     logger.info("RAG chain created successfully.")

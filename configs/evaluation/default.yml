@@ -1,0 +1,29 @@
+# Evaluation settings
+evaluation_data_dir: "data/evaluation/gold/"
+queries_file: "queries.jsonl"
+qrels_file: "qrels.tsv"
+results_dir: "results/"
+batch_run_results_file: "batch_run_results.jsonl"
+evaluation_metrics_file: "evaluation_metrics.json"
+evaluation_report_file: "evaluation_report.txt"
+
+# RAG pipeline settings
+rag_pipeline:
+  llm_provider: "llama_cpp"
+  vector_store: "in_memory"
+
+# Model settings
+embedding_model: "all-MiniLM-L6-v2"
+
+# LLM-as-Judge settings
+llm_judge:
+  llm_provider: "llama_cpp"
+  prompt: |
+    You are an impartial judge evaluating an answer to a question based on a provided ground truth.
+    Your goal is to determine if the answer is faithful to the ground truth and answers the question.
+    Provide a score from 1 to 5, where 5 is the best.
+    Output a JSON object with two keys: "score" and "justification".
+
+    Question: {question}
+    Ground Truth: {ground_truth}
+    Answer: {answer}

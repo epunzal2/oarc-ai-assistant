@@ -1,0 +1,23 @@
+{"id": "q1", "text": "How do I submit a job to Slurm?"}
+{"id": "q2", "text": "What is the command to check the status of my jobs?"}
+{"id": "q3", "text": "How can I request a GPU for my job?"}
+{"id": "q4", "text": "How do I cancel a running job?"}
+{"id": "q5", "text": "What is the purpose of the `#SBATCH` directive?"}
+{"id": "q6", "text": "How can I specify the number of nodes for my job?"}
+{"id": "q7", "text": "How do I set a time limit for my job?"}
+{"id": "q8", "text": "What is a job array?"}
+{"id": "q9", "text": "How do I submit a job array?"}
+{"id": "q10", "text": "How can I check the output of my job?"}
+{"id": "q11", "text": "What is the difference between `srun` and `sbatch`?"}
+{"id": "q12", "text": "How do I get information about a completed job?"}
+{"id": "q13", "text": "What are partitions in Slurm?"}
+{"id": "q14", "text": "How do I specify a partition for my job?"}
+{"id": "q15", "text": "How can I get a list of available partitions?"}
+{"id": "q16", "text": "What is the `sinfo` command used for?"}
+{"id": "q17", "text": "How do I hold a job in the queue?"}
+{"id": "q18", "text": "How do I release a held job?"}
+{"id": "q19", "text": "What is the `scancel` command used for?"}
+{"id": "q20", "text": "How do I set job dependencies?"}
+{"id": "q21", "text": "What is the `--dependency` flag used for?"}
+{"id": "q22", "text": "How can I run a command on a compute node without submitting a job?"}
+{"id": "q23", "text": "What is interactive mode in Slurm?"}
