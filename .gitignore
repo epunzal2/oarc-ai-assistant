@@ -126,6 +126,13 @@ llama.cpp/
 
 # LLM models
 models/
+*.gguf
 
 docs/sample_questions.txt
 docs/servicenow/
+.rooignore
+.DS_Store
+repo_export*
+CHANGELOG.md
+TODO.md
+env_check/

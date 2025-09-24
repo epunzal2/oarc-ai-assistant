@@ -1,99 +1,94 @@
-import os
 import json
-import csv
-import re
-from typing import List, Dict, Any
+import os
+import logging
+import argparse
+from datetime import datetime
 
-from presidio_analyzer import AnalyzerEngine
-from presidio_anonymizer import AnonymizerEngine
+# --- Logging Setup ---
+LOG_DIR = 'logs'
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
 
-def load_data(file_path: str) -> List[Dict[str, Any]]:
-    """Loads ticket data from a JSON or CSV file."""
-    if file_path.endswith('.json'):
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    elif file_path.endswith('.csv'):
-        with open(file_path, 'r') as f:
-            reader = csv.DictReader(f)
-            return [row for row in reader]
-    else:
-        raise ValueError("Unsupported file format. Please use JSON or CSV.")
+LOG_FILENAME = os.path.join(LOG_DIR, f"{datetime.now().strftime('%Y-%m-%d')}_preparation.log")
 
-def filter_tickets(tickets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Filters out irrelevant tickets based on keywords."""
-    irrelevant_keywords = ['account creation', 'password reset']
-    relevant_tickets = []
-    for ticket in tickets:
-        # Assuming ticket content is in a 'description' field.
-        description = ticket.get('description', '').lower()
-        if not any(keyword in description for keyword in irrelevant_keywords):
-            relevant_tickets.append(ticket)
-    return relevant_tickets
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILENAME),
+        logging.StreamHandler()
+    ]
+)
 
-def anonymize_pii(text: str) -> str:
+def prepare_for_embedding(input_path, output_path):
     """
-    Anonymizes Personally Identifiable Information (PII) in the text
-    using Microsoft Presidio.
+    Reads cleaned ServiceNow data, combines relevant text fields for embedding,
+    and saves the result to a JSONL file.
     """
-    analyzer = AnalyzerEngine()
-    anonymizer = AnonymizerEngine()
+    try:
+        with open(input_path, 'r') as f:
+            data = json.load(f)
+        records = data.get('records', [])
+    except FileNotFoundError:
+        logging.error(f"Error: Input file not found at {input_path}")
+        return
+    except json.JSONDecodeError:
+        logging.error(f"Error: Could not decode JSON from {input_path}")
+        return
 
-    # Analyze the text for PII entities.
-    analyzer_results = analyzer.analyze(text=text, language='en')
+    if not records:
+        logging.warning(f"No records found in {input_path}. No output file will be generated.")
+        return
 
-    # Anonymize the detected entities.
-    anonymized_text = anonymizer.anonymize(
-        text=text,
-        analyzer_results=analyzer_results
-    )
+    prepared_data = []
+    for record in records:
+        short_desc = record.get('short_description', '')
+        desc = record.get('description', '')
 
-    return anonymized_text.text
+        # Combine the text fields
+        # Using a clear separator can sometimes help the model distinguish between title and body
+        combined_text = f"Title: {short_desc}\n\n{desc}"
 
-def format_for_rag(ticket: Dict[str, Any]) -> str:
-    """Formats a ticket into a markdown document for the RAG pipeline."""
-    # Customize this based on the actual ticket fields.
-    title = ticket.get('short_description', 'No Title')
-    description = ticket.get('description', 'No Description')
-    resolution = ticket.get('resolution', 'No Resolution')
+        # Store the original incident number as metadata
+        metadata = {
+            'incident_number': record.get('number', record.get('sys_id', 'N/A'))
+        }
 
-    # Anonymize content before formatting.
-    description = anonymize_pii(description)
-    resolution = anonymize_pii(resolution)
+        prepared_data.append({
+            'text': combined_text.strip(),
+            'metadata': metadata
+        })
 
-    markdown_content = f"# {title}\n\n"
-    markdown_content += f"## Description\n\n{description}\n\n"
-    markdown_content += f"## Resolution\n\n{resolution}\n"
-    return markdown_content
+    # Write to a JSONL file
+    try:
+        with open(output_path, 'w') as f:
+            for item in prepared_data:
+                f.write(json.dumps(item) + '\n')
+        logging.info(f"Data successfully prepared for embedding and written to {output_path}")
+    except IOError as e:
+        logging.error(f"Error writing to output file {output_path}: {e}")
+
 
 def main():
-    """Main function to process the ticket data."""
-    # Create a dummy data file for testing.
-    dummy_data = [
-        {"short_description": "HPC job failing", "description": "My job on the cluster is failing. My username is testuser and my email is testuser@example.com.", "resolution": "Increased memory allocation for the job."},
-        {"short_description": "Account creation request", "description": "Please create an account for newuser.", "resolution": "Account created."},
-        {"short_description": "Software installation", "description": "Please install gromacs on the cluster. My IP is 192.168.1.1.", "resolution": "Gromacs has been installed."},
-    ]
-    dummy_file = 'dummy_tickets.json'
-    with open(dummy_file, 'w') as f:
-        json.dump(dummy_data, f)
+    """
+    Main function to parse arguments and run the data preparation process.
+    """
+    parser = argparse.ArgumentParser(description="Prepare ServiceNow data for embedding.")
+    parser.add_argument(
+        "--input-path",
+        type=str,
+        required=True,
+        help="Path to the cleaned JSON file."
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        required=True,
+        help="Path to save the prepared JSONL file."
+    )
+    args = parser.parse_args()
 
-    # Process the data.
-    tickets = load_data(dummy_file)
-    relevant_tickets = filter_tickets(tickets)
-
-    output_dir = 'rag_documents'
-    os.makedirs(output_dir, exist_ok=True)
-
-    for i, ticket in enumerate(relevant_tickets):
-        markdown_content = format_for_rag(ticket)
-        output_file = os.path.join(output_dir, f'ticket_{i+1}.md')
-        with open(output_file, 'w') as f:
-            f.write(markdown_content)
-
-    print(f"Processed {len(relevant_tickets)} tickets and saved them to '{output_dir}'.")
-
-    # Clean up the dummy file.
-    os.remove(dummy_file)
+    prepare_for_embedding(args.input_path, args.output_path)
 
 if __name__ == '__main__':
     main()

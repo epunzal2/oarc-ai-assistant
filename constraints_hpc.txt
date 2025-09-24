@@ -1,0 +1,25 @@
+# Keep these versions stable so pip doesn't try to "helpfully" upgrade/downgrade.
+
+llama-cpp-python==0.3.16
+
+# Torch family (present in the env; these pins prevent pip from changing them)
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
+
+# Transformers stack
+transformers==4.56.1
+tokenizers==0.22.0
+# Optional tokenizer lib — include if present
+sentencepiece==0.2.0
+
+# Data libs commonly pulled by deps — align with your current env
+numpy==2.2.6
+# Only constrain pandas if you actually use it; otherwise omit to avoid pulling it in.
+# pandas==2.3.2
+pyarrow==20.0.0
+
+pillow==11.0.0
+networkx==3.3
+sympy==1.13.1
+typing-extensions==4.15.0
