@@ -6,17 +6,27 @@ llms:
     filename: "qwen2.5-14b-instruct-q4_k_m.gguf"
     quantization: "Q4_K_M"
     local_dir: "models/llm/Qwen2.5-14B-Instruct-GGUF"
-  # ... other LLMs from previous plan ...
+  - name: "Qwen2.5-32B-Instruct"
+    repo_id: "Qwen/Qwen2.5-32B-Instruct-GGUF"
+    filename: "qwen2.5-32b-instruct-q4_k_m.gguf"
+    quantization: "Q4_K_M"
+    local_dir: "models/llm/qwen2.5-32b"
+  - name: "Mixtral-8x7B-Instruct-v0.1"
+    repo_id: "TheBloke/Mixtral-8x7B-Instruct-v0.1-GGUF"
+    filename: "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf"
+    quantization: "Q4_K_M"
+    local_dir: "models/llm/mixtral-8x7b-it"
 
 embedding_models:
-  - name: "bge-large-en-v1.5"
-    repo_id: "BAAI/bge-large-en-v1.5"
-    local_dir: "models/emb/bge-large-en-v1.5"
-    langchain_class: "HuggingFaceBgeEmbeddings"
-
+  # New models from bakeoff plan
   - name: "bge-small-en-v1.5"
     repo_id: "BAAI/bge-small-en-v1.5"
     local_dir: "models/emb/bge-small-en-v1.5"
+    langchain_class: "HuggingFaceBgeEmbeddings"
+
+  - name: "bge-large-en-v1.5"
+    repo_id: "BAAI/bge-large-en-v1.5"
+    local_dir: "models/emb/bge-large-en-v1.5"
     langchain_class: "HuggingFaceBgeEmbeddings"
 
   - name: "gte-large-en-v1.5"
