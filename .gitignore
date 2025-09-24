@@ -136,4 +136,5 @@ docs/onboarding/
 repo_export*
 CHANGELOG.md
 TODO.md
+/todo/
 /env_check/
