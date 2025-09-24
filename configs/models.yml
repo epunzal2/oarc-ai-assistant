@@ -1,0 +1,25 @@
+# configs/models.yml
+
+llms:
+  - name: "Qwen2.5-14B-Instruct"
+    repo_id: "Qwen/Qwen2.5-14B-Instruct-GGUF"
+    filename: "qwen2.5-14b-instruct-q4_k_m.gguf"
+    quantization: "Q4_K_M"
+    local_dir: "models/llm/Qwen2.5-14B-Instruct-GGUF"
+  # ... other LLMs from previous plan ...
+
+embedding_models:
+  - name: "bge-large-en-v1.5"
+    repo_id: "BAAI/bge-large-en-v1.5"
+    local_dir: "models/emb/bge-large-en-v1.5"
+    langchain_class: "HuggingFaceBgeEmbeddings"
+
+  - name: "bge-small-en-v1.5"
+    repo_id: "BAAI/bge-small-en-v1.5"
+    local_dir: "models/emb/bge-small-en-v1.5"
+    langchain_class: "HuggingFaceBgeEmbeddings"
+
+  - name: "gte-large-en-v1.5"
+    repo_id: "Alibaba-NLP/gte-large-en-v1.5"
+    local_dir: "models/emb/gte-large-en-v1.5"
+    langchain_class: "HuggingFaceEmbeddings"
