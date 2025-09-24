@@ -1,16 +1,48 @@
 # RAG System for OARC Documentation
 
-This project implements a Retrieval-Augmented Generation (RAG) system to answer questions about the Amarel cluster based on the OARC Google Sites guide and ServiceNow data.
+This project implements a Retrieval-Augmented Generation (RAG) system to answer questions about the Amarel cluster based on the OARC Google Sites guide and ServiceNow data. The architecture of the system, including the data pipeline and deployment on the HPC cluster, is detailed in the flowchart below.
 
+## RAG Architecture Flowchart
 
-## HPC Deployment
+This flowchart illustrates the general architecture of the RAG system. The HPC deployment specifically utilizes the FAISS index for storage and the Phi-3-mini model for generation, as depicted in the diagram.
 
-The RAG chatbot has been successfully deployed on the Amarel HPC cluster, leveraging GPU resources for accelerated performance. This deployment is ideal for running the chatbot in a high-performance environment, enabling it to handle complex queries and large datasets efficiently.
+```mermaid
+graph TD
+    subgraph Data Ingestion
+        A[ServiceNow Tickets]
+        B[Google Sites Documentation]
+    end
 
-To run the chatbot on the HPC cluster, submit a job to the Slurm scheduler using the provided `sbatch` script. This script requests a GPU node and sets up the necessary environment for the application to run.
+    subgraph Processing
+        C[run_pipeline.sh: Preprocessing and Chunking]
+        D[Embedding Model: all-MiniLM-L6-v2]
+    end
 
-```bash
-sbatch scripts/deployment/hpc/run_chat_hpc.sbatch
+    subgraph Storage
+        E[FAISS Index: Vector Store]
+    end
+
+    subgraph Retrieval
+        F[User Query]
+        G[Query Embedding]
+        H[Retrieve Relevant Documents]
+    end
+
+    subgraph Generation
+        I[LLM: Phi-3-mini]
+        J[Generated Answer]
+    end
+
+    A --> C
+    B --> C
+    C --> D
+    D --> E
+    F --> G
+    G --> H
+    E --> H
+    H --> I
+    F --> I
+    I --> J
 ```
 
 ### HPC Installation Notes
@@ -20,6 +52,7 @@ If you encounter OS-related errors during the installation of `llama-cpp-python`
 The specific package requirements for the HPC environment are defined in [`requirements_hpc.txt`](requirements_hpc.txt) and [`constraints_hpc.txt`](constraints_hpc.txt). A complete list of the exact environment libraries can be found in [`env_check/oarc-ai-rag-test.sanitized.yml`](env_check/oarc-ai-rag-test.sanitized.yml).
 
 ## Architecture
+
 The system is built with Python, LangChain, and a Hugging Face model. It supports both Qdrant and an in-memory FAISS vector store. For a detailed explanation of the architecture, please see the [`architecture/architecture.md`](./architecture/architecture.md) file.
 
 ## Configuration
@@ -149,3 +182,28 @@ sbatch scripts/deployment/hpc/run_chat_hpc.sbatch
 ```
 
 This will submit the job to the Slurm scheduler, and the chatbot will be accessible through the compute node where the job is running.
+
+This deployment is ideal for running the chatbot in a high-performance environment, enabling it to handle complex queries and large datasets efficiently.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Login Node
+    participant Slurm Scheduler
+    participant GPU Compute Node
+
+    User->>Login Node: Connects via SSH
+    User->>Login Node: Submits run_chat_hpc.sbatch
+    Login Node->>Slurm Scheduler: Sends job request
+    Slurm Scheduler->>GPU Compute Node: Allocates node and sends job
+    GPU Compute Node->>GPU Compute Node: Runs sbatch script (setup env, start chat_hpc.py)
+    User->>Login Node: Creates SSH tunnel to GPU node
+    Login Node->>GPU Compute Node: Forwards user connection
+    User->>GPU Compute Node: Interacts with chatbot via local browser
+```
+
+To run the chatbot on the HPC cluster, submit a job to the Slurm scheduler using the provided `sbatch` script. This script requests a GPU node and sets up the necessary environment for the application to run.
+
+```bash
+sbatch scripts/deployment/hpc/run_chat_hpc.sbatch
+```
