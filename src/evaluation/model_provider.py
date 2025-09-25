@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict
 
 import yaml
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings, HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceBgeEmbeddings, HuggingFaceEmbeddings
 
 
 class ModelNotFoundError(ValueError):
