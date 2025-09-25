@@ -87,6 +87,8 @@ def load_corpus(markdown_dir: str, servicenow_jsonl: str | None) -> List[Documen
 
 
 def chunk_documents(documents: Iterable[Document], chunk_size: int, chunk_overlap: int) -> List[Document]:
+    # Ensure list realization for stable ordering
+    docs_list = list(documents)
     try:
         splitter = TokenTextSplitter(
             chunk_size=chunk_size,
@@ -99,10 +101,33 @@ def chunk_documents(documents: Iterable[Document], chunk_size: int, chunk_overla
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
         )
-    chunks = splitter.split_documents(list(documents))
-    for idx, chunk in enumerate(chunks, start=1):
+
+    # Split while preserving each document's metadata
+    chunks = splitter.split_documents(docs_list)
+
+    # Build a stable per-document ID mapping to align with qrels-style IDs (doc1..docN)
+    def doc_key(md: Dict[str, Any]) -> str:
+        # Prefer filesystem source path for markdown docs; fall back to explicit 'id' or a hashable tuple
+        return md.get("source") or md.get("id") or md.get("document_id") or "__unknown__"
+
+    key_to_docid: Dict[str, str] = {}
+    next_id = 1
+    for d in docs_list:
+        key = doc_key(getattr(d, "metadata", {}) or {})
+        if key not in key_to_docid:
+            key_to_docid[key] = f"doc{next_id}"
+            next_id += 1
+
+    # Assign chunk_id based on parent document key so all chunks of a document share the same id
+    for chunk in chunks:
         chunk.metadata = dict(chunk.metadata)
-        chunk.metadata.setdefault("chunk_id", f"doc{idx}")
+        key = doc_key(chunk.metadata)
+        # Unknowns (e.g., ServiceNow entries without a 'source') get unique IDs after known docs
+        if key not in key_to_docid:
+            key_to_docid[key] = f"doc{next_id}"
+            next_id += 1
+        chunk.metadata["chunk_id"] = key_to_docid[key]
+
     logger.info("Created %s chunks (chunk_size=%s, overlap=%s)", len(chunks), chunk_size, chunk_overlap)
     return chunks
 
