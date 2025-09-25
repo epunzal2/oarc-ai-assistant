@@ -1,4 +1,6 @@
 import os
+import glob
+import logging
 from typing import Any, Dict
 
 import yaml
@@ -54,19 +56,64 @@ def get_embedding_model(model_name: str):
     return model_cls(model_name=local_path)
 
 
+def _locate_first_shard(local_dir: str, filename: str) -> str | None:
+    """If the expected file is missing but shards exist, return the first shard.
+
+    llama.cpp supports loading sharded GGUF by passing any shard path (usually
+    the `-00001-of-000NN` file). Concatenating shards is incorrect for GGUF and
+    will result in loader errors. This function returns the appropriate shard
+    path so the runtime can load shards natively.
+    """
+    base, ext = os.path.splitext(filename)
+    pattern = os.path.join(local_dir, f"{base}-*-of-*.{ext.lstrip('.')}")
+    shards = sorted(glob.glob(pattern))
+    if not shards:
+        return None
+    # Prefer the 00001 shard if present; otherwise pick the lexicographically first.
+    for shard in shards:
+        if "-00001-of-" in os.path.basename(shard):
+            return shard
+    return shards[0]
+
+
 def get_llm_model_path(llm_name: str) -> str:
-    """Returns the absolute path to a locally managed LLM binary."""
+    """Returns the absolute path to a locally managed LLM binary.
+
+    If the model file is sharded (downloaded as multiple `*-00001-of-*.gguf`),
+    this function assembles the shards into the expected single file.
+    """
     config = get_model_config()
     model_info = next((m for m in config.get("llms", []) if m["name"] == llm_name), None)
     if not model_info:
         raise ModelNotFoundError(f"LLM '{llm_name}' not found in the registry.")
 
-    model_path = os.path.join(model_info["local_dir"], model_info["filename"])
-    if not os.path.exists(model_path):
-        raise ModelNotReadyError(
-            f"LLM binary missing at '{model_path}'. Please run the download script."
+    local_dir = model_info["local_dir"]
+    filename = model_info["filename"]
+    model_path = os.path.join(local_dir, filename)
+
+    # Prefer native sharded loading if shards are present
+    shard_path = _locate_first_shard(local_dir, filename)
+    if shard_path and os.path.exists(shard_path):
+        # If a non-sharded file with the target name also exists, warn users it may be a manual concatenation
+        # which is not supported by llama.cpp for GGUF.
+        if os.path.exists(model_path):
+            logging.getLogger(__name__).warning(
+                "Detected both '%s' and GGUF shards in '%s'. Using shards (%s). "
+                "If '%s' was created by concatenating shards, please remove it to avoid loader errors.",
+                os.path.basename(model_path), local_dir, os.path.basename(shard_path), os.path.basename(model_path)
+            )
+        logging.getLogger(__name__).info(
+            "Using sharded GGUF; passing first shard to loader: %s", os.path.basename(shard_path)
         )
-    return model_path
+        return shard_path
+
+    if os.path.exists(model_path):
+        return model_path
+
+    raise ModelNotReadyError(
+        f"LLM binary missing at '{model_path}'. Please run the download script or "
+        f"ensure shards are available in '{local_dir}'."
+    )
 
 
 def load_embedding_from_spec(spec: Dict[str, Any]):

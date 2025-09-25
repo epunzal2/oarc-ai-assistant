@@ -8,7 +8,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --constraint='volta|ampere|adalovelace'
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --time=00:15:00
 
 set -euo pipefail
@@ -30,6 +30,12 @@ export VECLIB_MAXIMUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 export NUMEXPR_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 export TOKENIZERS_PARALLELISM=false
 export PYTHONUNBUFFERED=1
+
+# verify model paths
+echo "====================================================================================="
+echo "Verifying model paths..."
+python scripts/models/verify_models.py
+echo "====================================================================================="
 
 CONFIG_FILE="configs/evaluation/embedding_bakeoff_smoke.yml"
 

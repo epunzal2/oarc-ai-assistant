@@ -1,5 +1,6 @@
 import yaml
 import os
+import glob
 
 def verify_models():
     """
@@ -16,12 +17,24 @@ def verify_models():
         filename = llm['filename']
         local_dir = llm['local_dir']
         model_path = os.path.join(local_dir, filename)
-        
+
         if os.path.exists(model_path):
             print(f"✅ Verified: {model_path}")
-        else:
-            print(f"❌ Missing: {model_path}")
-            all_models_verified = False
+            continue
+
+        # Check for sharded gguf files (e.g., <filename>-00001-of-000NN.gguf)
+        base, ext = os.path.splitext(filename)
+        pattern = os.path.join(local_dir, f"{base}-*-of-*.{ext.lstrip('.')}")
+        shards = sorted(glob.glob(pattern))
+        if shards:
+            print(f"ℹ️  Sharded model detected in {local_dir} (will be assembled at runtime):")
+            for s in shards:
+                print(f"   - {os.path.basename(s)}")
+            # Treat as present since runtime can assemble
+            continue
+
+        print(f"❌ Missing: {model_path}")
+        all_models_verified = False
 
     # Verify embedding models
     for emb_model in models_config.get('embedding_models', []):

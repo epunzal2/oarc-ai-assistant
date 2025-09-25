@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict
+import os
 
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_huggingface.chat_models import ChatHuggingFace
 from langchain_community.llms import LlamaCpp
 
-from src.rag.config import HF_API_TOKEN, HF_MODEL_NAME, LLAMA_CPP_MODEL_PATH
+from src.rag.config import HF_API_TOKEN, LLAMA_CPP_MODEL_PATH
 from src.rag.logger import get_logger
 
 logger = get_logger(__name__)
@@ -20,17 +21,51 @@ class LLMProvider(ABC):
     def get_llm(self):
         pass
 
+    def get_completion(self, prompt: str) -> str:
+        """Convenience helper used by evaluation judge.
+
+        Delegates to the underlying LangChain runnable returned by get_llm().
+        Handles string or message-style returns.
+        """
+        llm = self.get_llm()
+        try:
+            response = llm.invoke(prompt)
+        except Exception:
+            # Some models expect a list of messages; fall back to simple call if available
+            if hasattr(llm, "__call__"):
+                response = llm(prompt)
+            else:
+                raise
+
+        # Normalize to plain string
+        if isinstance(response, str):
+            return response
+        # LangChain chat models often return messages with a `.content` attribute
+        content = getattr(response, "content", None)
+        if content is not None:
+            return content
+        return str(response)
+
 
 class HuggingFaceAPIProvider(LLMProvider):
     """
     LLM provider for the Hugging Face API.
     """
 
-    def __init__(self, api_token=HF_API_TOKEN, model_name=HF_MODEL_NAME, **generation_kwargs):
+    def __init__(self, api_token=HF_API_TOKEN, model_name: str | None = None, **generation_kwargs):
         if not api_token:
             raise ValueError("Hugging Face API token is required.")
         self.api_token = api_token
-        self.model_name = model_name
+        # Allow passing explicitly, or fall back to environment variables
+        self.model_name = (
+            model_name
+            or os.environ.get("HF_MODEL_NAME")
+            or os.environ.get("HUGGINGFACE_MODEL_NAME")
+        )
+        if not self.model_name:
+            raise ValueError(
+                "Hugging Face model name is required. Provide 'model_name' or set HF_MODEL_NAME."
+            )
         self.generation_kwargs = {
             "temperature": 0.1,
             "max_new_tokens": 512,
@@ -63,7 +98,7 @@ class LlamaCPPProvider(LLMProvider):
         defaults: Dict[str, Any] = {
             "n_gpu_layers": -1,
             "n_batch": 512,
-            "n_ctx": 2048,
+            "n_ctx": 4096,
             "f16_kv": True,
             "verbose": True,
         }
@@ -96,6 +131,9 @@ def get_llm_provider(provider_name="llama_cpp", **kwargs):
     # Add other providers here in the future
     else:
         raise ValueError(f"Unknown LLM provider: {provider_name}")
+
+# Backwards-compatibility alias for older imports
+LlmProvider = LLMProvider
 
 if __name__ == '__main__':
     # This is for testing the LLM provider

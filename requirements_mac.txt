@@ -15,3 +15,4 @@ llama-cpp-python
 flask
 faiss-cpu
 torch
+gpt-oss

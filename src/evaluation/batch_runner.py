@@ -18,7 +18,7 @@ from typing import Any, Dict, Iterable, List, Tuple
 
 import yaml
 from langchain_core.documents import Document
-from langchain_text_splitters import TokenTextSplitter
+from langchain_text_splitters import TokenTextSplitter, RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores.utils import DistanceStrategy
@@ -87,11 +87,18 @@ def load_corpus(markdown_dir: str, servicenow_jsonl: str | None) -> List[Documen
 
 
 def chunk_documents(documents: Iterable[Document], chunk_size: int, chunk_overlap: int) -> List[Document]:
-    splitter = TokenTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        encoding_name="cl100k_base",
-    )
+    try:
+        splitter = TokenTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            encoding_name="cl100k_base",
+        )
+    except ImportError:
+        # Fallback if tiktoken is not installed
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
     chunks = splitter.split_documents(list(documents))
     for idx, chunk in enumerate(chunks, start=1):
         chunk.metadata = dict(chunk.metadata)
@@ -190,11 +197,16 @@ class BatchRunner:
         model_path = get_llm_model_path(self.generator_config["llm_name"])
         temperature = self.generator_config.get("temperature", 0.0)
         max_new_tokens = self.generator_config.get("max_new_tokens", 256)
+        # Increase context window to accommodate retrieved context + prompt + generation
+        n_ctx = self.generator_config.get("n_ctx", 4096)
+        n_batch = self.generator_config.get("n_batch", 512)
         self._generator_llm = get_llm_provider(
             provider_name,
             model_path=model_path,
             temperature=temperature,
             max_tokens=max_new_tokens,
+            n_ctx=n_ctx,
+            n_batch=n_batch,
         ).get_llm()
         return self._generator_llm
 
@@ -206,6 +218,8 @@ class BatchRunner:
             model_path=get_llm_model_path(self.judge_config["llm_name"]),
             temperature=0.0,
             max_tokens=256,
+            n_ctx=self.judge_config.get("n_ctx", 4096),
+            n_batch=self.judge_config.get("n_batch", 512),
         )
         self._judge = LLMJudge(self.judge_config, provider)
         return self._judge

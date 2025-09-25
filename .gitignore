@@ -116,10 +116,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-architecture/
-logs/
-research/
-verification/
 # Log files
 # llama.cpp repository
 llama.cpp/
@@ -127,6 +123,7 @@ llama.cpp/
 # LLM models
 /models/
 *.gguf
+AGENTS.md
 
 docs/sample_questions.txt
 docs/servicenow/
@@ -136,6 +133,13 @@ docs/onboarding/
 repo_export*
 CHANGELOG.md
 TODO.md
+
+# dirs
+/architecture/
+/logs/
+/research/
+/verification/
 /todo/
 /env_check/
 /project_docs/
+/vector_index/

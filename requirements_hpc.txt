@@ -15,6 +15,7 @@ tokenizers==0.22.0
 huggingface_hub==0.34.4
 # Optional but harmless; some tokenizers/models expect it
 sentencepiece==0.2.0
+tiktoken==0.7.0
 
 # Web/UI & config
 streamlit==1.49.1
@@ -38,3 +39,5 @@ uv
 
 # vector store
 faiss-cpu==1.9.0
+
+gpt-oss

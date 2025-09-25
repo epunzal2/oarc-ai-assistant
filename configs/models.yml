@@ -5,7 +5,7 @@ llms:
     repo_id: "Qwen/Qwen2.5-14B-Instruct-GGUF"
     filename: "qwen2.5-14b-instruct-q4_k_m.gguf"
     quantization: "Q4_K_M"
-    local_dir: "models/llm/Qwen2.5-14B-Instruct-GGUF"
+    local_dir: "models/llm/qwen2.5-14b"
   - name: "Qwen2.5-32B-Instruct"
     repo_id: "Qwen/Qwen2.5-32B-Instruct-GGUF"
     filename: "qwen2.5-32b-instruct-q4_k_m.gguf"
@@ -16,7 +16,12 @@ llms:
     filename: "mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf"
     quantization: "Q4_K_M"
     local_dir: "models/llm/mixtral-8x7b-it"
-
+  - name: "gpt-oss-20b"
+    repo_id: "unsloth/gpt-oss-20b-GGUF"
+    filename: "gpt-oss-20b-Q4_K_M.gguf"
+    quantization: "Q4_K_M"
+    local_dir: "models/llm/gpt-oss-20b"
+    
 embedding_models:
   # New models from bakeoff plan
   - name: "bge-small-en-v1.5"
