@@ -7,10 +7,10 @@
 #SBATCH --error=logs/%x_%N_%j.err        # Standard error log (%x=jobname, %N=nodename, %j=jobid)
 #SBATCH --partition=gpu                         # Partition (queue) name
 #SBATCH --gres=gpu:1                            # Request one GPU
-#SBATCH --constraint='volta|adalovelace|ampere' # V100 32G, L40S 48G, A100 40G
+#SBATCH --constraint='volta|adalovelace|ampere' # V100 32G, L40S 40/48G, A100 40G
 #SBATCH --cpus-per-task=8                       # Request 8 CPUs per task
 #SBATCH --mem=48G                               # Memory allocation
-#SBATCH --time=01:00:00                         # Time limit
+#SBATCH --time=05:00:00                         # Time limit
 
 # Environment Setup
 # -----------------

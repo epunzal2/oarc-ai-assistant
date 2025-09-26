@@ -418,9 +418,21 @@ class BatchRunner:
         vector_store = build_vector_store(chunks, embedding_model)
         retriever = vector_store.as_retriever(search_kwargs={"k": top_k})
 
+        # Provide a strict token cap for RAG context to avoid n_ctx overflows in llama.cpp
+        try:
+            n_ctx = int(self.generator_config.get("n_ctx", 4096))
+            max_new = int(self.generator_config.get("max_new_tokens", 256))
+            margin = int(self.generator_config.get("n_ctx_margin", 768))  # allow YAML override
+            allowed_tokens = max(512, n_ctx - max_new - margin)
+            # Export for the RAG chain to honor a token cap when formatting context
+            os.environ["RAG_MAX_CONTEXT_TOKENS"] = str(allowed_tokens)
+        except Exception:
+            pass
+
         rag_chain = create_rag_chain(
             llm=self._get_generator_llm(),
             retriever=retriever,
+            max_context_chars=self._compute_max_context_chars(),
         )
 
         judge = self._get_judge()
@@ -518,6 +530,19 @@ class BatchRunner:
             "hallucination_rate": round(hallucination_count / total_examples if total_examples else 0.0, 4),
             "mean_judge_score": round(mean_judge, 4),
         }
+
+    def _compute_max_context_chars(self) -> int:
+        """Compute a conservative context cap in characters to prevent n_ctx overflow.
+
+        Approximate 1 token ≈ 4 chars. Reserve margin for prompt and generation.
+        """
+        n_ctx = int(self.generator_config.get("n_ctx", 4096))
+        max_new = int(self.generator_config.get("max_new_tokens", 256))
+        margin = 512
+        allowed_tokens = max(512, n_ctx - max_new - margin)
+        # Cap to a reasonable upper bound
+        allowed_tokens = max(512, min(allowed_tokens, n_ctx))
+        return allowed_tokens * 4
 
 
 def parse_args() -> argparse.Namespace:
