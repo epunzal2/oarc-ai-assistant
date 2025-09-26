@@ -55,6 +55,73 @@ The specific package requirements for the HPC environment are defined in [`requi
 
 The system is built with Python, LangChain, and a Hugging Face model. It supports both Qdrant and an in-memory FAISS vector store. For a detailed explanation of the architecture, please see the [`architecture/architecture.md`](./architecture/architecture.md) file.
 
+## RAG Evaluation Test Suite
+
+The evaluation “test suite” (aka Evaluation Agent) runs smoke and full bake‑off jobs on the GPU partition to compare embeddings and measure retrieval/generation quality. The diagram below is also available at `architecture/rag_test_suite.md`.
+
+```mermaid
+flowchart TB
+  subgraph Inputs
+    A["Gold dataset<br/>queries.jsonl<br/>answers.jsonl<br/>qrels.tsv"]
+    B["Corpus<br/>docs/google_sites_guide<br/>ServiceNow (optional)"]
+    C["Model Registry<br/>Embeddings<br/>(MiniLM, BGE small/large, GTE-large)"]
+    D["LLMs<br/>Qwen2.5‑14B‑Instruct (llama.cpp local)"]
+  end
+
+  subgraph Config
+    E1["configs/evaluation/*.yml<br/>- sweeps (grid): embeddings, chunk_size, overlap, top_k<br/>- generator/judge (n_ctx, max_new_tokens)<br/>- chat_template"]
+    E2["scripts/evaluation/*.sbatch"]
+  end
+
+  Inputs --> BR
+  Config --> BR
+
+  subgraph Runner
+    BR["BatchRunner<br/>- build doc_id_map (markdown-first)<br/>- chunk corpus<br/>- build FAISS<br/>- retriever -> generator<br/>- judge -> metrics"]
+  end
+
+  BR --> VS["FAISS index + retriever"]
+  VS --> RAG["Retriever + LLM (RAG chain)"]
+  RAG --> J["LLM Judge"]
+  RAG --> RES
+  J --> MET
+
+  subgraph Outputs
+    RES["Per-run responses<br/>runs/<run_id>/responses.jsonl"]
+    MET["Metrics<br/>- runs/<run_id>/metrics.json<br/>- summary_metrics.json<br/>- per_run_metrics.jsonl<br/>- doc_id_map.json"]
+  end
+
+  NC(["Token-based context cap<br/>(RAG_MAX_CONTEXT_TOKENS)<br/>to avoid n_ctx overflow"])
+  NC -.-> RAG
+```
+
+- Smoke run: `sbatch scripts/evaluation/run_evaluation_smoke.sbatch --config configs/evaluation/embedding_bakeoff_smoke.yml`
+- Full sweep: `sbatch scripts/evaluation/run_evaluation.sbatch --config configs/evaluation/embedding_bakeoff.yml`
+- Results: `results/embedding_bakeoff*/{summary_metrics.json,per_run_metrics.jsonl,runs/*}`; mapping: `doc_id_map.json`
+- Tuning knobs:
+  - Retrieval: `sweeps.chunk_size`, `sweeps.chunk_overlap`, `sweeps.top_k`
+  - LLM: `frozen.generator.{n_ctx,max_new_tokens}`; optional `n_ctx_margin`
+  - Safety: override context cap via `RAG_MAX_CONTEXT_TOKENS` (tokens) or `RAG_MAX_CONTEXT_CHARS`
+
+What “sweeps” means
+
+- The `sweeps` section in the YAML defines a grid of runs:
+  - `embedding_models`: which embeddings to test (e.g., MiniLM, BGE small/large, GTE-large)
+  - `chunk_size`, `chunk_overlap`: splitter params
+  - `top_k`: retriever depth
+- The runner executes every combination and writes per‑run metrics and a summary selecting the best run.
+
+LLMs used
+
+- Generator/Judge: `Qwen2.5‑14B‑Instruct` via local `llama.cpp` (no HF endpoint in this setup).
+
+Future tasks
+
+- Add LLM sweeps from the model registry (Qwen‑32B, Mixtral‑8x7B‑IT, gpt‑oss‑20b, Llama‑3) for generator and/or judge; mind GPU memory.
+- Bring ServiceNow into evaluation after stronger preprocessing (strip quoted threads/footers, dedup), smaller chunks, `source_kind` metadata, and SN‑aware qrels; provide markdown‑only and mixed‑corpus tracks.
+- Reproducibility and controls: optional frozen `doc_id_map` in YAML; expose a `max_context_tokens` knob in config; persist seeds and deterministic loaders.
+- Results/observability: export raw vs deduped retrieved IDs; add summary tables and optional CI checks; include GPU/throughput telemetry in logs.
+
 ## Configuration
 
 The project's settings are centralized in the [`src/rag/config.py`](src/rag/config.py) file. This file defines key parameters such as data paths, model names, and vector store configurations.
