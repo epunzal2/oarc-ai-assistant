@@ -1,23 +1,25 @@
-{"id": "q1", "text": "You can submit a job to Slurm using the `sbatch` command followed by your job script file. For example: `sbatch my_job.sbatch`."}
-{"id": "q2", "text": "The command to check the status of your jobs is `squeue -u <your_username>`."}
-{"id": "q3", "text": "To request a GPU for your job, you need to add the `--gres=gpu:1` flag to your `sbatch` command or in your job script."}
-{"id": "q4", "text": "You can cancel a running job using the `scancel` command followed by the job ID. For example: `scancel 12345`."}
-{"id": "q5", "text": "The `#SBATCH` directive is used to specify job submission options within your job script."}
-{"id": "q6", "text": "You can specify the number of nodes for your job using the `--nodes` flag. For example: `--nodes=2`."}
-{"id": "q7", "text": "You can set a time limit for your job using the `--time` flag. For example: `--time=01:00:00` for one hour."}
-{"id": "q8", "text": "A job array is a collection of jobs that differ only by an index."}
-{"id": "q9", "text": "You can submit a job array using the `--array` flag. For example: `--array=1-10`."}
-{"id": "q10", "text": "The output of your job is typically written to a file named `slurm-<job_id>.out` in the directory where you submitted the job."}
-{"id": "q11", "text": "`sbatch` is used to submit a job script for later execution, while `srun` is used to run a job step in real time."}
-{"id": "q12", "text": "You can get information about a completed job using the `sacct` command. For example: `sacct -j <job_id>`."}
-{"id": "q13", "text": "Partitions are logical groups of nodes in a Slurm cluster."}
-{"id": "q14", "text": "You can specify a partition for your job using the `--partition` flag. For example: `--partition=debug`."}
-{"id": "q15", "text": "You can get a list of available partitions using the `sinfo` command."}
-{"id": "q16", "text": "The `sinfo` command is used to view information about Slurm nodes and partitions."}
-{"id": "q17", "text": "You can hold a job in the queue using the `scontrol hold <job_id>` command."}
-{"id": "q18", "text": "You can release a held job using the `scontrol release <job_id>` command."}
-{"id": "q19", "text": "The `scancel` command is used to cancel a pending or running job."}
-{"id": "q20", "text": "You can set job dependencies to control the execution order of your jobs."}
-{"id": "q21", "text": "The `--dependency` flag is used to specify dependencies between jobs. For example: `--dependency=afterok:<job_id>`."}
-{"id": "q22", "text": "You can run a command on a compute node without submitting a job using the `srun` command with the `--pty` flag. For example: `srun --pty bash`."}
-{"id": "q23", "text": "Interactive mode in Slurm allows you to get a shell on a compute node and run commands interactively."}
+{"id": "q1", "text": "Submit with sbatch and a job script, e.g., `sbatch my_job_script.sh`."}
+{"id": "q2", "text": "Use `squeue -u <your_username>` to see your jobs' status."}
+{"id": "q3", "text": "Request a GPU with `#SBATCH --gres=gpu:1` in the script (or `--gres=gpu:1` to sbatch)."}
+{"id": "q4", "text": "Cancel a job with `scancel <job_id>`."}
+{"id": "q5", "text": "`#SBATCH` lines set Slurm options (partition, time, memory, GPUs, etc.) inside the script."}
+{"id": "q6", "text": "Start an interactive session with `srun --partition=<queue> --time=HH:MM:SS --pty bash`."}
+{"id": "q7", "text": "Run `sinfo --list-reasons` to list offline nodes and their reasons."}
+{"id": "q8", "text": "Use `/scratch/<NetID>` for temporary job data; it is fast, not backed up, and files >90 days inactive may be purged."}
+{"id": "q9", "text": "/home provides 100 GB of backed‑up storage by default."}
+{"id": "q10", "text": "Add community modules with `module use /projects/community/modulefiles`, then `module spider` or `module avail`."}
+{"id": "q11", "text": "Add `module load <name>/<version>` lines to your `~/.bashrc` to load modules on login."}
+{"id": "q12", "text": "Specify the GPU queue with `#SBATCH --partition=gpu` in your script."}
+{"id": "q13", "text": "Use `sacct -j <job_id>` (or `sacct` with filters) to inspect completed jobs."}
+{"id": "q14", "text": "Submit arrays with `#SBATCH --array=1-300` (or `sbatch --array=1-300 script.sbatch`)."}
+{"id": "q15", "text": "Use dependencies, e.g., `#SBATCH --dependency=afterok:<job_id>` so a job starts after another succeeds."}
+{"id": "q16", "text": "Grant access with ACLs: `setfacl -m u:<netid>:rwx <path>` and verify with `getfacl <path>`. Ensure parent dirs are accessible."}
+{"id": "q17", "text": "Stage inputs with scp, e.g., `scp data.tgz user@amarel:/scratch/$USER && tar -zxf /scratch/$USER/data.tgz`."}
+{"id": "q18", "text": "Use `sinfo` to list partitions and nodes (and their states)."}
+{"id": "q19", "text": "Owners use `/projects/<id>` for shared data; it is backed up via snapshots (no automated purging)."}
+{"id": "q20", "text": "Guest NetIDs may submit to general partitions by adding `#SBATCH -A general` (policy subject to change)."}
+{"id": "q21", "text": "`/mnt/scratch` is node‑local fast storage for jobs; clean it up before the job ends."}
+{"id": "q22", "text": "Run GPU containers with Apptainer using `--nv` and bind mounts, e.g., `apptainer exec --nv image.sif <cmd>`."}
+{"id": "q23", "text": "Compile/install to your space (e.g., /home or /projects) with `./configure --prefix=... && make && make install`; yum/apt are not available."}
+{"id": "q24", "text": "Use `scontrol show res` to inspect reservations and `scontrol show config` for scheduler settings."}
+{"id": "q25", "text": "Home snapshots live under `/cache/.snapshots`; project snapshots under `/projectsX/.snapshots`."}

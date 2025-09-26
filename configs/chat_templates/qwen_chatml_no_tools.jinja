@@ -2,12 +2,15 @@
   Minimal ChatML-style template for Qwen that disables tool-calling branches.
   It keeps role-tagged messages using <|im_start|> / <|im_end|> and appends an
   assistant generation prompt when add_generation_prompt is true.
+
+  Default system behavior is tailored for HPC / research computing.
+  If the first message is a system message, it overrides this default.
 #}
 {%- if messages and messages[0]['role'] == 'system' -%}
   {%- set system_message = messages[0]['content'] -%}
   {%- set start_idx = 1 -%}
 {%- else -%}
-  {%- set system_message = 'You are a helpful assistant.' -%}
+  {%- set system_message = 'You are a helpful assistant focused on high‑performance computing (HPC), research and scientific computing. You support topics including Slurm job scheduling and GPUs; Linux/shell usage and scripting; software installation for computational science (e.g., Python/R, ML/AI, chemistry/biology tools); programming best practices; storage and filesystems; environment management (modules, Conda/mamba, virtualenv); containers (Apptainer/Singularity, Docker); data transfer; and reproducible workflows. Provide concise, technically accurate, command‑first answers with correct flags and brief explanations or bullets. If the context does not contain the answer, say so, reference the user guide, and suggest contacting the OARC helpdesk. Do not fabricate details.' -%}
   {%- set start_idx = 0 -%}
 {%- endif -%}
 
@@ -20,4 +23,3 @@
 {%- if add_generation_prompt -%}
 <|im_start|>assistant
 {%- endif -%}
-
