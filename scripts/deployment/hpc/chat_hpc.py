@@ -21,8 +21,13 @@ def start_cli_chat(chain):
             if prompt.lower() in ["exit", "quit"]:
                 break
 
-            response = chain.invoke(prompt)
-            print(f"Assistant: {response.strip()}")
+            result = chain.invoke(prompt)
+            # The RAG chain returns a dict with keys including 'answer'
+            if isinstance(result, dict):
+                answer = result.get("answer", "")
+            else:
+                answer = str(result)
+            print(f"Assistant: {answer}")
 
         except KeyboardInterrupt:
             break
@@ -96,8 +101,12 @@ def start_web_chat(chain, host: str = "0.0.0.0", port: int = 8088):
     @app.route("/chat", methods=["POST"])
     def chat():
         user_message = request.json["message"]
-        bot_response = chain.invoke(user_message)
-        return jsonify({"response": bot_response.strip()})
+        result = chain.invoke(user_message)
+        if isinstance(result, dict):
+            answer = result.get("answer", "")
+        else:
+            answer = str(result)
+        return jsonify({"response": answer})
 
     @app.route("/health")
     def health():
