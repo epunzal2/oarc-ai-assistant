@@ -12,7 +12,9 @@ dataset:
   qrels_path: "data/evaluation/gold/qrels.tsv"
   document_source:
     markdown_dir: "docs/google_sites_guide"
-    servicenow_jsonl: "docs/servicenow/task_prepared.jsonl"
+    # For smoke metrics that align with markdown-only qrels, exclude ServiceNow
+    # Set to null to avoid loading SN docs that can dominate retrieval
+    servicenow_jsonl: null
 
 runtime:
   max_queries: 3
@@ -24,6 +26,8 @@ frozen:
     llm_name: "Qwen2.5-14B-Instruct"
     temperature: 0.0
     max_new_tokens: 128
+    # Force a simple ChatML-style template without tool-calling branches
+    chat_template: "configs/chat_templates/qwen_chatml_no_tools.jinja"
   index:
     type: "faiss"
     metric: "cosine"
@@ -41,10 +45,13 @@ sweeps:
 judge:
   provider: "llama_cpp"
   llm_name: "Qwen2.5-14B-Instruct"
+  # Keep judge on the same simple template for consistency
+  chat_template: "configs/chat_templates/qwen_chatml_no_tools.jinja"
   prompt: |
     You are an expert RAG evaluator. Assess whether the generated answer is supported by the retrieved context.
     Score faithfulness on a scale of 1 (hallucinated) to 5 (fully grounded in the context).
-    Provide a JSON object with keys "score" (integer 1-5) and "justification" (short explanation).
+    Return ONLY a JSON object with the following exact shape and no extra text:
+    {"score": <integer 1-5>, "justification": "<one short sentence>"}
 
   faithfulness_threshold: 4
   hallucination_threshold: 2

@@ -86,7 +86,84 @@ def load_corpus(markdown_dir: str, servicenow_jsonl: str | None) -> List[Documen
     return documents
 
 
-def chunk_documents(documents: Iterable[Document], chunk_size: int, chunk_overlap: int) -> List[Document]:
+def _doc_key(md: Dict[str, Any]) -> str:
+    return (
+        md.get("source")
+        or md.get("id")
+        or md.get("document_id")
+        or md.get("sys_id")
+        or "__unknown__"
+    )
+
+
+def _rel_source_path(path: str) -> str:
+    if not path:
+        return ""
+    # Normalize to a path that sorts stably across machines
+    marker = "/docs/"
+    idx = path.find(marker)
+    return path[idx + len(marker) :] if idx >= 0 else path
+
+
+def build_doc_id_map(documents: Iterable[Document]) -> Tuple[Dict[str, str], List[Dict[str, Any]]]:
+    """Create a stable mapping from source documents to docN IDs.
+
+    - Markdown docs (with a '.md' source) are numbered first, sorted by relative path.
+    - All other docs (e.g., ServiceNow) are numbered after, in a deterministic order.
+    Returns the key->docN mapping and a list of records for persistence.
+    """
+    docs_list = list(documents)
+    markdown: List[Tuple[str, Dict[str, Any]]] = []
+    others: List[Tuple[str, Dict[str, Any]]] = []
+    for d in docs_list:
+        md = dict(getattr(d, "metadata", {}) or {})
+        key = _doc_key(md)
+        src = md.get("source", "")
+        if isinstance(src, str) and src.endswith(".md"):
+            markdown.append((key, md))
+        else:
+            others.append((key, md))
+
+    markdown.sort(key=lambda km: _rel_source_path(km[1].get("source", "")))
+    # For non-markdown, sort by best-effort stable keys
+    def sort_other(km: Tuple[str, Dict[str, Any]]):
+        md = km[1]
+        return (
+            md.get("id")
+            or md.get("document_id")
+            or md.get("sys_id")
+            or _rel_source_path(md.get("source", ""))
+            or km[0]
+        )
+
+    others.sort(key=sort_other)
+
+    mapping: Dict[str, str] = {}
+    records: List[Dict[str, Any]] = []
+    counter = 1
+    for key, md in markdown + others:
+        if key in mapping:
+            continue
+        doc_id = f"doc{counter}"
+        mapping[key] = doc_id
+        records.append(
+            {
+                "doc_id": doc_id,
+                "source": md.get("source") or md.get("id") or md.get("document_id") or "",
+                "type": "markdown" if (md.get("source", "").endswith(".md")) else "other",
+            }
+        )
+        counter += 1
+
+    return mapping, records
+
+
+def chunk_documents(
+    documents: Iterable[Document],
+    chunk_size: int,
+    chunk_overlap: int,
+    key_to_docid: Dict[str, str] | None = None,
+) -> List[Document]:
     # Ensure list realization for stable ordering
     docs_list = list(documents)
     try:
@@ -105,27 +182,14 @@ def chunk_documents(documents: Iterable[Document], chunk_size: int, chunk_overla
     # Split while preserving each document's metadata
     chunks = splitter.split_documents(docs_list)
 
-    # Build a stable per-document ID mapping to align with qrels-style IDs (doc1..docN)
-    def doc_key(md: Dict[str, Any]) -> str:
-        # Prefer filesystem source path for markdown docs; fall back to explicit 'id' or a hashable tuple
-        return md.get("source") or md.get("id") or md.get("document_id") or "__unknown__"
-
-    key_to_docid: Dict[str, str] = {}
-    next_id = 1
-    for d in docs_list:
-        key = doc_key(getattr(d, "metadata", {}) or {})
-        if key not in key_to_docid:
-            key_to_docid[key] = f"doc{next_id}"
-            next_id += 1
+    # Build or use stable per-document ID mapping to align with qrels-style IDs (doc1..docN)
+    if key_to_docid is None:
+        key_to_docid, _ = build_doc_id_map(docs_list)
 
     # Assign chunk_id based on parent document key so all chunks of a document share the same id
     for chunk in chunks:
         chunk.metadata = dict(chunk.metadata)
-        key = doc_key(chunk.metadata)
-        # Unknowns (e.g., ServiceNow entries without a 'source') get unique IDs after known docs
-        if key not in key_to_docid:
-            key_to_docid[key] = f"doc{next_id}"
-            next_id += 1
+        key = _doc_key(chunk.metadata)
         chunk.metadata["chunk_id"] = key_to_docid[key]
 
     logger.info("Created %s chunks (chunk_size=%s, overlap=%s)", len(chunks), chunk_size, chunk_overlap)
@@ -148,13 +212,29 @@ def recall_at_k(retrieved: List[str], relevant: List[str], k: int) -> float:
     if not relevant:
         return 0.0
     relevant_set = set(relevant)
-    retrieved_k = retrieved[:k]
+    # Deduplicate retrieved IDs in order; consider only first occurrence of each doc
+    seen = set()
+    unique_retrieved: List[str] = []
+    for doc_id in retrieved:
+        if doc_id in seen:
+            continue
+        seen.add(doc_id)
+        unique_retrieved.append(doc_id)
+    retrieved_k = unique_retrieved[:k]
     hits = sum(1 for doc_id in retrieved_k if doc_id in relevant_set)
     return hits / len(relevant_set)
 
 
 def ndcg_at_k(retrieved: List[str], relevant: List[str], k: int) -> float:
-    retrieved_k = retrieved[:k]
+    # Deduplicate retrieved IDs in order
+    seen = set()
+    unique_retrieved: List[str] = []
+    for doc_id in retrieved:
+        if doc_id in seen:
+            continue
+        seen.add(doc_id)
+        unique_retrieved.append(doc_id)
+    retrieved_k = unique_retrieved[:k]
     if not retrieved_k or not relevant:
         return 0.0
 
@@ -184,6 +264,14 @@ class BatchRunner:
             dataset_cfg["document_source"]["markdown_dir"],
             dataset_cfg["document_source"].get("servicenow_jsonl"),
         )
+        # Build a deterministic doc-id mapping and persist it for verification
+        self.key_to_docid, doc_id_records = build_doc_id_map(self.corpus)
+        try:
+            md_count = sum(1 for r in doc_id_records if r.get("type") == "markdown")
+            other_count = sum(1 for r in doc_id_records if r.get("type") != "markdown")
+            logger.info("Doc ID mapping built: %s markdown, %s other", md_count, other_count)
+        except Exception:
+            pass
         runtime_cfg = config.get("runtime", {})
 
         max_queries = runtime_cfg.get("max_queries")
@@ -214,6 +302,12 @@ class BatchRunner:
 
         os.makedirs(self.output_dir, exist_ok=True)
         os.makedirs(self.detailed_dir, exist_ok=True)
+        # Persist doc-id map for external validation
+        try:
+            with open(os.path.join(self.output_dir, "doc_id_map.json"), "w") as _map:
+                json.dump(doc_id_records, _map, indent=2)
+        except Exception:
+            logger.exception("Failed to persist doc_id_map.json")
 
     def _get_generator_llm(self):
         if self._generator_llm is not None:
@@ -225,6 +319,11 @@ class BatchRunner:
         # Increase context window to accommodate retrieved context + prompt + generation
         n_ctx = self.generator_config.get("n_ctx", 4096)
         n_batch = self.generator_config.get("n_batch", 512)
+        chat_format = self.generator_config.get("chat_format")
+        chat_template = self.generator_config.get("chat_template")
+        if chat_template and os.path.exists(chat_template):
+            with open(chat_template, "r") as _ct:
+                chat_template = _ct.read()
         self._generator_llm = get_llm_provider(
             provider_name,
             model_path=model_path,
@@ -232,6 +331,8 @@ class BatchRunner:
             max_tokens=max_new_tokens,
             n_ctx=n_ctx,
             n_batch=n_batch,
+            chat_format=chat_format,
+            chat_template=chat_template,
         ).get_llm()
         return self._generator_llm
 
@@ -245,6 +346,11 @@ class BatchRunner:
             max_tokens=256,
             n_ctx=self.judge_config.get("n_ctx", 4096),
             n_batch=self.judge_config.get("n_batch", 512),
+            chat_format=self.judge_config.get("chat_format"),
+            chat_template=(
+                open(self.judge_config["chat_template"], "r").read()
+                if self.judge_config.get("chat_template") and os.path.exists(self.judge_config["chat_template"]) else self.judge_config.get("chat_template")
+            ),
         )
         self._judge = LLMJudge(self.judge_config, provider)
         return self._judge
@@ -303,7 +409,12 @@ class BatchRunner:
                 "reason": str(exc),
             }
 
-        chunks = chunk_documents(self.corpus, chunk_size, chunk_overlap)
+        chunks = chunk_documents(
+            self.corpus,
+            chunk_size,
+            chunk_overlap,
+            key_to_docid=self.key_to_docid,
+        )
         vector_store = build_vector_store(chunks, embedding_model)
         retriever = vector_store.as_retriever(search_kwargs={"k": top_k})
 

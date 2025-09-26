@@ -1,0 +1,23 @@
+{#
+  Minimal ChatML-style template for Qwen that disables tool-calling branches.
+  It keeps role-tagged messages using <|im_start|> / <|im_end|> and appends an
+  assistant generation prompt when add_generation_prompt is true.
+#}
+{%- if messages and messages[0]['role'] == 'system' -%}
+  {%- set system_message = messages[0]['content'] -%}
+  {%- set start_idx = 1 -%}
+{%- else -%}
+  {%- set system_message = 'You are a helpful assistant.' -%}
+  {%- set start_idx = 0 -%}
+{%- endif -%}
+
+<|im_start|>system
+{{ system_message }}<|im_end|>
+{%- for message in messages[start_idx:] -%}
+<|im_start|>{{ message.role }}
+{{ message.content }}<|im_end|>
+{%- endfor -%}
+{%- if add_generation_prompt -%}
+<|im_start|>assistant
+{%- endif -%}
+

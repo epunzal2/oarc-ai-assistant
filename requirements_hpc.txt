@@ -39,5 +39,3 @@ uv
 
 # vector store
 faiss-cpu==1.9.0
-
-gpt-oss

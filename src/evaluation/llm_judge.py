@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any, Dict, Tuple
 
 from src.rag.llm_provider import LlmProvider
@@ -43,17 +44,63 @@ class LLMJudge:
         Returns:
             Tuple[int, str]: A tuple containing the score (1-5) and a justification.
         """
-        prompt = self.prompt_template.format(
-            question=question, answer=answer, ground_truth=ground_truth
+        # Render prompt without invoking str.format on arbitrary JSON braces.
+        # We only replace the three known placeholders.
+        prompt = (
+            self.prompt_template
+            .replace("{question}", question)
+            .replace("{answer}", answer)
+            .replace("{ground_truth}", ground_truth)
         )
         response = self.llm_provider.get_completion(prompt)
 
+        # Try robust JSON extraction: direct parse, code block, then best-effort search
+        obj = None
+        # 1) Direct JSON
         try:
-            # Assuming the LLM returns a JSON string with "score" and "justification"
-            result = json.loads(response)
-            score = int(result.get("score", 0))
-            justification = result.get("justification", "")
+            maybe = json.loads(response)
+            if isinstance(maybe, dict):
+                obj = maybe
+        except Exception:
+            pass
+
+        # 2) Extract from ```json ... ``` code block
+        if obj is None:
+            m = re.search(r"```json\s*(.*?)\s*```", response, flags=re.DOTALL | re.IGNORECASE)
+            if m:
+                block = m.group(1)
+                try:
+                    obj = json.loads(block)
+                except Exception:
+                    obj = None
+
+        # 3) Fallback: first {...} that parses
+        if obj is None:
+            start = response.find("{")
+            end = response.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                snippet = response[start : end + 1]
+                # Try progressively to parse shorter endings if large
+                for r in range(end, start + 1, -1):
+                    try:
+                        obj = json.loads(response[start : r + 1])
+                        if isinstance(obj, dict):
+                            break
+                    except Exception:
+                        continue
+
+        if isinstance(obj, dict):
+            try:
+                score = int(obj.get("score", 0))
+            except Exception:
+                score = 0
+            # clamp 0..5
+            score = max(0, min(5, score))
+            justification = obj.get("justification", "")
+            # Normalize justification to string
+            if not isinstance(justification, str):
+                justification = str(justification)
             return score, justification
-        except (json.JSONDecodeError, ValueError):
-            # Handle cases where the LLM output is not as expected
-            return 0, response
+
+        # Parsing failed; return raw response for visibility
+        return 0, response

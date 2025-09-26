@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import os
 
 from langchain_huggingface import HuggingFaceEndpoint
@@ -93,7 +93,14 @@ class LlamaCPPProvider(LLMProvider):
     LLM provider for a local Llama.cpp model.
     """
 
-    def __init__(self, model_path=LLAMA_CPP_MODEL_PATH, **model_kwargs):
+    def __init__(
+        self,
+        model_path: str = LLAMA_CPP_MODEL_PATH,
+        *,
+        chat_format: Optional[str] = None,
+        chat_template: Optional[str] = None,
+        **model_kwargs,
+    ):
         self.model_path = model_path
         defaults: Dict[str, Any] = {
             "n_gpu_layers": -1,
@@ -103,6 +110,12 @@ class LlamaCPPProvider(LLMProvider):
             "verbose": True,
         }
         defaults.update(model_kwargs)
+        # Opt-in chat customization
+        if chat_format:
+            defaults["chat_format"] = chat_format
+        if chat_template:
+            # Pass a custom Jinja2 chat template to llama.cpp
+            defaults["chat_template"] = chat_template
         self.model_kwargs = defaults
         logger.info(
             "Initialized LlamaCPPProvider with model: %s", self.model_path
