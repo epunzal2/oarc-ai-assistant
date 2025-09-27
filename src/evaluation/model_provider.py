@@ -38,6 +38,7 @@ def get_embedding_model(model_name: str):
 
     local_path = model_info['local_dir']
     langchain_class_name = model_info['langchain_class']
+    model_kwargs = model_info.get('model_kwargs', {}) or {}
 
     if not os.path.exists(local_path):
         raise ModelNotReadyError(
@@ -53,7 +54,12 @@ def get_embedding_model(model_name: str):
         raise ValueError(f"Unsupported LangChain class: {langchain_class_name}")
 
     # All sentence-transformer models expect the local path in `model_name`
-    return model_cls(model_name=local_path)
+    # Pass through optional model_kwargs (e.g., trust_remote_code=True for GTE)
+    try:
+        return model_cls(model_name=local_path, model_kwargs=model_kwargs)
+    except TypeError:
+        # Older langchain versions may not accept model_kwargs; fall back
+        return model_cls(model_name=local_path)
 
 
 def _locate_first_shard(local_dir: str, filename: str) -> str | None:
@@ -133,10 +139,17 @@ def load_embedding_from_spec(spec: Dict[str, Any]):
 
     if source == "huggingface":
         class_name = spec.get("langchain_class", "HuggingFaceEmbeddings")
+        model_kwargs = spec.get("model_kwargs", {}) or {}
         if class_name == "HuggingFaceBgeEmbeddings":
-            return HuggingFaceBgeEmbeddings(model_name=name)
+            try:
+                return HuggingFaceBgeEmbeddings(model_name=name, model_kwargs=model_kwargs)
+            except TypeError:
+                return HuggingFaceBgeEmbeddings(model_name=name)
         if class_name == "HuggingFaceEmbeddings":
-            return HuggingFaceEmbeddings(model_name=name)
+            try:
+                return HuggingFaceEmbeddings(model_name=name, model_kwargs=model_kwargs)
+            except TypeError:
+                return HuggingFaceEmbeddings(model_name=name)
         raise ValueError(f"Unsupported LangChain class for HF source: {class_name}")
 
     raise ValueError(f"Unsupported embedding source: {source}")

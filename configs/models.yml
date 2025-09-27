@@ -38,3 +38,5 @@ embedding_models:
     repo_id: "Alibaba-NLP/gte-large-en-v1.5"
     local_dir: "models/emb/gte-large-en-v1.5"
     langchain_class: "HuggingFaceEmbeddings"
+    model_kwargs:
+      trust_remote_code: true

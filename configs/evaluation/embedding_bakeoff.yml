@@ -15,6 +15,13 @@ dataset:
     # Align with qrels which reference markdown docs; exclude ServiceNow for this eval
     servicenow_jsonl: null
 
+runtime:
+  # Resume mode: when true, the runner skips any sweep combination that already
+  # has metrics at results/embedding_bakeoff/runs/<run_id>/metrics.json and only
+  # computes missing runs. Set to false (or remove this block) to recompute all
+  # runs in the current output_dir.
+  resume: true
+
 frozen:
   generator:
     provider: "llama_cpp"

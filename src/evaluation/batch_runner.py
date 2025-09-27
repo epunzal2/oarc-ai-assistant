@@ -397,6 +397,18 @@ class BatchRunner:
         top_k: int,
     ) -> Dict[str, Any]:
         run_id = f"{sanitize_name(embedding_spec['name'])}_cs{chunk_size}_co{chunk_overlap}_k{top_k}"
+        # Optional resume: if metrics exist and resume=true, load and return cached result
+        try:
+            if self.config.get("runtime", {}).get("resume", False):
+                run_dir = os.path.join(self.detailed_dir, run_id)
+                metrics_fp = os.path.join(run_dir, "metrics.json")
+                if os.path.exists(metrics_fp):
+                    with open(metrics_fp, "r") as fh:
+                        cached = json.load(fh)
+                    logger.info("Resuming: skipping existing run %s", run_id)
+                    return cached
+        except Exception:
+            pass
         logger.info("Running configuration %s", run_id)
 
         try:
