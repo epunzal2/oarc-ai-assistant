@@ -16,3 +16,4 @@ flask
 faiss-cpu
 torch
 gpt-oss
+tiktoken
