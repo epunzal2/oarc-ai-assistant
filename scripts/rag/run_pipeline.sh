@@ -3,6 +3,7 @@
 # This script orchestrates the execution of the RAG data pipeline.
 # It runs a sequence of Python scripts to clean, prepare, and
 # create a vector store from the raw ServiceNow data.
+# ServiceNow-specific processing lives under scripts/rag/servicenow/.
 
 # Exit immediately if a command exits with a non-zero status.
 set -e
@@ -28,7 +29,7 @@ VECTOR_STORE_DIR="vector_index/faiss_amarel"
 # Step 1: Clean the raw data
 # This script anonymizes PII, removes redundant text, and normalizes whitespace.
 echo "--- Step 1: Cleaning data ---"
-python3 scripts/rag/clean_data.py \
+python3 scripts/rag/servicenow/clean.py \
     --input-path "$INPUT_FILE" \
     --output-path "$CLEANED_FILE"
 echo "--- Cleaning complete ---"
@@ -38,7 +39,7 @@ echo
 # This script combines text fields into a format suitable for the embedding model
 # and saves the output as a JSONL file.
 echo "--- Step 2: Preparing data ---"
-python3 scripts/rag/prepare_data.py \
+python3 scripts/rag/servicenow/prepare.py \
     --input-path "$CLEANED_FILE" \
     --output-path "$PREPARED_FILE"
 echo "--- Preparation complete ---"
