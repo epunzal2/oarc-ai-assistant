@@ -6,6 +6,7 @@ import streamlit as st
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+from src.rag import config
 from src.rag.rag_pipeline import create_rag_chain
 from src.rag.logger import get_logger
 
@@ -19,8 +20,8 @@ def parse_args():
     parser.add_argument(
         "--provider",
         type=str,
-        choices=["huggingface_api", "llama_cpp"],
-        default="llama_cpp",
+        choices=["llama_cpp", "huggingface_api", "vllm", "vllm_api", "sglang", "sglang_api"],
+        default=config.DEFAULT_LLM_PROVIDER,
         help="The LLM provider to use."
     )
     parser.add_argument(

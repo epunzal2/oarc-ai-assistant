@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 import os
+from pathlib import Path
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -14,11 +15,12 @@ except Exception:  # pragma: no cover - optional dependency
 from src.rag.vector_store import get_vector_store, get_embedding_model
 from src.rag.llm_provider import get_llm_provider
 from src.rag.logger import get_logger
+from src.rag import config
 
 logger = get_logger(__name__)
 
 def create_rag_chain(
-    llm_provider_name: str = "huggingface_api",
+    llm_provider_name: Optional[str] = None,
     vector_store_type: str = "qdrant",
     retriever=None,
     llm=None,
@@ -28,7 +30,12 @@ def create_rag_chain(
     """
     Creates the RAG chain.
     """
-    logger.info(f"Creating RAG chain with LLM provider: {llm_provider_name} and vector store: {vector_store_type}...")
+    provider_name = (llm_provider_name or config.DEFAULT_LLM_PROVIDER).lower()
+    logger.info(
+        "Creating RAG chain with LLM provider: %s and vector store: %s...",
+        provider_name,
+        vector_store_type,
+    )
 
     # Get the embedding model and vector store
     if retriever is None:
@@ -41,8 +48,16 @@ def create_rag_chain(
 
     # Get the LLM provider unless an explicit LLM instance was supplied
     if llm is None:
-        kwargs = llm_provider_kwargs or {}
-        llm_provider = get_llm_provider(llm_provider_name, **kwargs)
+        kwargs: Dict[str, Any] = dict(config.provider_kwargs(provider_name))
+        if llm_provider_kwargs:
+            kwargs.update(llm_provider_kwargs)
+        llm_provider = get_llm_provider(provider_name, **kwargs)
+        try:
+            artifact_path = config.persist_provider_settings(provider_name, Path("logs/provider_configs"))
+            if artifact_path:
+                logger.info("Provider settings persisted to %s", artifact_path)
+        except Exception:
+            logger.debug("Failed to persist provider settings for %s", provider_name)
         llm = llm_provider.get_llm()
 
     # Define the prompt template

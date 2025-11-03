@@ -41,6 +41,10 @@ export PYTHONPATH="${SLURM_SUBMIT_DIR:-/scratch/ep523/oarc-ai-assistant}:${PYTHO
 export LLAMA_CPP_MODEL_PATH="${LLAMA_CPP_MODEL_PATH:-models/Phi-3-mini-4k-instruct-q4.gguf}"
 export FAISS_INDEX_PATH="${FAISS_INDEX_PATH:-vector_index/faiss_amarel}"
 PORT="${PORT:-8088}"
+export LLM_PROVIDER="${LLM_PROVIDER:-llama_cpp}"
+export PROVIDER_HEALTH_HOST="${PROVIDER_HEALTH_HOST:-127.0.0.1}"
+export PROVIDER_HEALTH_TIMEOUT="${PROVIDER_HEALTH_TIMEOUT:-45}"
+export PROVIDER_HEALTH_INTERVAL="${PROVIDER_HEALTH_INTERVAL:-5}"
 
 # --- Threading / misc ---
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
@@ -82,6 +86,7 @@ try:
 except Exception:
     pass
 PY
+echo "LLM provider: ${LLM_PROVIDER} (health host: ${PROVIDER_HEALTH_HOST})"
 
 # --- fail fast on paths ---
 [[ -f "$LLAMA_CPP_MODEL_PATH" ]] || { echo "ERR: model not found: $LLAMA_CPP_MODEL_PATH"; exit 1; }
@@ -105,4 +110,8 @@ srun --cpu-bind=cores \
     --faiss-dir "$FAISS_INDEX_PATH" \
     --web \
     --host "$HOST" \
-    --port "$PORT"
+    --port "$PORT" \
+    --provider "$LLM_PROVIDER" \
+    --provider-health-host "$PROVIDER_HEALTH_HOST" \
+    --provider-health-timeout "$PROVIDER_HEALTH_TIMEOUT" \
+    --provider-health-interval "$PROVIDER_HEALTH_INTERVAL"

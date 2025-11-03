@@ -51,6 +51,11 @@ If you encounter OS-related errors during the installation of `llama-cpp-python`
 
 The specific package requirements for the HPC environment are defined in [`requirements_hpc.txt`](requirements_hpc.txt) and [`constraints_hpc.txt`](constraints_hpc.txt). A complete list of the exact environment libraries can be found in [`env_check/oarc-ai-rag-test.sanitized.yml`](env_check/oarc-ai-rag-test.sanitized.yml).
 
+When scheduling the chat UI via `scripts/deployment/hpc/run_chat_hpc.sbatch`, set
+`LLM_PROVIDER` (e.g., `vllm`) and optional `VLLM_*`/`SGLANG_*` environment variables. The launch
+script performs a `/healthz` probe using `VLLM_HEALTH_PORT` or `SGLANG_HEALTH_PORT` and exits early
+if the serving backend is unavailable.
+
 ## Architecture
 
 The system is built with Python, LangChain, and a Hugging Face model. It supports both Qdrant and an in-memory FAISS vector store. For a detailed explanation of the architecture, please see the [`architecture/architecture.md`](./architecture/architecture.md) file.
@@ -127,6 +132,49 @@ Future tasks
 The project's settings are centralized in the [`src/rag/config.py`](src/rag/config.py) file. This file defines key parameters such as data paths, model names, and vector store configurations.
 
 Many of these settings can be overridden by environment variables (e.g., `QDRANT_HOST`, `HUGGINGFACE_API_TOKEN`), which are loaded at runtime using `python-dotenv`. This allows for flexible configuration without modifying the source code, which is particularly useful for switching between local and HPC environments.
+
+### Choosing an LLM provider
+
+The runtime now supports four LLM providers:
+
+- `llama_cpp` (default): local llama.cpp binaries.
+- `huggingface_api`: Hugging Face Inference endpoints.
+- `vllm` / `vllm_api`: GPU-backed vLLM servers exposing the OpenAI-compatible API.
+- `sglang` / `sglang_api`: SGLang servers exposing the OpenAI-compatible API.
+
+Provider settings are read from environment variables or `.env`. Each HTTP provider can be tuned
+without code changes:
+
+```
+VLLM_BASE_URL=http://127.0.0.1:8000
+VLLM_MODEL=meta-llama/Llama-3-8B-Instruct
+VLLM_TIMEOUT=45
+VLLM_MAX_RETRIES=5
+VLLM_HEALTH_PORT=8001
+VLLM_TEMPERATURE=0.0
+
+SGLANG_BASE_URL=http://127.0.0.1:30000
+SGLANG_MODEL=deepseek-ai/DeepSeek-V2.5
+SGLANG_TIMEOUT=45
+SGLANG_HEALTH_PORT=30001
+SGLANG_TOP_P=0.95
+```
+
+All provider invocations hash prompts in logs and persist sanitized startup arguments to
+`logs/provider_configs/` for reproducibility. API tokens (`HUGGINGFACE_API_TOKEN`, `VLLM_API_KEY`,
+`SGLANG_API_KEY`) are automatically redacted from log output.
+
+### Installing optional extras
+
+With the new `pyproject.toml` you can install extras directly:
+
+- `pip install -e .` – base dependencies (llama.cpp + Hugging Face).
+- `pip install -e .[vllm]` – adds the `vllm` GPU runtime.
+- `pip install -e .[sglang]` – adds the SGLang runtime.
+- `pip install -e .[dev]` – linting and pytest tooling.
+
+Existing `requirements*.txt` files remain available for reproducible HPC environments; they now
+include the shared `requests` dependency used by the HTTP providers.
 
 ## Setup and Installation
 

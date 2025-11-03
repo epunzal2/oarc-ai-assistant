@@ -16,3 +16,4 @@ flask
 faiss-cpu
 tiktoken
 torch
+requests

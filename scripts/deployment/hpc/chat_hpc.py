@@ -1,5 +1,8 @@
 import argparse
 import socket
+import time
+
+import requests
 from flask import Flask, render_template_string, request, jsonify
 
 from src.rag.vector_store import load_faiss_index, get_embedding_model
@@ -116,6 +119,38 @@ def start_web_chat(chain, host: str = "0.0.0.0", port: int = 8088):
     print(f"Starting web server at http://{host}:{port} (node: {node})", flush=True)
     app.run(host=host, port=port, debug=False)
 
+def _ensure_provider_health(
+    provider_name: str,
+    host: str,
+    max_wait_seconds: float,
+    interval_seconds: float,
+) -> None:
+    port = config.provider_health_port(provider_name)
+    if port is None:
+        return
+    url = f"http://{host}:{port}/healthz"
+    deadline = time.time() + max_wait_seconds
+    while time.time() < deadline:
+        try:
+            response = requests.get(url, timeout=5)
+        except requests.RequestException as exc:
+            logger.warning("Health probe failed for %s: %s", url, exc)
+            time.sleep(interval_seconds)
+            continue
+        if response.status_code == 200:
+            logger.info("Provider health check OK: %s", url)
+            return
+        logger.warning(
+            "Health probe for %s returned %s; retrying...",
+            url,
+            response.status_code,
+        )
+        time.sleep(interval_seconds)
+    raise RuntimeError(
+        f"Provider health check failed for {provider_name} at {url} within {max_wait_seconds}s"
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Chat with a local Llama model using RAG.")
     parser.add_argument("--vector-store", type=str, default="faiss", help="The vector store to use.")
@@ -124,6 +159,31 @@ def main():
     parser.add_argument("--web", action="store_true", help="Start the web-based chat interface.")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the web server to.")
     parser.add_argument("--port", type=int, default=8088, help="Port to bind the web server to.")
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default=config.DEFAULT_LLM_PROVIDER,
+        choices=["llama_cpp", "huggingface_api", "vllm", "vllm_api", "sglang", "sglang_api"],
+        help="LLM provider to use when constructing the RAG chain.",
+    )
+    parser.add_argument(
+        "--provider-health-host",
+        type=str,
+        default="127.0.0.1",
+        help="Host address to probe for provider /healthz endpoint when applicable.",
+    )
+    parser.add_argument(
+        "--provider-health-timeout",
+        type=float,
+        default=45.0,
+        help="Seconds to wait for the provider health endpoint before failing.",
+    )
+    parser.add_argument(
+        "--provider-health-interval",
+        type=float,
+        default=5.0,
+        help="Seconds between provider health checks.",
+    )
     args = parser.parse_args()
 
     logger.info("Starting chat with the following configuration:")
@@ -132,9 +192,21 @@ def main():
     logger.info(f"  FAISS index path: {args.faiss_dir}")
     logger.info(f"  k: {args.k}")
     logger.info(f"  Maximum context length: 2048")
+    logger.info(f"  LLM provider: {args.provider}")
 
     if args.web:
         logger.info(f"  Web bind: http://{args.host}:{args.port}")
+
+    try:
+        _ensure_provider_health(
+            provider_name=args.provider,
+            host=args.provider_health_host,
+            max_wait_seconds=args.provider_health_timeout,
+            interval_seconds=args.provider_health_interval,
+        )
+    except RuntimeError as exc:
+        logger.error(str(exc))
+        raise SystemExit(1) from exc
 
     # Load the FAISS retriever
     embedding_model = get_embedding_model()
@@ -142,7 +214,7 @@ def main():
     retriever.search_kwargs["k"] = args.k
 
     # Create the RAG chain
-    chain = create_rag_chain(retriever=retriever, llm_provider_name="llama_cpp")
+    chain = create_rag_chain(retriever=retriever, llm_provider_name=args.provider)
 
     if args.web:
         start_web_chat(chain, host=args.host, port=args.port)
