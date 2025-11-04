@@ -2,9 +2,21 @@
 
 import argparse
 import json
+from pathlib import Path
+
 import yaml
+
 from src.evaluation.llm_judge import LLMJudge
+from src.rag import mlflow_tracker
 from src.rag.llm_provider import get_llm_provider
+
+
+def _hash_file(path: str) -> str:
+    try:
+        content = Path(path).read_text(encoding="utf-8")
+    except Exception:
+        return "unknown"
+    return mlflow_tracker.hash_text(content)
 
 def calculate_metrics(results, qrels):
     """
@@ -84,6 +96,48 @@ def main():
 
     qrels = load_qrels(args.qrels_path)
     metrics = calculate_metrics(results, qrels)
+
+    artifact_top_k = mlflow_tracker.config.MLFLOW.artifact_top_k
+    sanitized_results = mlflow_tracker.sanitize_records(
+        results,
+        top_k=artifact_top_k,
+        include_answer=True,
+    )
+    rag_provider = config.get("rag_pipeline", {}).get("llm_provider", "unknown")
+    embedding_model = config.get("embedding_model", "unknown")
+    corpus_hash = _hash_file(args.qrels_path)
+    prompt_version = mlflow_tracker.hash_text(config.get("llm_judge", {}).get("prompt", ""))
+    retriever_version = mlflow_tracker.hash_text(embedding_model)
+    run_name = f"eval:{Path(args.results_path).stem}"
+    tags = {
+        "run_type": "evaluation",
+        "provider": rag_provider,
+        "model": embedding_model,
+        "index_version": corpus_hash,
+        "prompt_version": prompt_version,
+        "retriever_version": retriever_version,
+        "corpus_hash": corpus_hash,
+    }
+    with mlflow_tracker.start_run(run_name=run_name, tags=tags):
+        mlflow_tracker.log_params(
+            {
+                "results_path": args.results_path,
+                "qrels_path": args.qrels_path,
+                "output_path": args.output_path,
+                "num_results": len(results),
+            }
+        )
+        mlflow_tracker.log_metrics(metrics)
+        mlflow_tracker.log_jsonl(sanitized_results, "evaluation/responses.jsonl")
+        mlflow_tracker.log_dict(metrics, "evaluation/metrics.json")
+        prompt_template = config.get("llm_judge", {}).get("prompt")
+        if prompt_template:
+            mlflow_tracker.log_text(prompt_template, "evaluation/prompt_template.txt")
+        retriever_config = {
+            "embedding_model": embedding_model,
+            "rag_pipeline": config.get("rag_pipeline", {}),
+        }
+        mlflow_tracker.log_dict(retriever_config, "evaluation/retriever_config.json")
 
     with open(args.output_path, "w") as f:
         json.dump(metrics, f, indent=4)

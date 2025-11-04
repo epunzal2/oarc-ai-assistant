@@ -1,5 +1,10 @@
 from typing import Optional, Dict, Any
 import os
+import hashlib
+import itertools
+import json
+import random
+import time
 from pathlib import Path
 
 from langchain_core.prompts import PromptTemplate
@@ -12,12 +17,148 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     _ENCODING = None
 
+from src.rag import mlflow_tracker
 from src.rag.vector_store import get_vector_store, get_embedding_model
 from src.rag.llm_provider import get_llm_provider
 from src.rag.logger import get_logger
 from src.rag import config
+from src.rag.telemetry import get_sampler
 
 logger = get_logger(__name__)
+
+
+class InstrumentedRAGChain:
+    """Wraps a LangChain runnable with MLflow + telemetry instrumentation."""
+
+    def __init__(
+        self,
+        chain,
+        *,
+        provider_name: str,
+        model_name: str,
+        vector_store_type: str,
+        prompt_template: str,
+        retriever_descriptor: Dict[str, Any],
+        index_version: str,
+        corpus_hash: str,
+        provider_config_path: Optional[Path],
+    ) -> None:
+        self._chain = chain
+        self.provider_name = provider_name
+        self.model_name = model_name
+        self.vector_store_type = vector_store_type
+        self.prompt_template = prompt_template
+        self.prompt_version = mlflow_tracker.hash_text(prompt_template)
+        self.retriever_descriptor = retriever_descriptor
+        self.retriever_version = self._hash_config(retriever_descriptor)
+        self.index_version = index_version
+        self.corpus_hash = corpus_hash
+        self.provider_config_path = provider_config_path
+        self.sample_probability = max(0.0, min(1.0, config.MLFLOW.runtime_sampling_probability))
+        self.artifact_top_k = mlflow_tracker.config.MLFLOW.artifact_top_k
+        self._sampler = get_sampler()
+        self._sampler.start()
+        self._counter = itertools.count()
+
+    def invoke(self, prompt: str, **kwargs):
+        start = time.perf_counter()
+        result = self._chain.invoke(prompt, **kwargs)
+        latency_ms = (time.perf_counter() - start) * 1000.0
+        if not self._should_sample():
+            return result
+
+        context_docs = []
+        answer = result
+        if isinstance(result, dict):
+            context_docs = result.get("context") or []
+            answer = result.get("answer")
+
+        retrieved_ids = []
+        for doc in context_docs:
+            metadata = getattr(doc, "metadata", {}) or {}
+            doc_id = (
+                metadata.get("chunk_id")
+                or metadata.get("id")
+                or metadata.get("document_id")
+                or metadata.get("source")
+            )
+            if doc_id:
+                retrieved_ids.append(str(doc_id))
+
+        record = {
+            "query_id": f"req{next(self._counter)}",
+            "question": prompt,
+            "answer": answer,
+            "retrieved_doc_ids": retrieved_ids,
+        }
+        sanitized = mlflow_tracker.sanitize_prompt_record(
+            record,
+            top_k=min(self.artifact_top_k, len(retrieved_ids)),
+            include_answer=True,
+        )
+        sanitized["latency_ms"] = round(latency_ms, 2)
+        run_name = f"runtime:{sanitized['prompt_hash']}"
+        tags = {
+            "run_type": "runtime",
+            "provider": self.provider_name,
+            "model": self.model_name,
+            "index_version": self.index_version,
+            "prompt_version": self.prompt_version,
+            "retriever_version": self.retriever_version,
+            "corpus_hash": self.corpus_hash,
+        }
+        telemetry_samples = self._sampler.flush()
+        metrics = {
+            "latency_ms": latency_ms,
+            "retrieval_count": len(retrieved_ids),
+            "runtime_sampling_probability": self.sample_probability,
+        }
+        if telemetry_samples:
+            last_sample = telemetry_samples[-1]
+            for key, value in last_sample.items():
+                if isinstance(value, (int, float)):
+                    metrics[key] = value
+        with mlflow_tracker.start_run(run_name=run_name, tags=tags):
+            mlflow_tracker.log_params(
+                {
+                    "vector_store_type": self.vector_store_type,
+                    "telemetry_backend": self._sampler.backend,
+                    "artifact_top_k": self.artifact_top_k,
+                }
+            )
+            mlflow_tracker.log_metrics(metrics)
+            mlflow_tracker.log_jsonl([sanitized], "runtime/responses.jsonl")
+            mlflow_tracker.log_dict(self.retriever_descriptor, "runtime/retriever_config.json")
+            mlflow_tracker.log_text(self.prompt_template, "runtime/prompt_template.txt")
+            if telemetry_samples:
+                mlflow_tracker.log_jsonl(telemetry_samples, "runtime/telemetry_samples.jsonl")
+            if self.provider_config_path:
+                mlflow_tracker.log_artifact_from_path(
+                    self.provider_config_path,
+                    artifact_path="runtime/provider",
+                )
+        return result
+
+    def __call__(self, *args, **kwargs):
+        return self.invoke(*args, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self._chain, item)
+
+    def _should_sample(self) -> bool:
+        if self.sample_probability <= 0.0:
+            return False
+        if self.sample_probability >= 1.0:
+            return True
+        return random.random() <= self.sample_probability
+
+    @staticmethod
+    def _hash_config(payload: Any) -> str:
+        try:
+            serialized = json.dumps(payload, sort_keys=True, default=str)
+        except (TypeError, ValueError):
+            serialized = str(payload)
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
 
 def create_rag_chain(
     llm_provider_name: Optional[str] = None,
@@ -36,6 +177,8 @@ def create_rag_chain(
         provider_name,
         vector_store_type,
     )
+    model_name = provider_name
+    provider_config_path: Optional[Path] = None
 
     # Get the embedding model and vector store
     if retriever is None:
@@ -52,9 +195,18 @@ def create_rag_chain(
         if llm_provider_kwargs:
             kwargs.update(llm_provider_kwargs)
         llm_provider = get_llm_provider(provider_name, **kwargs)
+        model_name = (
+            kwargs.get("model")
+            or kwargs.get("model_name")
+            or kwargs.get("model_path")
+            or model_name
+        )
         try:
-            artifact_path = config.persist_provider_settings(provider_name, Path("logs/provider_configs"))
+            artifact_path = config.persist_provider_settings(
+                provider_name, Path("logs/provider_configs")
+            )
             if artifact_path:
+                provider_config_path = artifact_path
                 logger.info("Provider settings persisted to %s", artifact_path)
         except Exception:
             logger.debug("Failed to persist provider settings for %s", provider_name)
@@ -141,7 +293,52 @@ def create_rag_chain(
     )
 
     logger.info("RAG chain created successfully.")
-    return rag_chain
+    retriever_descriptor: Dict[str, Any] = {
+        "vector_store_type": vector_store_type,
+        "embedding_model": config.EMBEDDING_MODEL,
+        "custom_retriever": retriever is not None,
+        "max_context_tokens": max_context_tokens,
+        "max_context_chars": max_context_chars,
+    }
+    if retriever is not None:
+        retriever_descriptor["retriever_cls"] = retriever.__class__.__name__
+    if vector_store_type == "qdrant":
+        retriever_descriptor.update(
+            {
+                "qdrant_host": config.QDRANT_HOST,
+                "qdrant_port": config.QDRANT_PORT,
+                "qdrant_collection": config.QDRANT_COLLECTION_NAME,
+            }
+        )
+        index_descriptor = {
+            "type": "qdrant",
+            "collection": config.QDRANT_COLLECTION_NAME,
+            "host": config.QDRANT_HOST,
+            "port": config.QDRANT_PORT,
+        }
+    else:
+        retriever_descriptor["faiss_index_path"] = config.FAISS_INDEX_PATH
+        index_descriptor = {
+            "type": vector_store_type,
+            "faiss_index_path": config.FAISS_INDEX_PATH,
+        }
+    corpus_descriptor = {
+        "data_path": config.DATA_PATH,
+        "service_now_path": config.SERVICE_NOW_DATA_PATH,
+    }
+    index_version = InstrumentedRAGChain._hash_config(index_descriptor)
+    corpus_hash = InstrumentedRAGChain._hash_config(corpus_descriptor)
+    return InstrumentedRAGChain(
+        rag_chain,
+        provider_name=provider_name,
+        model_name=str(model_name),
+        vector_store_type=vector_store_type,
+        prompt_template=template,
+        retriever_descriptor=retriever_descriptor,
+        index_version=index_version,
+        corpus_hash=corpus_hash,
+        provider_config_path=provider_config_path,
+    )
 
 if __name__ == '__main__':
     # This is for testing the RAG pipeline

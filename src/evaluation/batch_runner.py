@@ -13,8 +13,10 @@ import itertools
 import json
 import math
 import os
+import hashlib
+from pathlib import Path
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import yaml
 from langchain_core.documents import Document
@@ -30,6 +32,7 @@ from src.evaluation.model_provider import (
     get_llm_model_path,
     load_embedding_from_spec,
 )
+from src.rag import mlflow_tracker
 from src.rag.data_loader import load_servicenow_documents
 from src.rag.llm_provider import get_llm_provider
 from src.rag.logger import get_logger
@@ -266,12 +269,14 @@ class BatchRunner:
         )
         # Build a deterministic doc-id mapping and persist it for verification
         self.key_to_docid, doc_id_records = build_doc_id_map(self.corpus)
+        self.doc_id_records = doc_id_records
         try:
             md_count = sum(1 for r in doc_id_records if r.get("type") == "markdown")
             other_count = sum(1 for r in doc_id_records if r.get("type") != "markdown")
             logger.info("Doc ID mapping built: %s markdown, %s other", md_count, other_count)
         except Exception:
             pass
+        self.corpus_hash = self._hash_json(doc_id_records)
         runtime_cfg = config.get("runtime", {})
 
         max_queries = runtime_cfg.get("max_queries")
@@ -299,6 +304,13 @@ class BatchRunner:
         self.judge_config = config["judge"]
         self._generator_llm = None
         self._judge = None
+        self.provider_name = self.generator_config.get("provider", "unknown")
+        self.model_name = self.generator_config.get("llm_name", "unknown")
+        index_config = config.get("frozen", {}).get("index", {})
+        self.index_version = self._hash_json(index_config)
+        template_path = self.generator_config.get("chat_template")
+        self.prompt_template_path = Path(template_path) if template_path else None
+        self.prompt_version = self._compute_prompt_version(self.prompt_template_path)
 
         os.makedirs(self.output_dir, exist_ok=True)
         os.makedirs(self.detailed_dir, exist_ok=True)
@@ -368,24 +380,53 @@ class BatchRunner:
     def run(self) -> Dict[str, Any]:
         logger.info("Starting embedding bake-off sweep")
         per_run_summary = []
-        with open(self.per_run_metrics_path, "w") as metrics_stream:
-            for embedding_spec, chunk_size, chunk_overlap, top_k in self.iter_runs():
-                run_result = self._run_single(embedding_spec, chunk_size, chunk_overlap, top_k)
-                metrics_stream.write(json.dumps(run_result) + "\n")
-                per_run_summary.append(run_result)
-
-        best = sorted(
-            per_run_summary,
-            key=lambda x: (x["metrics"]["recall@10"], x["metrics"]["ndcg@10"], x["metrics"]["faithfulness"]),
-            reverse=True,
-        )
-        summary = {
-            "total_runs": len(per_run_summary),
-            "best_run_id": best[0]["run_id"] if best else None,
-            "runs": per_run_summary,
+        experiment_name = self.config["experiment"].get("name", "embedding_sweep")
+        parent_tags = {
+            "run_type": "evaluation",
+            "provider": self.provider_name,
+            "model": self.model_name,
+            "index_version": self.index_version,
+            "prompt_version": self.prompt_version,
+            "corpus_hash": self.corpus_hash,
         }
-        with open(self.summary_path, "w") as summary_stream:
-            json.dump(summary, summary_stream, indent=2)
+        with mlflow_tracker.start_run(run_name=experiment_name, tags=parent_tags):
+            mlflow_tracker.log_params(
+                {
+                    "total_queries": len(self.queries),
+                    "persist_responses": self.persist_responses,
+                    "doc_count": len(self.corpus),
+                    "experiment_name": experiment_name,
+                }
+            )
+            with open(self.per_run_metrics_path, "w") as metrics_stream:
+                for embedding_spec, chunk_size, chunk_overlap, top_k in self.iter_runs():
+                    run_result = self._run_single(
+                        embedding_spec,
+                        chunk_size,
+                        chunk_overlap,
+                        top_k,
+                    )
+                    metrics_stream.write(json.dumps(run_result) + "\n")
+                    per_run_summary.append(run_result)
+
+            best = sorted(
+                per_run_summary,
+                key=lambda x: (
+                    x["metrics"]["recall@10"],
+                    x["metrics"]["ndcg@10"],
+                    x["metrics"]["faithfulness"],
+                ),
+                reverse=True,
+            )
+            summary = {
+                "total_runs": len(per_run_summary),
+                "best_run_id": best[0]["run_id"] if best else None,
+                "runs": per_run_summary,
+            }
+            with open(self.summary_path, "w") as summary_stream:
+                json.dump(summary, summary_stream, indent=2)
+            mlflow_tracker.log_dict(summary, "summary_metrics.json")
+            mlflow_tracker.log_jsonl(self.doc_id_records, "corpus/doc_id_map.jsonl")
         logger.info("Sweep complete. Results written to %s", self.summary_path)
         return summary
 
@@ -397,6 +438,16 @@ class BatchRunner:
         top_k: int,
     ) -> Dict[str, Any]:
         run_id = f"{sanitize_name(embedding_spec['name'])}_cs{chunk_size}_co{chunk_overlap}_k{top_k}"
+        retriever_version = self._retriever_version(embedding_spec, chunk_size, chunk_overlap, top_k)
+        run_tags = {
+            "run_type": "evaluation",
+            "provider": self.provider_name,
+            "model": self.model_name,
+            "index_version": self.index_version,
+            "prompt_version": self.prompt_version,
+            "retriever_version": retriever_version,
+            "corpus_hash": self.corpus_hash,
+        }
         # Optional resume: if metrics exist and resume=true, load and return cached result
         try:
             if self.config.get("runtime", {}).get("resume", False):
@@ -411,10 +462,22 @@ class BatchRunner:
             pass
         logger.info("Running configuration %s", run_id)
 
+        mlflow_params = {
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap,
+            "top_k": top_k,
+            "retrieval_k": self.retrieval_k,
+            "embedding_name": embedding_spec.get("name"),
+            "retriever_version": retriever_version,
+        }
+
         try:
             embedding_model = load_embedding_from_spec(embedding_spec)
         except (ModelNotFoundError, ModelNotReadyError) as exc:
             logger.error("Skipping %s: %s", run_id, exc)
+            with mlflow_tracker.start_run(run_name=run_id, tags=run_tags, nested=True):
+                mlflow_tracker.log_params({**mlflow_params, "status": "skipped"})
+                mlflow_tracker.log_params({"skip_reason": str(exc)})
             return {
                 "run_id": run_id,
                 "status": "skipped",
@@ -486,6 +549,12 @@ class BatchRunner:
             retrieval_scores.append((query.query_id, doc_ids))
 
         metrics = self._compute_metrics(retrieval_scores, judge_scores, hallucination_count, len(responses))
+        artifact_top_k = min(self.retrieval_k, mlflow_tracker.config.MLFLOW.artifact_top_k)
+        sanitized_responses = mlflow_tracker.sanitize_records(
+            responses,
+            top_k=artifact_top_k,
+            include_answer=True,
+        )
 
         run_payload = {
             "run_id": run_id,
@@ -504,11 +573,28 @@ class BatchRunner:
 
         if self.persist_responses:
             with open(os.path.join(run_dir, "responses.jsonl"), "w") as handle:
-                for response in responses:
+                for response in sanitized_responses:
                     handle.write(json.dumps(response) + "\n")
 
         with open(os.path.join(run_dir, "metrics.json"), "w") as handle:
             json.dump(run_payload, handle, indent=2)
+
+        with mlflow_tracker.start_run(run_name=run_id, tags=run_tags, nested=True):
+            mlflow_tracker.log_params(mlflow_params)
+            mlflow_tracker.log_metrics(metrics)
+            mlflow_tracker.log_jsonl(sanitized_responses, f"{run_id}/responses.jsonl")
+            mlflow_tracker.log_dict(run_payload, f"{run_id}/metrics.json")
+            mlflow_tracker.log_dict(
+                self._build_retriever_artifact(embedding_spec, chunk_size, chunk_overlap, top_k),
+                f"{run_id}/retriever_config.json",
+            )
+            if self.prompt_template_path and self.prompt_template_path.exists():
+                try:
+                    content = self.prompt_template_path.read_text(encoding="utf-8")
+                    suffix = self.prompt_template_path.suffix.lstrip(".") or "txt"
+                    mlflow_tracker.log_text(content, f"{run_id}/prompt_template.{suffix}")
+                except Exception:
+                    logger.debug("Failed to log prompt template for %s", run_id, exc_info=True)
 
         logger.info("Finished run %s", run_id)
         return run_payload
@@ -555,6 +641,57 @@ class BatchRunner:
         # Cap to a reasonable upper bound
         allowed_tokens = max(512, min(allowed_tokens, n_ctx))
         return allowed_tokens * 4
+
+    @staticmethod
+    def _hash_json(payload: Any) -> str:
+        try:
+            serialized = json.dumps(payload, sort_keys=True, default=str)
+        except (TypeError, ValueError):
+            serialized = str(payload)
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
+
+    def _compute_prompt_version(self, path: Optional[Path]) -> str:
+        if not path:
+            return "unknown"
+        if not path.exists():
+            return path.stem or "missing"
+        try:
+            data = path.read_text(encoding="utf-8")
+        except Exception:
+            return path.stem or "unreadable"
+        digest = hashlib.sha256(data.encode("utf-8")).hexdigest()[:12]
+        base = path.stem or "prompt"
+        return f"{base}:{digest}"
+
+    def _build_retriever_artifact(
+        self,
+        embedding_spec: Dict[str, Any],
+        chunk_size: int,
+        chunk_overlap: int,
+        top_k: int,
+    ) -> Dict[str, Any]:
+        return {
+            "embedding": embedding_spec,
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap,
+            "top_k": top_k,
+            "retrieval_k": self.retrieval_k,
+        }
+
+    def _retriever_version(
+        self,
+        embedding_spec: Dict[str, Any],
+        chunk_size: int,
+        chunk_overlap: int,
+        top_k: int,
+    ) -> str:
+        payload = {
+            "embedding": embedding_spec,
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap,
+            "top_k": top_k,
+        }
+        return self._hash_json(payload)
 
 
 def parse_args() -> argparse.Namespace:

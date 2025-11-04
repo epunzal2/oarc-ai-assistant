@@ -43,5 +43,10 @@ uv
 # vector store
 faiss-cpu==1.9.0
 
+# Telemetry & observability
+mlflow==2.17.2
+psutil==5.9.8
+pynvml==11.5.0
+
 # GPU LLM serving backend (CUDA 11.8 wheels)
 vllm==0.10.2

@@ -37,6 +37,13 @@ def _env_float(name: str, default: Optional[float] = None) -> Optional[float]:
         return default
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _json_env(name: str) -> Dict[str, Any]:
     raw = os.environ.get(name)
     if not raw:
@@ -247,3 +254,58 @@ def persist_provider_settings(provider_name: str, directory: Path) -> Optional[P
     with path.open("w") as handle:
         json.dump(settings.as_sanitized_dict(), handle, indent=2)
     return path
+
+
+@dataclass(frozen=True)
+class MLflowSettings:
+    """Configuration block for MLflow integration."""
+
+    enabled: bool = field(default_factory=lambda: _env_bool("MLFLOW_ENABLED", True))
+    tracking_uri: str = field(
+        default_factory=lambda: os.environ.get("MLFLOW_TRACKING_URI", "file:mlruns")
+    )
+    experiment_name: str = field(
+        default_factory=lambda: os.environ.get("MLFLOW_EXPERIMENT_NAME", "rag-evals")
+    )
+    runtime_sampling_probability: float = field(
+        default_factory=lambda: _env_float("MLFLOW_RUNTIME_SAMPLE_P", 0.1) or 0.1
+    )
+    artifact_top_k: int = field(
+        default_factory=lambda: _env_int("MLFLOW_ARTIFACT_TOP_K", 5) or 5
+    )
+    artifact_max_bytes: int = field(
+        default_factory=lambda: _env_int("MLFLOW_ARTIFACT_MAX_BYTES", 65_536) or 65_536
+    )
+    sampler_timeout_seconds: float = field(
+        default_factory=lambda: _env_float("MLFLOW_SAMPLER_TIMEOUT_S", 2.5) or 2.5
+    )
+    sampler_backoff_seconds: float = field(
+        default_factory=lambda: _env_float("MLFLOW_SAMPLER_BACKOFF_S", 60.0) or 60.0
+    )
+
+    def as_tags(self) -> Dict[str, Any]:
+        """Lightweight dict for tagging/testing."""
+        return {
+            "tracking_uri": self.tracking_uri,
+            "experiment_name": self.experiment_name,
+            "artifact_top_k": self.artifact_top_k,
+        }
+
+
+@dataclass(frozen=True)
+class TelemetrySettings:
+    """Background telemetry sampler controls."""
+
+    enabled: bool = field(default_factory=lambda: _env_bool("TELEMETRY_ENABLED", True))
+    interval_seconds: float = field(
+        default_factory=lambda: _env_float("TELEMETRY_INTERVAL_S", 30.0) or 30.0
+    )
+    sample_window: int = field(default_factory=lambda: _env_int("TELEMETRY_WINDOW", 5) or 5)
+    record_gpu: bool = field(default_factory=lambda: _env_bool("TELEMETRY_GPU_ENABLED", True))
+    fail_silently: bool = field(
+        default_factory=lambda: _env_bool("TELEMETRY_FAIL_SILENTLY", True)
+    )
+
+
+MLFLOW = MLflowSettings()
+TELEMETRY = TelemetrySettings()

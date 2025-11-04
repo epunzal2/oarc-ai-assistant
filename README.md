@@ -176,6 +176,38 @@ With the new `pyproject.toml` you can install extras directly:
 Existing `requirements*.txt` files remain available for reproducible HPC environments; they now
 include the shared `requests` dependency used by the HTTP providers.
 
+## Observability & Telemetry
+
+The runtime and evaluation flows now stream sanitized metrics and artifacts to MLflow. By default,
+local runs write to `file:mlruns` under the repo root; override the destination with
+`MLFLOW_TRACKING_URI` to point at a shared server (e.g., an MLflow instance on the HPC control node).
+
+- `MLFLOW_ENABLED` (default `true`): toggle all MLflow logging.
+- `MLFLOW_TRACKING_URI`: set to `file:mlruns` for local dev or to `http://host:5000` for remote
+  tracking.
+- `MLFLOW_EXPERIMENT_NAME`: logical bucket for both runtime and evaluation runs (defaults to
+  `rag-evals`).
+- `MLFLOW_RUNTIME_SAMPLE_P`: probability for sampling runtime requests (default `0.1`).
+- `MLFLOW_ARTIFACT_TOP_K`: cap on retrieved document identifiers persisted per request (default `5`).
+- `TELEMETRY_ENABLED`: enable the background sampler (default `true`).
+- `TELEMETRY_INTERVAL_S`: cadence for telemetry snapshots (default `30` seconds).
+
+All prompts are SHA256 hashed before persistence; only the hash and the generated answer are stored.
+Evaluation jobs persist `doc_id_map.json`, metrics, and prompt/retriever configs as artifacts. Runtime
+invocations log latency, retrieval counts, and (if available) GPU/CPU telemetry captured via
+`pynvml`, `nvidia-smi`, or `psutil` (in that order). See `docs/mlflow_logging_spec.md` for the
+complete parameter/metric schema.
+
+### HPC workflow
+
+1. Point the tracking URI at a reachable MLflow server:
+   `export MLFLOW_TRACKING_URI="http://mlflow.internal:5000"`.
+2. If the cluster is air-gapped, set `MLFLOW_TRACKING_URI=file:/scratch/$USER/mlruns`, execute the
+   job, then `scp -r` the resulting `mlruns/` directory back to a workstation that can upload to the
+   shared server (`mlflow artifacts import ...`).
+3. Adjust telemetry cadence for long-running evaluations with
+   `export TELEMETRY_INTERVAL_S=60` (or higher) to minimise scheduler load.
+
 ## Setup and Installation
 
 ### 1. Prerequisites
