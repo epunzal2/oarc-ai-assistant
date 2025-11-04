@@ -6,6 +6,7 @@ import json
 import random
 import time
 from pathlib import Path
+import mlflow
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -340,14 +341,22 @@ def create_rag_chain(
         provider_config_path=provider_config_path,
     )
 
-if __name__ == '__main__':
-    # This is for testing the RAG pipeline
-    try:
+def log_rag_chain_as_model():
+    """
+    Logs the RAG chain as an MLflow model.
+    """
+    mlflow.langchain.autolog()
+    with mlflow.start_run():
         rag_chain = create_rag_chain()
-        logger.info("Successfully created RAG chain.")
+        mlflow.pyfunc.log_model(
+            artifact_path="rag_chain",
+            python_model=rag_chain,
+        )
+        print("RAG chain logged as an MLflow model.")
+        # Test the chain to trigger tracing
         question = "What is the Amarel cluster?"
-        logger.info(f"Testing RAG chain with question: {question}")
-        answer = rag_chain.invoke(question)
-        logger.info(f"Answer: {answer}")
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        rag_chain.invoke(question)
+        print("RAG chain invoked to generate traces.")
+
+if __name__ == '__main__':
+    log_rag_chain_as_model()

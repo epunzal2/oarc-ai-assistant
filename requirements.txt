@@ -17,5 +17,5 @@ faiss-cpu
 tiktoken
 torch
 requests
+
 mlflow
-psutil

@@ -1,20 +1,3 @@
-# Evaluation settings
-evaluation_data_dir: "data/evaluation/gold/"
-queries_file: "queries.jsonl"
-qrels_file: "qrels.tsv"
-results_dir: "results/"
-batch_run_results_file: "batch_run_results.jsonl"
-evaluation_metrics_file: "evaluation_metrics.json"
-evaluation_report_file: "evaluation_report.txt"
-
-# RAG pipeline settings
-rag_pipeline:
-  llm_provider: "llama_cpp"
-  vector_store: "in_memory"
-
-# Model settings
-embedding_model: "all-MiniLM-L6-v2"
-
 # LLM-as-Judge settings
 llm_judge:
   llm_provider: "llama_cpp"
