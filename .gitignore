@@ -125,9 +125,10 @@ llama.cpp/
 *.gguf
 AGENTS.md
 
-docs/sample_questions.txt
-docs/servicenow/
-docs/onboarding/
+/docs/sample_questions.txt
+/docs/servicenow/
+/docs/onboarding/
+
 .rooignore
 .DS_Store
 repo_export*
@@ -148,3 +149,4 @@ TODO.md
 /.plans/
 /tmp/
 /results/
+/.roo/
