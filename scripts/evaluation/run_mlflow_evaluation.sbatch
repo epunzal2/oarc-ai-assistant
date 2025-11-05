@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# USAGE: sbatch --export=MLFLOW_TRACKING_URI=http://<hostname>:5000 run_mlflow_evaluation.sbatch
+# USAGE: sbatch --export=MLFLOW_TRACKING_URI='http://<hostname>:<port>' run_mlflow_evaluation.sbatch
 
 # Slurm Directives
 # ----------------
@@ -52,13 +52,16 @@ which python; python -V
 
 echo "====================================================================================="
 echo "IMPORTANT: This script requires a running MLflow tracking server."
-echo "You must set the MLFLOW_TRACKING_URI environment variable before submitting this job."
+echo "Pass the tracking server URI via the --export flag when submitting."
 echo
 echo "Example:"
-echo "  export MLFLOW_TRACKING_URI=http://gpunode-01.hpc.my-university.edu:5000"
-echo "  sbatch scripts/evaluation/run_mlflow_evaluation.sbatch"
+echo "  sbatch --export=MLFLOW_TRACKING_URI='http://gpunode-01.hpc.my-university.edu:5000' scripts/evaluation/run_mlflow_evaluation.sbatch"
 echo
-echo "Current MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-'NOT SET. JOB WILL LIKELY FAIL.'}"
+if [[ -z "${MLFLOW_TRACKING_URI:-}" ]]; then
+  echo "ERROR: MLFLOW_TRACKING_URI is not set. Please provide it using --export."
+  exit 1
+fi
+echo "Using MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}"
 echo "====================================================================================="
 
 echo "Registering prompts..."
