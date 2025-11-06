@@ -14,7 +14,9 @@ def test_make_llm_judge_metric(mock_mlflow, mock_llm_judge, mock_get_llm_provide
     mock_judge_instance.evaluate.return_value = (5, "Great answer!")
     mock_llm_judge.return_value = mock_judge_instance
 
-    mock_mlflow.metrics.make_metric.return_value = "llm_judge_metric"
+    # The actual make_metric returns a callable, so we mock it to return a lambda
+    # that immediately calls the inner function (eval_fn) for testing purposes.
+    mock_mlflow.metrics.make_metric.side_effect = lambda eval_fn, **kwargs: eval_fn
 
     eval_df = pd.DataFrame({
         "query": ["What is MLflow?"],
@@ -22,7 +24,9 @@ def test_make_llm_judge_metric(mock_mlflow, mock_llm_judge, mock_get_llm_provide
         "ground_truth": ["MLflow is a platform for the machine learning lifecycle."]
     })
     
-    config = {
+    # This global is normally set in main(), so we set it here for the test
+    from src.evaluation import evaluator
+    evaluator.config = {
         "llm_judge": {
             "llm_provider": "test_provider"
         }
@@ -33,7 +37,7 @@ def test_make_llm_judge_metric(mock_mlflow, mock_llm_judge, mock_get_llm_provide
     result = llm_judge_metric_func(eval_df, {})
 
     # Assert
-    assert result.iloc == 5
+    assert result.iloc[0] == 5
     mock_get_llm_provider.assert_called_once_with("test_provider")
     mock_llm_judge.assert_called_once()
     mock_judge_instance.evaluate.assert_called_once()
