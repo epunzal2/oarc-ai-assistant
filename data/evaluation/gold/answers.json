@@ -1,0 +1,102 @@
+[
+  {
+    "id": "q1",
+    "text": "Submit with sbatch and a job script, e.g., `sbatch my_job_script.sh`."
+  },
+  {
+    "id": "q2",
+    "text": "Use `squeue -u <your_username>` to see your jobs' status."
+  },
+  {
+    "id": "q3",
+    "text": "Request a GPU with `#SBATCH --gres=gpu:1` in the script (or `--gres=gpu:1` to sbatch)."
+  },
+  {
+    "id": "q4",
+    "text": "Cancel a job with `scancel <job_id>`."
+  },
+  {
+    "id": "q5",
+    "text": "`#SBATCH` lines set Slurm options (partition, time, memory, GPUs, etc.) inside the script."
+  },
+  {
+    "id": "q6",
+    "text": "Start an interactive session with `srun --partition=<queue> --time=HH:MM:SS --pty bash`."
+  },
+  {
+    "id": "q7",
+    "text": "Run `sinfo --list-reasons` to list offline nodes and their reasons."
+  },
+  {
+    "id": "q8",
+    "text": "Use `/scratch/<NetID>` for temporary job data; it is fast, not backed up, and files >90 days inactive may be purged."
+  },
+  {
+    "id": "q9",
+    "text": "/home provides 100 GB of backed\u2011up storage by default."
+  },
+  {
+    "id": "q10",
+    "text": "Add community modules with `module use /projects/community/modulefiles`, then `module spider` or `module avail`."
+  },
+  {
+    "id": "q11",
+    "text": "Add `module load <name>/<version>` lines to your `~/.bashrc` to load modules on login."
+  },
+  {
+    "id": "q12",
+    "text": "Specify the GPU queue with `#SBATCH --partition=gpu` in your script."
+  },
+  {
+    "id": "q13",
+    "text": "Use `sacct -j <job_id>` (or `sacct` with filters) to inspect completed jobs."
+  },
+  {
+    "id": "q14",
+    "text": "Submit arrays with `#SBATCH --array=1-300` (or `sbatch --array=1-300 script.sbatch`)."
+  },
+  {
+    "id": "q15",
+    "text": "Use dependencies, e.g., `#SBATCH --dependency=afterok:<job_id>` so a job starts after another succeeds."
+  },
+  {
+    "id": "q16",
+    "text": "Grant access with ACLs: `setfacl -m u:<netid>:rwx <path>` and verify with `getfacl <path>`. Ensure parent dirs are accessible."
+  },
+  {
+    "id": "q17",
+    "text": "Stage inputs with scp, e.g., `scp data.tgz user@amarel:/scratch/$USER && tar -zxf /scratch/$USER/data.tgz`."
+  },
+  {
+    "id": "q18",
+    "text": "Use `sinfo` to list partitions and nodes (and their states)."
+  },
+  {
+    "id": "q19",
+    "text": "Owners use `/projects/<id>` for shared data; it is backed up via snapshots (no automated purging)."
+  },
+  {
+    "id": "q20",
+    "text": "Guest NetIDs may submit to general partitions by adding `#SBATCH -A general` (policy subject to change)."
+  },
+  {
+    "id": "q21",
+    "text": "`/mnt/scratch` is node\u2011local fast storage for jobs; clean it up before the job ends."
+  },
+  {
+    "id": "q22",
+    "text": "Run GPU containers with Apptainer using `--nv` and bind mounts, e.g., `apptainer exec --nv image.sif <cmd>`."
+  },
+  {
+    "id": "q23",
+    "text": "Compile/install to your space (e.g., /home or /projects) with `./configure --prefix=... && make && make install`; yum/apt are not available."
+  },
+  {
+    "id": "q24",
+    "text": "Use `scontrol show res` to inspect reservations and `scontrol show config` for scheduler settings."
+  },
+  {
+    "id": "q25",
+    "text": "Home snapshots live under `/cache/.snapshots`; project snapshots under `/projectsX/.snapshots`."
+  }
+]

@@ -1,0 +1,152 @@
+[
+  {
+    "query_id": "q1",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q2",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q3",
+    "iter": 0,
+    "doc_id": "doc1",
+    "relevance": 1
+  },
+  {
+    "query_id": "q4",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q5",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q6",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q7",
+    "iter": 0,
+    "doc_id": "doc5",
+    "relevance": 1
+  },
+  {
+    "query_id": "q8",
+    "iter": 0,
+    "doc_id": "doc6",
+    "relevance": 1
+  },
+  {
+    "query_id": "q9",
+    "iter": 0,
+    "doc_id": "doc6",
+    "relevance": 1
+  },
+  {
+    "query_id": "q10",
+    "iter": 0,
+    "doc_id": "doc3",
+    "relevance": 1
+  },
+  {
+    "query_id": "q11",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q12",
+    "iter": 0,
+    "doc_id": "doc1",
+    "relevance": 1
+  },
+  {
+    "query_id": "q13",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q14",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q15",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q16",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q17",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q18",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q19",
+    "iter": 0,
+    "doc_id": "doc4",
+    "relevance": 1
+  },
+  {
+    "query_id": "q20",
+    "iter": 0,
+    "doc_id": "doc6",
+    "relevance": 1
+  },
+  {
+    "query_id": "q21",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q22",
+    "iter": 0,
+    "doc_id": "doc1",
+    "relevance": 1
+  },
+  {
+    "query_id": "q23",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q24",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  },
+  {
+    "query_id": "q25",
+    "iter": 0,
+    "doc_id": "doc2",
+    "relevance": 1
+  }
+]
