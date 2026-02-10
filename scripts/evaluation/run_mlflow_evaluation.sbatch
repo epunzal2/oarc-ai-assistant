@@ -52,13 +52,20 @@ which python; python -V
 
 echo "====================================================================================="
 echo "IMPORTANT: This script requires a running MLflow tracking server."
-echo "Pass the tracking server URI via the --export flag when submitting."
+echo "You must provide the server's address (the MLFLOW_TRACKING_URI) for this script to work."
 echo
-echo "Example:"
-echo "  sbatch --export=MLFLOW_TRACKING_URI='http://gpunode-01.hpc.my-university.edu:5000' scripts/evaluation/run_mlflow_evaluation.sbatch"
+echo "HOW TO FIND THE MLFLOW_TRACKING_URI:"
+echo "1. Start the MLflow server using 'sbatch scripts/deployment/hpc/run_mlflow_server.sbatch'."
+echo "2. Check the Slurm output file for that job (e.g., 'logs/mlflow_server_...out')."
+echo "3. Inside the output file, find the line that says 'MLflow UI is running at:'."
+echo "4. The URI is the http address shown, like 'http://gpunode-01.hpc.my-university.edu:5000'."
+echo
+echo "HOW TO RUN THIS SCRIPT:"
+echo "Use the URI you found in the 'sbatch' command like this:"
+echo "  sbatch --export=MLFLOW_TRACKING_URI='http://<hostname>:<port>' scripts/evaluation/run_mlflow_evaluation.sbatch"
 echo
 if [[ -z "${MLFLOW_TRACKING_URI:-}" ]]; then
-  echo "ERROR: MLFLOW_TRACKING_URI is not set. Please provide it using --export."
+  echo "ERROR: MLFLOW_TRACKING_URI is not set. Please provide it using --export as shown above."
   exit 1
 fi
 echo "Using MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}"
@@ -79,5 +86,14 @@ srun --cpu-bind=cores \
 
 echo "====================================================================================="
 echo "Evaluation complete. View the results in the MLflow UI."
-echo "If you have an SSH tunnel running, open: http://127.0.0.1:5000"
+echo
+echo "HOW TO VIEW THE MLFLOW UI (using an SSH tunnel):"
+echo "An SSH tunnel securely connects a port on your local machine to a port on the HPC node."
+echo "1. Get the MLflow server's hostname and port from the MLFLOW_TRACKING_URI (e.g., gpunode-01 and 5000)."
+echo "2. On your LOCAL machine, run this command:"
+echo "   ssh -N -L 5000:<hpc_hostname>:5000 your_username@hpc.cluster.address"
+echo "   (Replace <hpc_hostname> with the actual node name, e.g., gpunode-01)."
+echo
+echo "3. Once the tunnel is active, open this URL in your local web browser:"
+echo "   http://127.0.0.1:5000"
 echo "====================================================================================="
