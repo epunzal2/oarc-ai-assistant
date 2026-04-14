@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width" name="viewport"/>
+<title>Slurm Workload Manager - Slurm Workload Manager</title>
+<link href="registration.html" rel="canonical"/>
+<link href="favicon.ico" rel="shortcut icon"/>
+<link href="fonts.css" rel="stylesheet" type="text/css"/>
+<link href="reset.css" rel="stylesheet" type="text/css"/>
+<link href="style.css" rel="stylesheet" type="text/css"/>
+<link href="slurm.css" rel="stylesheet" type="text/css"/>
+<script src="jquery.min.js"></script>
+<script type="text/javascript">
+	jQuery(document).ready(function() {
+		jQuery('.menu-trigger').bind('click touchstart', function() {
+			jQuery(this).find('.menu-trigger__lines').toggleClass('menu-trigger__lines--closed');
+			jQuery(this).parents('.site-header').find('.site-nav').toggleClass('site-nav--active');
+
+			return false;
+		});
+	});
+	</script>
+<script async="" src="https://cse.google.com/cse.js?cx=011890816164765777536:jvrtxrd3f0w"></script>
+</head>
+<body>
+<div class="container container--main">
+<header class="site-header" role="banner">
+<div class="site-masthead">
+<h1 class="site-masthead__title site-masthead__title--slurm">
+<a href="slurm.html" rel="home">
+<span class="slurm-logo">Slurm Workload Manager</span>
+</a>
+</h1>
+<div class="site-masthead__title">
+<a href="https://www.schedmd.com/" rel="home">
+<span class="site-logo">SchedMD</span>
+</a>
+</div>
+<button aria-label="Toggle Navigation" class="site-masthead__trigger menu-trigger" role="button" type="button"><span class="menu-trigger__lines"></span></button>
+</div>
+<nav class="site-nav" role="navigation">
+<h2 class="site-nav__title">Navigation</h2>
+<div class="slurm-title">
+<div class="slurm-logo"><a href="slurm.html">Slurm Workload Manager</a></div>
+<div class="slurm-title__version">Version 23.02.7</div>
+</div>
+<ul class="site-nav__menu site-menu menu">
+<li class="site-menu__item">
+<div>About</div>
+<ul>
+<li><a href="overview.html">Overview</a></li>
+<li><a href="news.html">Release Notes</a></li>
+<li><a href="team.html">Slurm Team</a></li>
+<li><a href="meetings.html">Meetings</a></li>
+<li><a href="testimonials.html">Testimonials</a></li>
+<li><a href="disclaimer.html">Legal Notices</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Using</div>
+<ul>
+<li><a href="tutorials.html">Tutorials</a></li>
+<li><a href="documentation.html">Documentation</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a href="publications.html">Publications</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Installing</div>
+<ul>
+<li><a href="download.html">Download</a></li>
+<li><a href="quickstart_admin.html">Installation Guide</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Getting Help</div>
+<ul>
+<li><a href="https://www.schedmd.com/services.php">Support</a></li>
+<li><a href="mail.html">Mailing Lists</a></li>
+<li><a href="https://www.schedmd.com/services.php">Training</a></li>
+<li><a href="troubleshoot.html">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+</nav>
+</header>
+<div class="content" role="main">
+<section class="slurm-search">
+<div class="container" id="cse">
+<gcse:search></gcse:search>
+</div>
+</section>
+<div class="section">
+<div class="container">
+<h1>Registration</h1>
+<p>Please use with the following form to register for the
+<b>Slurm User Group Meeting 2011</b> to be held September 22-23, 2011 in
+Phoenix, Arizona, USA.
+Note that a registration fee of $100 per person will be collected at
+the meeting to defray expenses.</p>
+<p>Thursday September 22 will be devoted to tutorials.
+One room will be devoted to beginner level Slurm training.
+A second room will be devoted to advanced topics of Slurm administration and use.
+Please specify which tutorial track you would like to attend in the form below.</p>
+<p>Friday September 23 will be devoted to a variety of technical presentations.
+Please see the <a href="sug2011_agenda">agenda</a> for more details.</p>
+<p>Early registration is recommended as the number of attendees is limited to
+50 and speakers will receive priority.
+You will receive by email the status of your registration within a
+few days of its submission.</p>
+<p>The meeting will be held at LOCATION/ADDRESS in Phoenix Arizion.
+A block of rooms are available for meeting attendees wishing to stay at
+THAT HOTEL at a preferred rate of $79. HOTEL CONTACT INFO HERE.</p>
+<form action="mailto:jette1@llnl.gov?subject=Registration" enctype="text/plain" method="POST">
+<pre>
+
+	  </pre><table border="0" cellpadding="0" cellspacing="0" width="100%">
+<tr>
+<td width="10%">First Name</td>
+<td width="80%"><input name="Firstname" size="30"/></td>
+</tr>
+<tr>
+<td width="10%">Last Name</td>
+<td width="80%"><input name="Lastname" size="30"/></td>
+</tr>
+<tr>
+<td width="10%">Email</td>
+<td width="80%"><input name="Email" size="30"/></td>
+</tr>
+<tr>
+<td width="10%">Country</td>
+<td width="80%"><input name="Country" size="30"/></td>
+</tr>
+<tr>
+<td width="10%">Company</td>
+<td width="80%"><input name="Company" size="30"/></td>
+</tr>
+<tr>
+<td width="10%">Title</td>
+<td width="80%"><input name="Title" size="30"/></td>
+</tr>
+<tr>
+<td width="10%">Tutorials</td>
+<td width="80%"><input name="Tutorial" type="radio" value="Beginner"/>Beginner<br/>
+<input name="Tutorial" type="radio" value="Advanced"/>Advanced<br/>
+<input name="Tutorial" type="radio" value="None"/>None</td>
+</tr>
+<tr>
+<td width="10%">Comments</td>
+<td width="80%"><textarea cols="50" name="Comments" rows="5"></textarea></td>
+</tr>
+<tr>
+<td width="30%"><input type="SUBMIT" value="Submit"/></td>
+<td width="30%"><input type="RESET" value="Clear"/></td>
+</tr>
+</table>
+</form>
+</div> <!-- END .container -->
+</div> <!-- END .section -->
+</div> <!-- END .content -->
+</div> <!-- END .main -->
+<footer class="site-footer" role="contentinfo">
+<nav class="footer-nav section">
+<div class="container">
+<p><a class="privacy" href="disclaimer.html" target="_blank">Legal Notices</a></p>
+</div>
+</nav>
+</footer>
+</body>
+</html>

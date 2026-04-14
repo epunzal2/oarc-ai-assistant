@@ -1,0 +1,16 @@
+{
+  "archive_sha256": "eba6db8990abf40402d8e30d8706a7ddd0560e0e307c567f0fb72f1c8a522078",
+  "archive_size_bytes": 7447239,
+  "html_page_count": 111,
+  "imported_at": "2026-03-27T20:25:02.659649+00:00",
+  "man_page_count": 41,
+  "markdown_html_count": 111,
+  "markdown_man_count": 41,
+  "markdown_pdf_count": 3,
+  "pdf_count": 3,
+  "raw_html_file_count": 161,
+  "raw_man_file_count": 50,
+  "slurm_version": "23.02.7",
+  "source_url": "https://download.schedmd.com/slurm/slurm-23.02.7.tar.bz2",
+  "web_doc_count": 114
+}

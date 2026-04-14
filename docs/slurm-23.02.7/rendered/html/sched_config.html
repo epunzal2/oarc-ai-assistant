@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width" name="viewport"/>
+<title>Slurm Workload Manager - Slurm Workload Manager</title>
+<link href="sched_config.html" rel="canonical"/>
+<link href="favicon.ico" rel="shortcut icon"/>
+<link href="fonts.css" rel="stylesheet" type="text/css"/>
+<link href="reset.css" rel="stylesheet" type="text/css"/>
+<link href="style.css" rel="stylesheet" type="text/css"/>
+<link href="slurm.css" rel="stylesheet" type="text/css"/>
+<script src="jquery.min.js"></script>
+<script type="text/javascript">
+	jQuery(document).ready(function() {
+		jQuery('.menu-trigger').bind('click touchstart', function() {
+			jQuery(this).find('.menu-trigger__lines').toggleClass('menu-trigger__lines--closed');
+			jQuery(this).parents('.site-header').find('.site-nav').toggleClass('site-nav--active');
+
+			return false;
+		});
+	});
+	</script>
+<script async="" src="https://cse.google.com/cse.js?cx=011890816164765777536:jvrtxrd3f0w"></script>
+</head>
+<body>
+<div class="container container--main">
+<header class="site-header" role="banner">
+<div class="site-masthead">
+<h1 class="site-masthead__title site-masthead__title--slurm">
+<a href="slurm.html" rel="home">
+<span class="slurm-logo">Slurm Workload Manager</span>
+</a>
+</h1>
+<div class="site-masthead__title">
+<a href="https://www.schedmd.com/" rel="home">
+<span class="site-logo">SchedMD</span>
+</a>
+</div>
+<button aria-label="Toggle Navigation" class="site-masthead__trigger menu-trigger" role="button" type="button"><span class="menu-trigger__lines"></span></button>
+</div>
+<nav class="site-nav" role="navigation">
+<h2 class="site-nav__title">Navigation</h2>
+<div class="slurm-title">
+<div class="slurm-logo"><a href="slurm.html">Slurm Workload Manager</a></div>
+<div class="slurm-title__version">Version 23.02.7</div>
+</div>
+<ul class="site-nav__menu site-menu menu">
+<li class="site-menu__item">
+<div>About</div>
+<ul>
+<li><a href="overview.html">Overview</a></li>
+<li><a href="news.html">Release Notes</a></li>
+<li><a href="team.html">Slurm Team</a></li>
+<li><a href="meetings.html">Meetings</a></li>
+<li><a href="testimonials.html">Testimonials</a></li>
+<li><a href="disclaimer.html">Legal Notices</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Using</div>
+<ul>
+<li><a href="tutorials.html">Tutorials</a></li>
+<li><a href="documentation.html">Documentation</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a href="publications.html">Publications</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Installing</div>
+<ul>
+<li><a href="download.html">Download</a></li>
+<li><a href="quickstart_admin.html">Installation Guide</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Getting Help</div>
+<ul>
+<li><a href="https://www.schedmd.com/services.php">Support</a></li>
+<li><a href="mail.html">Mailing Lists</a></li>
+<li><a href="https://www.schedmd.com/services.php">Training</a></li>
+<li><a href="troubleshoot.html">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+</nav>
+</header>
+<div class="content" role="main">
+<section class="slurm-search">
+<div class="container" id="cse">
+<gcse:search></gcse:search>
+</div>
+</section>
+<div class="section">
+<div class="container">
+<h1>Scheduling Configuration Guide</h1>
+<h2 id="overview">Overview<a class="slurm_link" href="#overview"></a></h2>
+<p>Slurm is designed to perform a quick and simple scheduling attempt at
+events such as job submission or completion and configuration changes.
+During these event-triggered scheduling events, <b>default_queue_depth</b>
+(default is 100) number of jobs will be considered.</p>
+<p>At less frequent intervals, defined by <b>sched_interval</b>, all jobs will
+be considered for scheduling.</p>
+<p>In either case, once any job or job array task in a partition is left
+pending, no other jobs in that partition will be scheduled.</p>
+<p>A more comprehensive scheduling attempt is typically done by the backfill
+scheduling plugin.</p>
+<h2 id="config">Scheduling Configuration
+<a class="slurm_link" href="#config"></a>
+</h2>
+<p>The <b>SchedulerType</b> configuration parameter specifies the scheduler
+plugin to use.
+Options are sched/backfill, which performs backfill scheduling, and
+sched/builtin, which attempts to schedule jobs in a strict priority order within
+each partition/queue.</p>
+<p>There is also a <b>SchedulerParameters</b> configuration parameter which
+can specify a wide range of parameters as described below.
+This first set of parameters applies to all scheduling configurations.
+See the <a href="slurm.conf.html">slurm.conf(5)</a> man page for more details.
+</p>
+<ul>
+<li><b>default_queue_depth=#</b> - Specifies the number of jobs to consider for
+scheduling on each event that may result in a job being scheduled.
+Default value is 100 jobs. Since this happens frequently, a relatively
+small number is generally best.</li>
+<li><b>defer</b> - Do not attempt to schedule jobs individually at submit time.
+Can be useful for high-throughput computing.</li>
+<li><b>max_switch_wait=#</b> - Specifies the maximum time a job can wait for
+desired number of leaf switches. Default value is 300 seconds.</li>
+<li><b>partition_job_depth=#</b> - Specifies how many jobs are tested in any
+single partition, default value is 0 (no limit).</li>
+<li><b>sched_interval=#</b> - Specifies how frequently, in seconds, the main
+scheduling loop will execute and test all pending jobs. The default value is
+60 seconds.</li>
+</ul>
+<h2 id="backfill">Backfill Scheduling
+<a class="slurm_link" href="#backfill"></a>
+</h2>
+<p>The backfill scheduling plugin is loaded by default.
+Without backfill scheduling, each partition is scheduled strictly in priority
+order, which typically results in significantly lower system utilization and
+responsiveness than otherwise possible.
+Backfill scheduling will start lower priority jobs if doing so does not delay
+the expected start time of <b>any</b> higher priority jobs.
+Since the expected start time of pending jobs depends upon the expected
+completion time of running jobs, reasonably accurate time limits are important
+for backfill scheduling to work well.</p>
+<p>Slurm's backfill scheduler takes into consideration every running job.
+It then considers pending jobs in priority order, determining when and where
+each will start, taking into consideration the possibility of
+<a href="preempt.html">job preemption</a>,
+<a href="gang_scheduling.html">gang scheduling</a>,
+<a href="gres.html">generic resource (GRES) requirements</a>,
+memory requirements, etc.
+If the job under consideration can start immediately without impacting the
+expected start time of any higher priority job, then it does so.
+Otherwise the resources required by the job will be reserved during the job's
+expected execution time.
+The backfill plugin will set the expected start time for pending jobs setting
+these reserved nodes into a <b>'Planned'</b> state. A job's
+expected start time can be seen using the <b>squeue --start</b> command.
+For performance reasons, the backfill scheduler reserves whole nodes for jobs,
+even if jobs don't require whole nodes.
+</p>
+<p>The scheduling logic builds a sorted list of job-partition pairs. Jobs
+submitted to multiple partitions will have as many entries in the list as
+requested partitions. By default, the backfill scheduler may evaluate all the
+job-partition pairs for a single job, potentially reserving resources for each
+pair, but only starting the job in the reservation offering the earliest start
+time.</p>
+<p>Having a single job reserving resources for multiple partitions could impede
+other jobs (or hetjob components) from reserving resources already reserved for
+the partitions that don't offer the earliest start time.
+A single job that requests multiple partitions can also prevent itself
+from starting earlier in a lower priority partition if the partitions overlap
+nodes and a backfill reservation in the higher priority partition blocks nodes
+that are also in the lower priority partition.</p>
+<p>Backfill scheduling is difficult without reasonable time limit estimates
+for jobs, but some configuration parameters that can help.</p>
+<ul>
+<li><b>DefaultTime</b> - Default job time limit (specify value by partition)</li>
+<li><b>MaxTime</b> - Maximum job time limit (specify value by partition)</li>
+<li><b>OverTimeLimit</b> - Amount by which a job can exceed its time limit
+before it is killed. A system-wide configuration parameter.</li>
+</ul>
+<p>Backfill scheduling is a time consuming operation.
+Locks are released briefly every two seconds so that other options can be
+processed, for example to process new job submission requests.
+Backfill scheduling can optionally continue execution after the lock release
+and ignore newly submitted jobs (<b>SchedulerParameters=bf_continue</b>).
+Doing so will permit consideration of more jobs, but may result in the delayed
+scheduling of newly submitted jobs.
+A partial list of <b>SchedulerParameters</b> configuration parameters related to
+backfill scheduling follows.
+For more details and a complete list of the backfill related SchedulerParameters
+see the <a href="slurm.conf.html">slurm.conf(5)</a> man page.
+</p>
+<ul>
+<li><b>bf_continue</b> - If set, then continue backfill scheduling after
+periodically releasing locks for other operations.</li>
+<li><b>bf_interval=#</b> - Interval between backfill scheduling attempts.
+Default value is 30 seconds.</li>
+<li><b>bf_max_job_part=#</b> - Maximum number of jobs to initiate per partition
+in each backfill cycle. Default value is 0 (no limit).</li>
+<li><b>bf_max_job_start=#</b> - Maximum number of jobs to initiate
+in each backfill cycle. Default value is 0 (no limit).</li>
+<li><b>bf_max_job_test=#</b> - Maximum number of jobs consider for backfill
+scheduling in each backfill cycle. Default value is 100 jobs.</li>
+<li><b>bf_max_job_user=#</b> - Maximum number of jobs to initiate per user
+in each backfill cycle. Default value is 0 (no limit).</li>
+<li><b>bf_max_time=#</b> - Maximum time in seconds the backfill scheduler can
+spend (including time spent sleeping when locks are released) before
+discontinuing. The default value is the value of <b>bf_interval</b>, which
+defaults to 30 seconds.</li>
+<li><b>bf_one_resv_per_job</b> - Disallow adding more than one backfill
+reservation per job. This option makes it so that a job submitted to multiple
+partitions will stop reserving resources once the first job-partition pair
+has booked a backfill reservation. Subsequent pairs from the same job will
+only be tested to start now. This allows for other jobs to be able to book the
+other pairs resources at the cost of not guaranteeing that the multi-partition
+job will start in the partition offering the earliest start time (unless it
+can start immediately). This option is disabled by default.</li>
+<li><b>bf_resolution=#</b> - Time resolution of backfill scheduling.
+Default value is 60 seconds.
+Larger values are appropriate if job time limits are imprecise and/or
+small delays in starting pending jobs in order to achieve higher system
+utilization is desired.</li>
+<li><b>bf_window=#</b> - How long, in minutes, into the future to look when
+determining when and where jobs can start.
+Higher values result in more overhead and less responsiveness.
+A value at least as long as the highest allowed time limit is generally
+advisable to prevent job starvation.
+In order to limit the amount of data managed by the backfill scheduler,
+if the value of bf_window is increased, then it is generally advisable
+to also increase <b>bf_resolution</b>.
+The default value is 1440 minutes (one day).</li>
+<li><b>bf_yield_interval=#</b> - 
+The backfill scheduler will periodically relinquish locks in order for other
+pending operations to take place. This specifies the times when the locks are
+relinquished in microseconds. The default value is 2,000,000  microseconds
+(2 seconds). Smaller values may be helpful for high throughput computing when
+used in conjunction with the bf_continue option.</li>
+<li><b>bf_yield_sleep=#</b> - 
+The backfill scheduler will periodically relinquish locks in order for other
+pending operations to take place. This specifies the length of time for which
+the locks are relinquished in microseconds. The default value is 500,000
+microseconds (0.5 seconds).  </li>
+</ul>
+<p style="text-align:center;">Last modified 21 January 2022</p>
+</div> <!-- END .container -->
+</div> <!-- END .section -->
+</div> <!-- END .content -->
+</div> <!-- END .main -->
+<footer class="site-footer" role="contentinfo">
+<nav class="footer-nav section">
+<div class="container">
+<p><a class="privacy" href="disclaimer.html" target="_blank">Legal Notices</a></p>
+</div>
+</nav>
+</footer>
+</body>
+</html>

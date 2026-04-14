@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width" name="viewport"/>
+<title>Slurm Workload Manager - Slurm Workload Manager</title>
+<link href="user_permissions.html" rel="canonical"/>
+<link href="favicon.ico" rel="shortcut icon"/>
+<link href="fonts.css" rel="stylesheet" type="text/css"/>
+<link href="reset.css" rel="stylesheet" type="text/css"/>
+<link href="style.css" rel="stylesheet" type="text/css"/>
+<link href="slurm.css" rel="stylesheet" type="text/css"/>
+<script src="jquery.min.js"></script>
+<script type="text/javascript">
+	jQuery(document).ready(function() {
+		jQuery('.menu-trigger').bind('click touchstart', function() {
+			jQuery(this).find('.menu-trigger__lines').toggleClass('menu-trigger__lines--closed');
+			jQuery(this).parents('.site-header').find('.site-nav').toggleClass('site-nav--active');
+
+			return false;
+		});
+	});
+	</script>
+<script async="" src="https://cse.google.com/cse.js?cx=011890816164765777536:jvrtxrd3f0w"></script>
+</head>
+<body>
+<div class="container container--main">
+<header class="site-header" role="banner">
+<div class="site-masthead">
+<h1 class="site-masthead__title site-masthead__title--slurm">
+<a href="slurm.html" rel="home">
+<span class="slurm-logo">Slurm Workload Manager</span>
+</a>
+</h1>
+<div class="site-masthead__title">
+<a href="https://www.schedmd.com/" rel="home">
+<span class="site-logo">SchedMD</span>
+</a>
+</div>
+<button aria-label="Toggle Navigation" class="site-masthead__trigger menu-trigger" role="button" type="button"><span class="menu-trigger__lines"></span></button>
+</div>
+<nav class="site-nav" role="navigation">
+<h2 class="site-nav__title">Navigation</h2>
+<div class="slurm-title">
+<div class="slurm-logo"><a href="slurm.html">Slurm Workload Manager</a></div>
+<div class="slurm-title__version">Version 23.02.7</div>
+</div>
+<ul class="site-nav__menu site-menu menu">
+<li class="site-menu__item">
+<div>About</div>
+<ul>
+<li><a href="overview.html">Overview</a></li>
+<li><a href="news.html">Release Notes</a></li>
+<li><a href="team.html">Slurm Team</a></li>
+<li><a href="meetings.html">Meetings</a></li>
+<li><a href="testimonials.html">Testimonials</a></li>
+<li><a href="disclaimer.html">Legal Notices</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Using</div>
+<ul>
+<li><a href="tutorials.html">Tutorials</a></li>
+<li><a href="documentation.html">Documentation</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a href="publications.html">Publications</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Installing</div>
+<ul>
+<li><a href="download.html">Download</a></li>
+<li><a href="quickstart_admin.html">Installation Guide</a></li>
+</ul>
+</li>
+<li class="site-menu__item">
+<div>Getting Help</div>
+<ul>
+<li><a href="https://www.schedmd.com/services.php">Support</a></li>
+<li><a href="mail.html">Mailing Lists</a></li>
+<li><a href="https://www.schedmd.com/services.php">Training</a></li>
+<li><a href="troubleshoot.html">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+</nav>
+</header>
+<div class="content" role="main">
+<section class="slurm-search">
+<div class="container" id="cse">
+<gcse:search></gcse:search>
+</div>
+</section>
+<div class="section">
+<div class="container">
+<h1>User Permissions</h1>
+<p>Slurm supports several special user permissions as described below.</p>
+<h2 id="operator">Operator<a class="slurm_link" href="#operator"></a></h2>
+<p>These users can add, modify, and remove any database object
+(user, account, etc), and add other operators.
+On a SlurmDBD served cluster, these users can
+</p><ul>
+<li>View information that is blocked to regular uses by a PrivateData flag</li>
+<li>Create/Alter/Delete Reservations</li>
+</ul>
+<p>Set using an <b>AdminLevel</b> option in the user's database record.
+For configuration information, see
+<a href="accounting.html">Accounting and Resource Limits</a>.</p>
+<h2 id="admin">Admin<a class="slurm_link" href="#admin"></a></h2>
+<p>These users have the same level of privileges as an operator in the database.
+They can also alter anything on a served slurmctld as if they were the SlurmUser
+or root.</p>
+<p>An <b>AdminLevel</b> option in the user's database record.
+For configuration information, see
+<a href="accounting.html">Accounting and Resource Limits</a>.</p>
+<h2 id="coord">Coordinator<a class="slurm_link" href="#coord"></a></h2>
+<p>A special privileged user, usually an account manager, that can add
+users or sub-accounts to the account they are coordinator over.
+This should be a trusted person since they can change limits on account and
+user associations, as well as cancel, requeue or reassign accounts of jobs
+inside their realm.</p>
+<p>Set using a table in Slurm's database defining users and accounts for
+which they can serve as coordinators.
+For configuration information, see the
+<a href="sacctmgr.html">sacctmgr</a> man page.</p>
+<p style="text-align:center;">Last modified 07 April 2020</p>
+</div> <!-- END .container -->
+</div> <!-- END .section -->
+</div> <!-- END .content -->
+</div> <!-- END .main -->
+<footer class="site-footer" role="contentinfo">
+<nav class="footer-nav section">
+<div class="container">
+<p><a class="privacy" href="disclaimer.html" target="_blank">Legal Notices</a></p>
+</div>
+</nav>
+</footer>
+</body>
+</html>

@@ -133,6 +133,14 @@ The project's settings are centralized in the [`src/rag/config.py`](src/rag/conf
 
 Many of these settings can be overridden by environment variables (e.g., `QDRANT_HOST`, `HUGGINGFACE_API_TOKEN`), which are loaded at runtime using `python-dotenv`. This allows for flexible configuration without modifying the source code, which is particularly useful for switching between local and HPC environments.
 
+### Optional Slurm 23.02.7 corpus
+
+The repository now includes a versioned Slurm corpus under `docs/slurm-23.02.7`.
+
+- Runtime: set `DATA_PATH=docs/slurm-23.02.7/markdown`
+- Evaluation: set `dataset.document_source.markdown_dir: "docs/slurm-23.02.7/markdown"`
+- Default behavior is unchanged; the app still uses `docs/google_sites_guide` unless you opt in.
+
 ### Choosing an LLM provider
 
 The runtime now supports four LLM providers:
