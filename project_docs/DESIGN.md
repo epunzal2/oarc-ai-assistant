@@ -51,7 +51,7 @@ Current properties:
 - vLLM is already the intended model-hosting layer and exposes the OpenAI-compatible model API.
 - OpenWebUI can talk directly to vLLM today, but that would bypass the repo-owned RAG pipeline.
 
-## Target Architecture
+## Simplified Target Architecture
 
 The target architecture keeps the custom OARC RAG pipeline as the source of truth and exposes it
 through a RAG-aware OpenAI-compatible endpoint. OpenWebUI, Chainlit, or a custom React frontend can
@@ -108,6 +108,116 @@ Target responsibility split:
 | RAG service | Retrieval, prompt assembly, citations, telemetry hooks | Browser UI |
 | Knowledge layer | Indexed OARC, Slurm, and ServiceNow-derived content | LLM inference |
 | vLLM | Fast model inference behind an OpenAI-compatible API | RAG or source governance |
+
+## Detailed Target Architecture
+
+The detailed architecture separates user-facing clients, the OpenAI-compatible gateway contract,
+the repo-owned RAG service, retrieval assets, model serving, and operational systems.
+
+```mermaid
+flowchart TB
+    subgraph Client["**Client Options**"]
+        OWUI["OpenWebUI<br/>initial demo UI"]
+        Chainlit["Chainlit<br/>Python chat bridge"]
+        React["React / Next.js<br/>final product UI"]
+    end
+
+    subgraph Gateway["**FastAPI RAG Gateway**"]
+        ChatAPI["POST /v1/chat/completions"]
+        ModelsAPI["GET /v1/models"]
+        HealthAPI["GET /health"]
+        RequestParser["OpenAI request parser"]
+        ResponseFormatter["OpenAI response formatter"]
+        AuthBoundary["Auth / SSO boundary"]
+    end
+
+    subgraph RAGApp["**OARC RAG Application**"]
+        RAGService["RAGService"]
+        QueryPrep["query normalization"]
+        Retrieval["retrieval orchestration"]
+        PromptBuilder["grounded prompt builder"]
+        CitationBuilder["citation builder"]
+        FeedbackHooks["feedback hooks"]
+    end
+
+    subgraph Knowledge["**Knowledge and Retrieval**"]
+        Embeddings["embedding model"]
+        VectorStore["FAISS or Qdrant"]
+        Corpus["OARC docs<br/>Slurm docs<br/>ServiceNow-derived corpus"]
+        SourceMetadata["source metadata"]
+    end
+
+    subgraph ModelLayer["**Model Serving**"]
+        EndpointDiscovery["vLLM endpoint discovery"]
+        VLLM["vLLM server"]
+        VLLMChat["/v1/chat/completions"]
+    end
+
+    subgraph Observability["**Evaluation and Operations**"]
+        MLflow["MLflow runtime telemetry"]
+        EvalData["gold datasets and qrels"]
+        Logs["sanitized logs"]
+        Metrics["latency, token, retrieval metrics"]
+    end
+
+    OWUI --> ChatAPI
+    Chainlit --> ChatAPI
+    React --> ChatAPI
+
+    ChatAPI --> RequestParser
+    RequestParser --> RAGService
+    ModelsAPI --> EndpointDiscovery
+    HealthAPI --> EndpointDiscovery
+    AuthBoundary -.-> ChatAPI
+
+    RAGService --> QueryPrep
+    QueryPrep --> Retrieval
+    Retrieval --> VectorStore
+    Corpus --> Embeddings
+    Embeddings --> VectorStore
+    VectorStore --> SourceMetadata
+    SourceMetadata --> Retrieval
+    Retrieval --> PromptBuilder
+    PromptBuilder --> VLLMChat
+    EndpointDiscovery --> VLLM
+    VLLM --> VLLMChat
+    VLLMChat --> CitationBuilder
+    CitationBuilder --> ResponseFormatter
+    FeedbackHooks -.-> ResponseFormatter
+    ResponseFormatter --> OWUI
+    ResponseFormatter --> Chainlit
+    ResponseFormatter --> React
+
+    RAGService -.-> MLflow
+    RAGService -.-> Logs
+    RAGService -.-> Metrics
+    EvalData -.-> RAGService
+
+    classDef client fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#0f172a;
+    classDef gateway fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#0f172a;
+    classDef rag fill:#fef3c7,stroke:#b45309,stroke-width:2px,color:#0f172a;
+    classDef knowledge fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#0f172a;
+    classDef model fill:#fee2e2,stroke:#b91c1c,stroke-width:2px,color:#0f172a;
+    classDef obs fill:#f1f5f9,stroke:#475569,stroke-width:2px,color:#0f172a;
+
+    class OWUI,Chainlit,React client;
+    class ChatAPI,ModelsAPI,HealthAPI,RequestParser,ResponseFormatter,AuthBoundary gateway;
+    class RAGService,QueryPrep,Retrieval,PromptBuilder,CitationBuilder,FeedbackHooks rag;
+    class Embeddings,VectorStore,Corpus,SourceMetadata knowledge;
+    class EndpointDiscovery,VLLM,VLLMChat model;
+    class MLflow,EvalData,Logs,Metrics obs;
+```
+
+Detailed flow:
+
+1. The UI sends an OpenAI-compatible chat request to the FastAPI gateway.
+2. The gateway validates/parses the request and forwards the user question to `RAGService`.
+3. `RAGService` retrieves ranked chunks from FAISS or Qdrant using the indexed OARC, Slurm, and
+   ServiceNow-derived corpus.
+4. The prompt builder combines the user question, retrieved context, and system instructions.
+5. The model layer resolves the active vLLM endpoint and sends the grounded prompt to vLLM.
+6. The RAG service formats the answer, citations, request metadata, and telemetry.
+7. The gateway returns an OpenAI-compatible response to OpenWebUI, Chainlit, or React/Next.js.
 
 ## User Perspective
 
