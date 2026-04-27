@@ -307,6 +307,49 @@ Phase 2 is complete. See `.plans/2026-04-27-rag-streaming-source-metadata.md`, `
 - [ ] Keep a separate path for raw vLLM smoke testing when retrieval should be bypassed.
 - [ ] Add an operator checklist for distinguishing raw model answers from RAG-backed answers.
 
+Detailed plan: `.plans/2026-04-27-openwebui-rag-gateway-integration.md`.
+
+OpenWebUI is a demo UI client for the RAG gateway, not the owner of RAG logic. Operators should
+configure OpenWebUI's OpenAI-compatible provider base URL to the FastAPI gateway `/v1` URL, for
+example `http://<gateway-host>:<gateway-port>/v1`. OpenWebUI should list and use the gateway model
+alias `oarc-rag-v1`.
+
+Raw vLLM access remains available only for bypass/debug smoke testing. Any path that points
+OpenWebUI directly at vLLM is not RAG-backed and will not retrieve corpus context or return gateway
+source metadata.
+
+```mermaid
+flowchart LR
+    Operator["Operator"]
+    OpenWebUI["OpenWebUI demo UI"]
+    RAGGateway["FastAPI RAG Gateway<br/>OpenAI-compatible base URL<br/>/v1/models<br/>/v1/chat/completions"]
+    RAGPipeline["Existing OARC RAG Pipeline<br/>retrieve context<br/>assemble grounded prompt<br/>return sources"]
+    VectorStore["FAISS or Qdrant<br/>OARC / Slurm / ServiceNow corpus"]
+    VLLM["vLLM model server<br/>raw OpenAI-compatible API"]
+    RawSmoke["Raw vLLM smoke-test path"]
+
+    Operator --> OpenWebUI
+    OpenWebUI -->|"OpenAI provider base URL points here"| RAGGateway
+    RAGGateway --> RAGPipeline
+    RAGPipeline --> VectorStore
+    RAGPipeline --> VLLM
+    OpenWebUI -. "only for bypass/debug" .-> RawSmoke
+    RawSmoke -.-> VLLM
+```
+
+Verification checklist:
+
+- [ ] Start vLLM and confirm the raw model endpoint is healthy.
+- [ ] Start the RAG gateway with `uvicorn src.rag.api:app --host 0.0.0.0 --port <port>`.
+- [ ] Confirm `GET /health` returns `status: ok`.
+- [ ] Confirm `GET /v1/models` returns `oarc-rag-v1`.
+- [ ] Configure OpenWebUI's OpenAI-compatible provider base URL to the RAG gateway `/v1` URL.
+- [ ] Ask a known corpus-backed OARC or Slurm question in OpenWebUI.
+- [ ] Confirm gateway logs show the request and the raw-vLLM bypass path was not used.
+- [ ] Confirm source metadata is visible in direct API responses, even if OpenWebUI does not render
+  custom `rag_sources` fields.
+- [ ] Run a separate raw-vLLM smoke test only when retrieval should intentionally be bypassed.
+
 ### Phase 4: Service Hardening
 
 - [ ] Extract a clean `RAGService` abstraction so UI/API code does not own retrieval details.
