@@ -3,6 +3,10 @@
 This directory contains several documentation trees, but not every path here should be used as a RAG
 corpus root.
 
+Operational runbooks:
+
+- Hosted HPC vLLM flow: `docs/hpc-vllm-runbook.md`
+
 ## Use These Paths For RAG
 
 - OARC guide only: `docs/google_sites_guide`
@@ -36,18 +40,14 @@ This is additive to the Markdown corpus path above.
 
 ## Recommended Local Test Environment
 
-On this machine, `python -m pytest` in the Conda `base` environment segfaults during runner startup.
-The working local path is the `hpc-analytics` environment:
+Primary workflow:
 
 ```bash
-conda run -n hpc-analytics python -m pytest tests/unit/test_slurm_docs.py -q
-conda run -n hpc-analytics ruff check src/rag/slurm_docs.py scripts/rag/import_slurm_docs.py tests/unit/test_slurm_docs.py
+uv sync --extra dev
+source .venv/bin/activate
+python -m pytest tests/unit/test_slurm_docs.py -q
+python -m ruff check src/rag/slurm_docs.py scripts/rag/import_slurm_docs.py tests/unit/test_slurm_docs.py
 ```
 
-If `hpc-analytics` does not already have the repo test tools, install them there:
-
-```bash
-conda run -n hpc-analytics python -m pip install pytest pytest-cov ruff
-conda run -n hpc-analytics python -m pip install beautifulsoup4 pypdf requests
-conda run -n hpc-analytics python -m pip install -e .
-```
+If you already maintain a separate conda env for local validation, treat that as a fallback rather
+than the default workflow.

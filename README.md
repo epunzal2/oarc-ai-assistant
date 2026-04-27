@@ -51,10 +51,17 @@ If you encounter OS-related errors during the installation of `llama-cpp-python`
 
 The specific package requirements for the HPC environment are defined in [`requirements_hpc.txt`](requirements_hpc.txt) and [`constraints_hpc.txt`](constraints_hpc.txt). A complete list of the exact environment libraries can be found in [`env_check/oarc-ai-rag-test.sanitized.yml`](env_check/oarc-ai-rag-test.sanitized.yml).
 
-When scheduling the chat UI via `scripts/deployment/hpc/run_chat_hpc.sbatch`, set
-`LLM_PROVIDER` (e.g., `vllm`) and optional `VLLM_*`/`SGLANG_*` environment variables. The launch
-script performs a `/healthz` probe using `VLLM_HEALTH_PORT` or `SGLANG_HEALTH_PORT` and exits early
-if the serving backend is unavailable.
+Use `scripts/deployment/hpc/run_chat_hpc.sbatch` for local `llama_cpp` inference on the allocated
+node. Use `scripts/deployment/hpc/run_chat_hpc_remote.sbatch` when the chat UI should call a hosted
+HTTP backend such as vLLM. Hosted vLLM deployments can now be launched and discovered directly from
+this repo via:
+
+- `scripts/deployment/hpc/submit_vllm_serve.sh`
+- `scripts/deployment/hpc/check_vllm_status.sh`
+- `scripts/deployment/hpc/stop_vllm_serve.sh`
+
+The hosted workflow resolves `VLLM_BASE_URL`, `VLLM_HEALTH_URL`, and `VLLM_MODEL` from explicit
+environment variables first, then from `VLLM_ENDPOINT_DIR/vllm-endpoint.json` when present.
 
 ## Architecture
 
@@ -158,7 +165,8 @@ VLLM_BASE_URL=http://127.0.0.1:8000
 VLLM_MODEL=meta-llama/Llama-3-8B-Instruct
 VLLM_TIMEOUT=45
 VLLM_MAX_RETRIES=5
-VLLM_HEALTH_PORT=8001
+VLLM_HEALTH_URL=http://127.0.0.1:8000/health
+VLLM_ENDPOINT_DIR=/shared/path/to/vllm-endpoints
 VLLM_TEMPERATURE=0.0
 
 SGLANG_BASE_URL=http://127.0.0.1:30000
@@ -183,6 +191,42 @@ With the new `pyproject.toml` you can install extras directly:
 
 Existing `requirements*.txt` files remain available for reproducible HPC environments; they now
 include the shared `requests` dependency used by the HTTP providers.
+
+### Hosted vLLM on HPC
+
+The repo can now manage a shared vLLM server lifecycle for HPC use without changing the existing
+RAG provider code. The app still talks to vLLM through
+`POST {resolved_base_url}/v1/chat/completions`; the new pieces only manage and discover the server.
+
+1. Start the vLLM serve job:
+
+```bash
+export VLLM_ENDPOINT_DIR="$PWD/runtime/vllm-endpoints"
+scripts/deployment/hpc/submit_vllm_serve.sh \
+  --model meta-llama/Llama-3-8B-Instruct \
+  --endpoint-dir "$VLLM_ENDPOINT_DIR"
+```
+
+2. Check endpoint health and metadata:
+
+```bash
+scripts/deployment/hpc/check_vllm_status.sh --endpoint-dir "$VLLM_ENDPOINT_DIR"
+```
+
+3. Launch the chat UI against the hosted endpoint:
+
+```bash
+sbatch --export=ALL,LLM_PROVIDER=vllm,VLLM_ENDPOINT_DIR="$VLLM_ENDPOINT_DIR" \
+  scripts/deployment/hpc/run_chat_hpc_remote.sbatch
+```
+
+4. When you are done, stop the shared server:
+
+```bash
+scripts/deployment/hpc/stop_vllm_serve.sh --endpoint-dir "$VLLM_ENDPOINT_DIR"
+```
+
+See [`docs/hpc-vllm-runbook.md`](docs/hpc-vllm-runbook.md) for the step-by-step HPC runbook.
 
 ## Observability & Telemetry
 
@@ -220,8 +264,8 @@ complete parameter/metric schema.
 
 ### 1. Prerequisites
 
--   Python 3.9+
--   Conda (or Mamba) and Pip for environment management.
+-   Python 3.10
+-   `uv` installed on each machine where you work with the repo
 -   Docker (Optional, for Qdrant)
 
 ### 2. Clone the Repository
@@ -233,13 +277,33 @@ cd <repository-name>
 
 ### 3. Set Up the Environment
 
-Create a virtual environment and install the required packages:
+Use a repo-local virtual environment on each machine or cluster checkout. Do not share one `.venv`
+between macOS and Linux.
+
+Primary workflow:
 
 ```bash
-conda create -n oarc-rag python=3.9
-conda activate oarc-rag
-pip install -r requirements_hpc.txt -c constraints_hpc.txt
+uv sync
+source .venv/bin/activate
 ```
+
+For HPC runs that need the hosted vLLM stack:
+
+```bash
+uv sync --extra dev --extra vllm
+source .venv/bin/activate
+```
+
+Fallback when `uv` is unavailable:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+`requirements_hpc.txt` and `requirements_mac.txt` remain available as pip-compatible fallback files,
+but `pyproject.toml` plus `uv` is the primary setup path.
 
 ### 4. Set Up the Hugging Face API Token
 
@@ -257,7 +321,8 @@ huggingface-cli login --token $HUGGINGFACE_API_TOKEN
 
 ### 5. Start the Qdrant Vector Database (Optional)
 
-This step is only required if you are running the chatbot locally with the Qdrant vector store. The HPC deployment uses a FAISS vector store, which does not require a separate database server.
+This step is only required if you are running the chatbot locally with the Qdrant vector store. The
+HPC deployment uses a FAISS vector store, which does not require a separate database server.
 
 Run the Qdrant Docker container:
 
@@ -288,7 +353,8 @@ To run the pipeline, execute the following command:
  
 ## Running the Chatbot
 
-The method for running the chatbot differs depending on whether you are in a local environment (like a Mac) or on the HPC cluster.
+The method for running the chatbot differs depending on whether you are in a local environment
+(like a Mac) or on the HPC cluster.
 
 ### Running Locally
 
@@ -323,22 +389,36 @@ The app will be available at `http://localhost:8501`.
 
 ### Running on the HPC Cluster
 
-To run the chatbot on the HPC cluster, please refer to the **HPC Deployment** section for instructions on submitting the job via `sbatch`.
+Before submitting HPC jobs, create the repo-local virtual environment on the cluster checkout:
+
+```bash
+./scripts/deployment/hpc/setup_hpc.sh
+```
+
+Then refer to the **HPC Deployment** section for the appropriate `sbatch` entrypoint.
 
 ## Deployment
 
 ### Deployment on an HPC Cluster
 
-To deploy the chatbot on an HPC cluster, you can use the provided `sbatch` script. This script sets up the necessary environment, including loading the required modules and activating the virtual environment, and then runs the chatbot application.
+Use one of the following launch paths:
 
-**To submit the job, run the following command:**
+- Local `llama_cpp` on the allocated node:
+
 ```bash
 sbatch scripts/deployment/hpc/run_chat_hpc.sbatch
 ```
 
-This will submit the job to the Slurm scheduler, and the chatbot will be accessible through the compute node where the job is running.
+- Hosted vLLM consumed by the chat UI:
 
-This deployment is ideal for running the chatbot in a high-performance environment, enabling it to handle complex queries and large datasets efficiently.
+```bash
+sbatch --export=ALL,LLM_PROVIDER=vllm,VLLM_ENDPOINT_DIR="$VLLM_ENDPOINT_DIR" \
+  scripts/deployment/hpc/run_chat_hpc_remote.sbatch
+```
+
+The local path runs model inference on the same node as the chat UI. The hosted path keeps the chat
+UI separate and calls the shared vLLM REST endpoint discovered from env or
+`vllm-endpoint.json`.
 
 ```mermaid
 sequenceDiagram
@@ -348,7 +428,7 @@ sequenceDiagram
     participant GPU Compute Node
 
     User->>Login Node: Connects via SSH
-    User->>Login Node: Submits run_chat_hpc.sbatch
+    User->>Login Node: Submits run_chat_hpc.sbatch or run_chat_hpc_remote.sbatch
     Login Node->>Slurm Scheduler: Sends job request
     Slurm Scheduler->>GPU Compute Node: Allocates node and sends job
     GPU Compute Node->>GPU Compute Node: Runs sbatch script (setup env, start chat_hpc.py)
@@ -357,8 +437,5 @@ sequenceDiagram
     User->>GPU Compute Node: Interacts with chatbot via local browser
 ```
 
-To run the chatbot on the HPC cluster, submit a job to the Slurm scheduler using the provided `sbatch` script. This script requests a GPU node and sets up the necessary environment for the application to run.
-
-```bash
-sbatch scripts/deployment/hpc/run_chat_hpc.sbatch
-```
+For hosted vLLM, start the serve job first and point the remote chat launcher at
+`VLLM_ENDPOINT_DIR` so the app can resolve the published `base_url`, `health_url`, and model.
