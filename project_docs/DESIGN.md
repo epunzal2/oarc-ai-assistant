@@ -309,9 +309,25 @@ This keeps OpenWebUI replaceable and preserves a stable backend contract for fut
 - [ ] Add configurable timeouts, retries, and health checks for vLLM.
 - [ ] Add deployment scripts for the FastAPI gateway on macOS and HPC.
 
-### Phase 5: Final Product UI
+### Phase 5: Quality, Telemetry, and Multi-User Readiness
 
-- [ ] Build the React/Next.js frontend against the FastAPI API.
+- [ ] Run answer-quality evaluations against the gold datasets and qrels.
+- [ ] Add regression checks for retrieval quality, citation correctness, and unsupported-question
+  behavior.
+- [ ] Expand runtime telemetry with request IDs, user/session IDs when available, corpus/index
+  versions, retrieved chunk IDs, latency breakdowns, token counts, and provider metadata.
+- [ ] Build MLflow views or reports that make answer quality, retrieval quality, latency, and model
+  changes easy to compare across runs.
+- [ ] Load test the RAG gateway and vLLM path with multiple concurrent users on HPC.
+- [ ] Define HPC operating limits: expected concurrent users, GPU allocation, queueing behavior,
+  endpoint lifetime, timeout policy, and restart/recovery steps.
+- [ ] Validate privacy controls so raw prompts, ServiceNow-derived content, and user identifiers are
+  not stored unless explicitly approved.
+- [ ] Document an operator workflow for monitoring the service and diagnosing bad answers.
+
+### Phase 6: Final Product UI
+
+- [ ] Build the React/Next.js frontend against the hardened FastAPI API.
 - [ ] Add auth/SSO integration.
 - [ ] Add source and citation panels.
 - [ ] Add user feedback capture.
