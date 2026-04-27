@@ -15,14 +15,9 @@ if ! command -v uv &> /dev/null; then
     exit 1
 fi
 
-# 3. Create a clean Python virtual environment
-echo "Creating a clean Python virtual environment..."
-rm -rf .venv
-uv venv
-
-# 4. Install dependencies
-echo "Installing dependencies from requirements.txt..."
-uv pip install -r requirements.txt
+# 3. Create or refresh the repo-local Python virtual environment
+echo "Syncing repo-local virtual environment with uv..."
+uv sync
 
 # 5. Create a directory named models in the project root if it does not already exist
 echo "Creating models directory if it doesn't exist..."

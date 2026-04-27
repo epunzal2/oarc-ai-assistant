@@ -26,11 +26,9 @@ echo "OMP_NUM_THREADS:$OMP_NUM_THREADS"
 # Load necessary modules (e.g., CUDA)
 
 # Activate the Python virtual environment
-echo "Activating virtual environment..."
-CONDA_ENV_NAME="oarc-ai-rag-test"
-echo "Conda environment name: $CONDA_ENV_NAME"
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate $CONDA_ENV_NAME
+echo "Activating project virtual environment..."
+PROJECT_ROOT="${PROJECT_ROOT:-$PWD}"
+source "${PROJECT_ROOT}/scripts/common/activate_project_env.sh"
 
 # Execute the pipeline script
 # ---------------------------

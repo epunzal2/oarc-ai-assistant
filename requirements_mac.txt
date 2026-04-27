@@ -7,7 +7,6 @@ langchain-community
 langchain-huggingface
 libmagic
 unstructured[md]
-uv
 python-dotenv
 presidio-analyzer
 presidio-anonymizer

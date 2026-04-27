@@ -26,10 +26,8 @@ mkdir -p logs
 PROJECT_ROOT="${PROJECT_ROOT:-$PWD}"
 cd "$PROJECT_ROOT"
 
-# --- Conda env ---
-CONDA_ENV_NAME="oarc-ai-rag-test"
-source "$(/usr/bin/conda info --base 2>/dev/null || conda info --base)/etc/profile.d/conda.sh"
-conda activate "$CONDA_ENV_NAME"
+# --- Repo-local virtual environment ---
+source "${PROJECT_ROOT}/scripts/common/activate_project_env.sh"
 
 # --- Python path ---
 export PYTHONPATH="${SLURM_SUBMIT_DIR:-/scratch/ep523/oarc-ai-assistant}:${PYTHONPATH:-}"

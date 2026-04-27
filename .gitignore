@@ -80,9 +80,6 @@ target/
 profile_default/
 ipython_config.py
 
-# pyenv
-.python-version
-
 # celery beat schedule file
 celerybeat-schedule
 
@@ -141,11 +138,14 @@ TODO.md
 /verification/
 /todo/
 /env_check/
-/project_docs/
+/project_docs/*
+!/project_docs/DESIGN.md
 /vector_index/
+/runtime/
 /results/
 
-/.plans/
+/.plans/*
+!/.plans/2026-04-14-uv-venv-migration.md
 /tmp/
 /results/
 /.roo/

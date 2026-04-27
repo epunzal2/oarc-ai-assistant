@@ -1,6 +1,7 @@
 # NOTE:
-# - Torch/torchvision/torchaudio are already present in the base env; do not install via pip.
-# - This file installs app libs via pip without touching the Torch stack.
+# - This file is the pip-compatible fallback for Linux/HPC installs when you are not using
+#   `uv sync --extra vllm`.
+# - The primary workflow for this repo is now repo-local `.venv` plus `uv`.
 
 # Core app libs
 langchain==0.3.27
@@ -38,7 +39,6 @@ requests==2.32.3
 
 # system dep
 python-magic
-uv
 
 # vector store
 faiss-cpu==1.9.0

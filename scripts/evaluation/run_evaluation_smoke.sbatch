@@ -17,10 +17,7 @@ mkdir -p logs
 PROJECT_ROOT="${PROJECT_ROOT:-$PWD}"
 cd "$PROJECT_ROOT"
 
-# Conda environment mirrors env_check/oarc-ai-rag-test.lock.txt
-CONDA_ENV_NAME="oarc-ai-rag-test"
-source "$(/usr/bin/conda info --base 2>/dev/null || conda info --base)/etc/profile.d/conda.sh"
-conda activate "$CONDA_ENV_NAME"
+source "${PROJECT_ROOT}/scripts/common/activate_project_env.sh"
 
 export PYTHONPATH="${SLURM_SUBMIT_DIR:-$PWD}:${PYTHONPATH:-}"
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
