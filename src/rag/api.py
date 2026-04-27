@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import json
 import time
 import uuid
@@ -12,17 +11,20 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.rag import config
 from src.rag.llm_provider import tokenize_len
 from src.rag.logger import get_logger
+from src.rag.service import (
+    DEFAULT_GATEWAY_PROVIDER,
+    RAGService,
+    RAGServiceStream,
+    extract_rag_sources,
+    normalize_rag_answer,
+)
 
 logger = get_logger(__name__)
 
 RAG_MODEL_ID = "oarc-rag-v1"
-DEFAULT_GATEWAY_PROVIDER = "vllm"
-DEFAULT_VECTOR_STORE = "qdrant"
 SSE_MEDIA_TYPE = "text/event-stream"
-SOURCE_SNIPPET_CHARS = 280
 
 
 class ChatMessage(BaseModel):
@@ -43,6 +45,7 @@ class ChatCompletionRequest(BaseModel):
 def create_app(
     *,
     rag_chain_factory: Optional[Callable[[], Any]] = None,
+    rag_service: Optional[RAGService] = None,
     model_id: str = RAG_MODEL_ID,
 ) -> FastAPI:
     app = FastAPI(
@@ -50,8 +53,7 @@ def create_app(
         version="0.1.0",
         description="OpenAI-compatible API boundary for the OARC RAG pipeline.",
     )
-    app.state.rag_chain_factory = rag_chain_factory or _default_rag_chain_factory
-    app.state.rag_chain = None
+    app.state.rag_service = rag_service or RAGService(chain_factory=rag_chain_factory)
     app.state.model_id = model_id
 
     @app.exception_handler(RequestValidationError)
@@ -68,10 +70,8 @@ def create_app(
     @app.get("/health")
     def health() -> dict[str, Any]:
         return {
-            "status": "ok",
-            "service": "rag-gateway",
+            **_get_rag_service(app).health(),
             "model": app.state.model_id,
-            "backend": _vllm_metadata(),
         }
 
     @app.get("/v1/models")
@@ -87,7 +87,7 @@ def create_app(
                     "metadata": {
                         "rag": True,
                         "backing_provider": DEFAULT_GATEWAY_PROVIDER,
-                        **_vllm_metadata(),
+                        **_get_rag_service(app).provider_metadata(),
                     },
                 }
             ],
@@ -105,28 +105,15 @@ def create_app(
                 param="messages",
             )
 
-        try:
-            chain = _get_rag_chain(app)
-        except Exception:
-            logger.exception("RAG gateway initialization failed.")
-            return _error_response(
-                "The RAG gateway failed to initialize the RAG pipeline.",
-                status_code=500,
-                error_type="server_error",
-            )
-
-        request_id = f"rag-{uuid.uuid4().hex}"
-
         if payload.stream:
             return _streaming_completion_response(
-                chain=chain,
+                service=_get_rag_service(app),
                 question=question,
                 model=app.state.model_id,
-                request_id=request_id,
             )
 
         try:
-            result = chain.invoke(question)
+            result = _get_rag_service(app).answer(question)
         except Exception:
             logger.exception("RAG gateway completion failed.")
             return _error_response(
@@ -135,13 +122,13 @@ def create_app(
                 error_type="server_error",
             )
 
-        answer = normalize_rag_answer(result)
         return format_chat_completion_response(
-            answer=answer,
+            answer=result.answer,
             question=question,
             model=app.state.model_id,
-            request_id=request_id,
-            sources=extract_rag_sources(result),
+            request_id=result.request_id,
+            sources=result.sources,
+            metadata=result.metadata,
         )
 
     return app
@@ -157,38 +144,6 @@ def extract_latest_user_question(messages: Sequence[ChatMessage]) -> str:
     raise ValueError("messages must include a non-empty user message")
 
 
-def normalize_rag_answer(result: Any) -> str:
-    if isinstance(result, dict) and "answer" in result:
-        answer = result.get("answer")
-        return "" if answer is None else str(answer)
-    return "" if result is None else str(result)
-
-
-def extract_rag_sources(result: Any) -> list[dict[str, Any]]:
-    if not isinstance(result, dict):
-        return []
-
-    sources: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for doc in result.get("context") or []:
-        source = _source_from_doc(doc)
-        if not source:
-            continue
-        dedupe_key = (
-            source.get("chunk_id")
-            or source.get("id")
-            or source.get("source")
-            or source.get("snippet")
-        )
-        if dedupe_key:
-            key = str(dedupe_key)
-            if key in seen:
-                continue
-            seen.add(key)
-        sources.append(source)
-    return sources
-
-
 def format_chat_completion_response(
     *,
     answer: str,
@@ -196,10 +151,11 @@ def format_chat_completion_response(
     model: str,
     request_id: str,
     sources: Optional[list[dict[str, Any]]] = None,
+    metadata: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     prompt_tokens = tokenize_len(question)
     completion_tokens = tokenize_len(answer)
-    return {
+    response = {
         "id": f"chatcmpl-{uuid.uuid4().hex}",
         "object": "chat.completion",
         "created": int(time.time()),
@@ -222,29 +178,19 @@ def format_chat_completion_response(
             "total_tokens": prompt_tokens + completion_tokens,
         },
     }
+    if metadata is not None:
+        response["rag_metadata"] = _public_metadata(metadata)
+    return response
 
 
 def _streaming_completion_response(
     *,
-    chain: Any,
+    service: RAGService,
     question: str,
     model: str,
-    request_id: str,
 ) -> StreamingResponse | JSONResponse:
-    stream_answer = getattr(chain, "stream_answer", None)
-    if callable(stream_answer):
-        return StreamingResponse(
-            _iter_live_stream(
-                stream_answer=stream_answer,
-                question=question,
-                model=model,
-                request_id=request_id,
-            ),
-            media_type=SSE_MEDIA_TYPE,
-        )
-
     try:
-        result = chain.invoke(question)
+        stream = service.start_stream(question)
     except Exception:
         logger.exception("RAG gateway completion failed before streaming started.")
         return _error_response(
@@ -254,45 +200,32 @@ def _streaming_completion_response(
         )
 
     return StreamingResponse(
-        _iter_completed_stream(
-            answer=normalize_rag_answer(result),
-            sources=extract_rag_sources(result),
-            model=model,
-            request_id=request_id,
-        ),
+        _iter_service_stream(service=service, stream=stream, model=model),
         media_type=SSE_MEDIA_TYPE,
     )
 
 
-def _iter_live_stream(
+def _iter_service_stream(
     *,
-    stream_answer: Callable[[str], Any],
-    question: str,
+    service: RAGService,
+    stream: RAGServiceStream,
     model: str,
-    request_id: str,
 ) -> Iterable[str]:
     completion_id = _chat_completion_id()
     created = int(time.time())
+    answer_parts: list[str] = []
     yield _sse_data(_chat_chunk(completion_id, model, created, {"role": "assistant"}))
 
-    chunks: Iterable[str] = []
-    context: list[Any] = []
-    answer_parts: list[str] = []
     try:
-        stream_result = stream_answer(question)
-        context = list(stream_result.get("context") or []) if isinstance(stream_result, dict) else []
-        if isinstance(stream_result, dict):
-            chunks = stream_result.get("chunks") or []
-        else:
-            chunks = stream_result
-        for piece in chunks:
+        for piece in stream.chunks:
             text = str(piece)
             if not text:
                 continue
             answer_parts.append(text)
             yield _sse_data(_chat_chunk(completion_id, model, created, {"content": text}))
-    except Exception:
+    except Exception as exc:
         logger.exception("RAG gateway streaming completion failed.")
+        service.fail_stream(stream, exc)
         yield _sse_event(
             "error",
             {
@@ -307,7 +240,7 @@ def _iter_live_stream(
         yield "data: [DONE]\n\n"
         return
 
-    sources = extract_rag_sources({"context": context})
+    metadata = service.finalize_stream(stream, "".join(answer_parts))
     yield _sse_data(
         _chat_chunk(
             completion_id,
@@ -315,34 +248,9 @@ def _iter_live_stream(
             created,
             {},
             finish_reason="stop",
-            request_id=request_id,
-            sources=sources,
-        )
-    )
-    yield "data: [DONE]\n\n"
-
-
-def _iter_completed_stream(
-    *,
-    answer: str,
-    sources: list[dict[str, Any]],
-    model: str,
-    request_id: str,
-) -> Iterable[str]:
-    completion_id = _chat_completion_id()
-    created = int(time.time())
-    yield _sse_data(_chat_chunk(completion_id, model, created, {"role": "assistant"}))
-    if answer:
-        yield _sse_data(_chat_chunk(completion_id, model, created, {"content": answer}))
-    yield _sse_data(
-        _chat_chunk(
-            completion_id,
-            model,
-            created,
-            {},
-            finish_reason="stop",
-            request_id=request_id,
-            sources=sources,
+            request_id=stream.request_id,
+            sources=stream.sources,
+            metadata=metadata,
         )
     )
     yield "data: [DONE]\n\n"
@@ -357,6 +265,7 @@ def _chat_chunk(
     finish_reason: Optional[str] = None,
     request_id: Optional[str] = None,
     sources: Optional[list[dict[str, Any]]] = None,
+    metadata: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     chunk: dict[str, Any] = {
         "id": completion_id,
@@ -374,6 +283,8 @@ def _chat_chunk(
     if request_id is not None:
         chunk["rag_request_id"] = request_id
         chunk["rag_sources"] = sources or []
+    if metadata is not None:
+        chunk["rag_metadata"] = _public_metadata(metadata)
     return chunk
 
 
@@ -387,23 +298,6 @@ def _sse_event(event: str, payload: dict[str, Any]) -> str:
 
 def _chat_completion_id() -> str:
     return f"chatcmpl-{uuid.uuid4().hex}"
-
-
-def _default_rag_chain_factory() -> Any:
-    from src.rag.rag_pipeline import create_rag_chain
-
-    provider_name = os.environ.get("RAG_GATEWAY_LLM_PROVIDER", DEFAULT_GATEWAY_PROVIDER)
-    vector_store_type = os.environ.get("RAG_GATEWAY_VECTOR_STORE", DEFAULT_VECTOR_STORE)
-    return create_rag_chain(
-        llm_provider_name=provider_name,
-        vector_store_type=vector_store_type,
-    )
-
-
-def _get_rag_chain(app: FastAPI) -> Any:
-    if app.state.rag_chain is None:
-        app.state.rag_chain = app.state.rag_chain_factory()
-    return app.state.rag_chain
 
 
 def _content_to_text(content: Any) -> str:
@@ -425,45 +319,16 @@ def _content_to_text(content: Any) -> str:
     return ""
 
 
-def _source_from_doc(doc: Any) -> dict[str, Any]:
-    metadata = getattr(doc, "metadata", {}) or {}
-    page_content = getattr(doc, "page_content", "") or ""
-    source: dict[str, Any] = {}
-
-    field_map = {
-        "id": ("id", "document_id", "doc_id"),
-        "source": ("source", "path", "file_path"),
-        "title": ("title", "name"),
-        "url": ("url", "source_url"),
-        "chunk_id": ("chunk_id",),
-        "score": ("score", "relevance_score"),
-    }
-    for output_key, metadata_keys in field_map.items():
-        value = _first_metadata_value(metadata, metadata_keys)
-        if value is not None and value != "":
-            source[output_key] = value
-
-    snippet = " ".join(str(page_content).split())[:SOURCE_SNIPPET_CHARS]
-    if snippet:
-        source["snippet"] = snippet
-    return source
-
-
-def _first_metadata_value(metadata: dict[str, Any], keys: Sequence[str]) -> Any:
-    for key in keys:
-        value = metadata.get(key)
-        if value is not None and value != "":
-            return value
-    return None
-
-
-def _vllm_metadata() -> dict[str, Any]:
-    provider_kwargs = config.provider_kwargs(DEFAULT_GATEWAY_PROVIDER)
+def _public_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     return {
-        "backing_model": provider_kwargs.get("model"),
-        "backing_base_url": provider_kwargs.get("base_url"),
-        "backing_health_url": config.provider_health_url(DEFAULT_GATEWAY_PROVIDER),
+        key: value
+        for key, value in metadata.items()
+        if not key.startswith("_") and key not in {"retrieved_doc_ids"}
     }
+
+
+def _get_rag_service(app: FastAPI) -> RAGService:
+    return app.state.rag_service
 
 
 def _error_response(

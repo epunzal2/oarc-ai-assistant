@@ -1,5 +1,5 @@
 Title: RAG Service Hardening
-Status: Draft
+Status: Done
 Owner: agent-llm
 Reviewers: n/a
 Issues: n/a
@@ -66,16 +66,16 @@ non-streaming calls.
 
 # Implementation Plan
 
-- [ ] Add a `RAGService` abstraction for gateway request orchestration.
-- [ ] Refactor `src/rag/api.py` so route handlers delegate chain execution to `RAGService`.
-- [ ] Preserve existing OpenAI-compatible response and streaming chunk shapes.
-- [ ] Add stable request IDs across responses, logs, stream chunks, and telemetry records.
-- [ ] Add total latency metrics and best-effort retrieval/provider timing where available.
-- [ ] Record prompt hashes, retrieval IDs or chunk IDs, provider name, backing model, and health URL.
-- [ ] Keep raw prompts, raw user questions, and raw retrieved document text out of MLflow.
-- [ ] Reuse existing vLLM timeout and retry configuration.
-- [ ] Extend health reporting to expose degraded provider status without forcing full RAG startup.
-- [ ] Add macOS and HPC scripts for starting the FastAPI gateway.
+- [x] Add a `RAGService` abstraction for gateway request orchestration.
+- [x] Refactor `src/rag/api.py` so route handlers delegate chain execution to `RAGService`.
+- [x] Preserve existing OpenAI-compatible response and streaming chunk shapes.
+- [x] Add stable request IDs across responses, logs, stream chunks, and telemetry records.
+- [x] Add total latency metrics and best-effort retrieval/provider timing where available.
+- [x] Record prompt hashes, retrieval IDs or chunk IDs, provider name, backing model, and health URL.
+- [x] Keep raw prompts, raw user questions, and raw retrieved document text out of MLflow.
+- [x] Reuse existing vLLM timeout and retry configuration.
+- [x] Extend health reporting to expose degraded provider status without forcing full RAG startup.
+- [x] Add macOS and HPC scripts for starting the FastAPI gateway.
 
 # Testing Strategy
 
@@ -121,6 +121,14 @@ Revert the service abstraction, API refactor, telemetry additions, health-check 
 scripts, and tests. Keep the Phase 1 and Phase 2 gateway implementation active. No vector index,
 model, or data migration is required.
 
+# Outcome
+
+Phase 4 added `src/rag/service.py`, refactored `src/rag/api.py` to delegate RAG execution to
+`RAGService`, added sanitized gateway telemetry, exposed provider health metadata, and added macOS
+and HPC gateway launch scripts. Focused tests cover the service boundary, sanitized telemetry,
+degraded provider health, scripts, and the preserved gateway API.
+
 # Decision Log
 
 - 2026-04-27: Drafted Phase 4 service hardening plan.
+- 2026-04-27: Implemented Phase 4 service hardening and marked the plan done.

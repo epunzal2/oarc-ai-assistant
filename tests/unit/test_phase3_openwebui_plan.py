@@ -64,7 +64,10 @@ def test_phase_3_plan_file_exists_and_is_unignored() -> None:
 def test_phase_4_design_links_plan_and_service_hardening_diagram() -> None:
     phase_4 = _phase_text("### Phase 4: Service Hardening", "### Phase 5:")
 
+    assert "- [ ]" not in phase_4
     assert ".plans/2026-04-27-rag-service-hardening.md" in phase_4
+    assert "src/rag/service.py" in phase_4
+    assert "tests/unit/test_rag_service_hardening.py" in phase_4
     assert "flowchart LR" in phase_4
     assert "RAGService" in phase_4
     assert "HTTP contract only" in phase_4
@@ -77,8 +80,9 @@ def test_phase_4_plan_file_exists_and_is_unignored() -> None:
     gitignore = GITIGNORE.read_text(encoding="utf-8")
 
     assert "Title: RAG Service Hardening" in plan
-    assert "Status: Draft" in plan
+    assert "Status: Done" in plan
     assert "RAGService" in plan
     assert "MLflow telemetry" in plan
     assert "no raw prompts" in plan
+    assert "Outcome" in plan
     assert "!/.plans/2026-04-27-rag-service-hardening.md" in gitignore

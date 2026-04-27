@@ -352,13 +352,18 @@ Verification checklist:
 
 ### Phase 4: Service Hardening
 
-- [ ] Extract a clean `RAGService` abstraction so UI/API code does not own retrieval details.
-- [ ] Add request IDs, latency metrics, prompt hashes, retrieval IDs, and provider metadata.
-- [ ] Log runtime telemetry to MLflow without storing raw prompts.
-- [ ] Add configurable timeouts, retries, and health checks for vLLM.
-- [ ] Add deployment scripts for the FastAPI gateway on macOS and HPC.
+- [x] Extract a clean `RAGService` abstraction so UI/API code does not own retrieval details.
+- [x] Add request IDs, latency metrics, prompt hashes, retrieval IDs, and provider metadata.
+- [x] Log runtime telemetry to MLflow without storing raw prompts.
+- [x] Add configurable timeouts, retries, and health checks for vLLM.
+- [x] Add deployment scripts for the FastAPI gateway on macOS and HPC.
 
 Detailed plan: `.plans/2026-04-27-rag-service-hardening.md`.
+
+Phase 4 is complete. See `.plans/2026-04-27-rag-service-hardening.md`, `src/rag/service.py`,
+`src/rag/api.py`, `scripts/deployment/macos/run_rag_gateway.sh`,
+`scripts/deployment/hpc/run_rag_gateway.sbatch`, and
+`tests/unit/test_rag_service_hardening.py`.
 
 Phase 4 hardens the RAG gateway without changing the public OpenAI-compatible API added in
 Phases 1 and 2. The main boundary change is to keep FastAPI focused on HTTP concerns while a
