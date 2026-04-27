@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import os
+import json
 import time
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from typing import Any, Optional
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.rag import config
@@ -20,6 +21,8 @@ logger = get_logger(__name__)
 RAG_MODEL_ID = "oarc-rag-v1"
 DEFAULT_GATEWAY_PROVIDER = "vllm"
 DEFAULT_VECTOR_STORE = "qdrant"
+SSE_MEDIA_TYPE = "text/event-stream"
+SOURCE_SNIPPET_CHARS = 280
 
 
 class ChatMessage(BaseModel):
@@ -92,15 +95,6 @@ def create_app(
 
     @app.post("/v1/chat/completions")
     def chat_completions(payload: ChatCompletionRequest) -> Any:
-        if payload.stream:
-            return _error_response(
-                "Streaming chat completions are not supported by this gateway phase.",
-                status_code=400,
-                error_type="invalid_request_error",
-                param="stream",
-                code="streaming_unsupported",
-            )
-
         try:
             question = extract_latest_user_question(payload.messages)
         except ValueError as exc:
@@ -112,7 +106,27 @@ def create_app(
             )
 
         try:
-            result = _get_rag_chain(app).invoke(question)
+            chain = _get_rag_chain(app)
+        except Exception:
+            logger.exception("RAG gateway initialization failed.")
+            return _error_response(
+                "The RAG gateway failed to initialize the RAG pipeline.",
+                status_code=500,
+                error_type="server_error",
+            )
+
+        request_id = f"rag-{uuid.uuid4().hex}"
+
+        if payload.stream:
+            return _streaming_completion_response(
+                chain=chain,
+                question=question,
+                model=app.state.model_id,
+                request_id=request_id,
+            )
+
+        try:
+            result = chain.invoke(question)
         except Exception:
             logger.exception("RAG gateway completion failed.")
             return _error_response(
@@ -126,6 +140,8 @@ def create_app(
             answer=answer,
             question=question,
             model=app.state.model_id,
+            request_id=request_id,
+            sources=extract_rag_sources(result),
         )
 
     return app
@@ -148,11 +164,38 @@ def normalize_rag_answer(result: Any) -> str:
     return "" if result is None else str(result)
 
 
+def extract_rag_sources(result: Any) -> list[dict[str, Any]]:
+    if not isinstance(result, dict):
+        return []
+
+    sources: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for doc in result.get("context") or []:
+        source = _source_from_doc(doc)
+        if not source:
+            continue
+        dedupe_key = (
+            source.get("chunk_id")
+            or source.get("id")
+            or source.get("source")
+            or source.get("snippet")
+        )
+        if dedupe_key:
+            key = str(dedupe_key)
+            if key in seen:
+                continue
+            seen.add(key)
+        sources.append(source)
+    return sources
+
+
 def format_chat_completion_response(
     *,
     answer: str,
     question: str,
     model: str,
+    request_id: str,
+    sources: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     prompt_tokens = tokenize_len(question)
     completion_tokens = tokenize_len(answer)
@@ -161,6 +204,8 @@ def format_chat_completion_response(
         "object": "chat.completion",
         "created": int(time.time()),
         "model": model,
+        "rag_request_id": request_id,
+        "rag_sources": sources or [],
         "choices": [
             {
                 "index": 0,
@@ -177,6 +222,171 @@ def format_chat_completion_response(
             "total_tokens": prompt_tokens + completion_tokens,
         },
     }
+
+
+def _streaming_completion_response(
+    *,
+    chain: Any,
+    question: str,
+    model: str,
+    request_id: str,
+) -> StreamingResponse | JSONResponse:
+    stream_answer = getattr(chain, "stream_answer", None)
+    if callable(stream_answer):
+        return StreamingResponse(
+            _iter_live_stream(
+                stream_answer=stream_answer,
+                question=question,
+                model=model,
+                request_id=request_id,
+            ),
+            media_type=SSE_MEDIA_TYPE,
+        )
+
+    try:
+        result = chain.invoke(question)
+    except Exception:
+        logger.exception("RAG gateway completion failed before streaming started.")
+        return _error_response(
+            "The RAG gateway failed to generate a completion.",
+            status_code=500,
+            error_type="server_error",
+        )
+
+    return StreamingResponse(
+        _iter_completed_stream(
+            answer=normalize_rag_answer(result),
+            sources=extract_rag_sources(result),
+            model=model,
+            request_id=request_id,
+        ),
+        media_type=SSE_MEDIA_TYPE,
+    )
+
+
+def _iter_live_stream(
+    *,
+    stream_answer: Callable[[str], Any],
+    question: str,
+    model: str,
+    request_id: str,
+) -> Iterable[str]:
+    completion_id = _chat_completion_id()
+    created = int(time.time())
+    yield _sse_data(_chat_chunk(completion_id, model, created, {"role": "assistant"}))
+
+    chunks: Iterable[str] = []
+    context: list[Any] = []
+    answer_parts: list[str] = []
+    try:
+        stream_result = stream_answer(question)
+        context = list(stream_result.get("context") or []) if isinstance(stream_result, dict) else []
+        if isinstance(stream_result, dict):
+            chunks = stream_result.get("chunks") or []
+        else:
+            chunks = stream_result
+        for piece in chunks:
+            text = str(piece)
+            if not text:
+                continue
+            answer_parts.append(text)
+            yield _sse_data(_chat_chunk(completion_id, model, created, {"content": text}))
+    except Exception:
+        logger.exception("RAG gateway streaming completion failed.")
+        yield _sse_event(
+            "error",
+            {
+                "error": {
+                    "message": "The RAG gateway failed while streaming a completion.",
+                    "type": "server_error",
+                    "param": None,
+                    "code": None,
+                }
+            },
+        )
+        yield "data: [DONE]\n\n"
+        return
+
+    sources = extract_rag_sources({"context": context})
+    yield _sse_data(
+        _chat_chunk(
+            completion_id,
+            model,
+            created,
+            {},
+            finish_reason="stop",
+            request_id=request_id,
+            sources=sources,
+        )
+    )
+    yield "data: [DONE]\n\n"
+
+
+def _iter_completed_stream(
+    *,
+    answer: str,
+    sources: list[dict[str, Any]],
+    model: str,
+    request_id: str,
+) -> Iterable[str]:
+    completion_id = _chat_completion_id()
+    created = int(time.time())
+    yield _sse_data(_chat_chunk(completion_id, model, created, {"role": "assistant"}))
+    if answer:
+        yield _sse_data(_chat_chunk(completion_id, model, created, {"content": answer}))
+    yield _sse_data(
+        _chat_chunk(
+            completion_id,
+            model,
+            created,
+            {},
+            finish_reason="stop",
+            request_id=request_id,
+            sources=sources,
+        )
+    )
+    yield "data: [DONE]\n\n"
+
+
+def _chat_chunk(
+    completion_id: str,
+    model: str,
+    created: int,
+    delta: dict[str, Any],
+    *,
+    finish_reason: Optional[str] = None,
+    request_id: Optional[str] = None,
+    sources: Optional[list[dict[str, Any]]] = None,
+) -> dict[str, Any]:
+    chunk: dict[str, Any] = {
+        "id": completion_id,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "delta": delta,
+                "finish_reason": finish_reason,
+            }
+        ],
+    }
+    if request_id is not None:
+        chunk["rag_request_id"] = request_id
+        chunk["rag_sources"] = sources or []
+    return chunk
+
+
+def _sse_data(payload: dict[str, Any]) -> str:
+    return f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"
+
+
+def _sse_event(event: str, payload: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload, separators=(',', ':'))}\n\n"
+
+
+def _chat_completion_id() -> str:
+    return f"chatcmpl-{uuid.uuid4().hex}"
 
 
 def _default_rag_chain_factory() -> Any:
@@ -215,6 +425,38 @@ def _content_to_text(content: Any) -> str:
     return ""
 
 
+def _source_from_doc(doc: Any) -> dict[str, Any]:
+    metadata = getattr(doc, "metadata", {}) or {}
+    page_content = getattr(doc, "page_content", "") or ""
+    source: dict[str, Any] = {}
+
+    field_map = {
+        "id": ("id", "document_id", "doc_id"),
+        "source": ("source", "path", "file_path"),
+        "title": ("title", "name"),
+        "url": ("url", "source_url"),
+        "chunk_id": ("chunk_id",),
+        "score": ("score", "relevance_score"),
+    }
+    for output_key, metadata_keys in field_map.items():
+        value = _first_metadata_value(metadata, metadata_keys)
+        if value is not None and value != "":
+            source[output_key] = value
+
+    snippet = " ".join(str(page_content).split())[:SOURCE_SNIPPET_CHARS]
+    if snippet:
+        source["snippet"] = snippet
+    return source
+
+
+def _first_metadata_value(metadata: dict[str, Any], keys: Sequence[str]) -> Any:
+    for key in keys:
+        value = metadata.get(key)
+        if value is not None and value != "":
+            return value
+    return None
+
+
 def _vllm_metadata() -> dict[str, Any]:
     provider_kwargs = config.provider_kwargs(DEFAULT_GATEWAY_PROVIDER)
     return {
@@ -251,6 +493,7 @@ __all__ = [
     "RAG_MODEL_ID",
     "app",
     "create_app",
+    "extract_rag_sources",
     "extract_latest_user_question",
     "format_chat_completion_response",
     "normalize_rag_answer",

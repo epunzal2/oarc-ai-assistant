@@ -277,22 +277,28 @@ This keeps OpenWebUI replaceable and preserves a stable backend contract for fut
 
 ### Phase 1: RAG-Compatible API Boundary
 
-- [ ] Add a FastAPI service module for the RAG gateway.
-- [ ] Implement `GET /health`.
-- [ ] Implement `GET /v1/models` with the active RAG model alias and backing vLLM model metadata.
-- [ ] Implement non-streaming `POST /v1/chat/completions`.
-- [ ] Parse OpenAI-style chat messages and extract the latest user question.
-- [ ] Call the existing RAG pipeline, including retrieval and prompt assembly.
-- [ ] Return an OpenAI-compatible chat completion response.
-- [ ] Add tests for request parsing, response shape, and basic error handling.
+- [x] Add a FastAPI service module for the RAG gateway.
+- [x] Implement `GET /health`.
+- [x] Implement `GET /v1/models` with the active RAG model alias and backing vLLM model metadata.
+- [x] Implement non-streaming `POST /v1/chat/completions`.
+- [x] Parse OpenAI-style chat messages and extract the latest user question.
+- [x] Call the existing RAG pipeline, including retrieval and prompt assembly.
+- [x] Return an OpenAI-compatible chat completion response.
+- [x] Add tests for request parsing, response shape, and basic error handling.
+
+Phase 1 is complete. See `.plans/2026-04-27-rag-openai-api-boundary.md`, `src/rag/api.py`, and
+`tests/unit/test_rag_gateway.py`.
 
 ### Phase 2: Streaming and Source Metadata
 
-- [ ] Add streaming support for `stream: true` using server-sent events.
-- [ ] Preserve a synchronous fallback for providers or deployments that cannot stream.
-- [ ] Add a citation/source payload strategy.
-- [ ] Return source metadata through a stable extension field or a companion endpoint.
-- [ ] Add tests for streaming event shape and citation metadata.
+- [x] Add streaming support for `stream: true` using server-sent events.
+- [x] Preserve a synchronous fallback for providers or deployments that cannot stream.
+- [x] Add a citation/source payload strategy.
+- [x] Return source metadata through a stable extension field or a companion endpoint.
+- [x] Add tests for streaming event shape and citation metadata.
+
+Phase 2 is complete. See `.plans/2026-04-27-rag-streaming-source-metadata.md`, `src/rag/api.py`,
+`src/rag/rag_pipeline.py`, and `tests/unit/test_rag_gateway.py`.
 
 ### Phase 3: OpenWebUI Integration
 

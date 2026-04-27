@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Callable, Iterable, Optional, Dict, Any
 import os
 import hashlib
 import itertools
@@ -43,8 +43,10 @@ class InstrumentedRAGChain:
         index_version: str,
         corpus_hash: str,
         provider_config_path: Optional[Path],
+        stream_answer: Optional[Callable[[str], Dict[str, Any]]] = None,
     ) -> None:
         self._chain = chain
+        self._stream_answer = stream_answer
         self.provider_name = provider_name
         self.model_name = model_name
         self.vector_store_type = vector_store_type
@@ -143,6 +145,12 @@ class InstrumentedRAGChain:
     def __call__(self, *args, **kwargs):
         return self.invoke(*args, **kwargs)
 
+    def stream_answer(self, prompt: str) -> Dict[str, Any]:
+        """Return retrieved context and an answer chunk iterator for streaming gateways."""
+        if self._stream_answer is None:
+            raise NotImplementedError("This RAG chain does not expose streaming completions.")
+        return self._stream_answer(prompt)
+
     def __getattr__(self, item):
         return getattr(self._chain, item)
 
@@ -180,6 +188,7 @@ def create_rag_chain(
     )
     model_name = provider_name
     provider_config_path: Optional[Path] = None
+    llm_provider = None
 
     # Get the embedding model and vector store
     if retriever is None:
@@ -276,6 +285,30 @@ def create_rag_chain(
             return text[: max_context_chars]
         return text
 
+    def retrieve_docs(question: str):
+        if hasattr(retriever, "invoke"):
+            return retriever.invoke(question)
+        if hasattr(retriever, "get_relevant_documents"):
+            return retriever.get_relevant_documents(question)
+        return retriever(question)
+
+    def build_prompt_text(question: str, docs) -> str:
+        return prompt.format(context=format_docs(docs), question=question)
+
+    def stream_answer(question: str) -> Dict[str, Any]:
+        if llm_provider is None:
+            raise NotImplementedError("Streaming requires a provider-backed RAG chain.")
+
+        docs = retrieve_docs(question)
+        prompt_text = build_prompt_text(question, docs)
+        if llm_provider.supports_streaming():
+            response = llm_provider.generate(prompt_text, stream=True)
+            chunks: Iterable[str] = response.stream or []
+        else:
+            response = llm_provider.generate(prompt_text, stream=False)
+            chunks = [response.text or ""]
+        return {"context": docs, "chunks": chunks}
+
     rag_chain = (
         {
             "context": retriever,
@@ -339,6 +372,7 @@ def create_rag_chain(
         index_version=index_version,
         corpus_hash=corpus_hash,
         provider_config_path=provider_config_path,
+        stream_answer=stream_answer if llm_provider is not None else None,
     )
 
 def log_rag_chain_as_model():
