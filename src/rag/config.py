@@ -5,8 +5,10 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
+from src.rag.endpoint_discovery import read_endpoint, resolve_endpoint_dir
 
 load_dotenv()
 
@@ -71,6 +73,7 @@ class HTTPProviderSettings:
     tokenizer: Optional[str] = None
     max_context_tokens: Optional[int] = None
     max_output_tokens: Optional[int] = None
+    health_url: Optional[str] = None
     health_port: Optional[int] = None
     request_kwargs: Dict[str, Any] = field(default_factory=dict)
     generation_kwargs: Dict[str, Any] = field(default_factory=dict)
@@ -87,6 +90,7 @@ class HTTPProviderSettings:
             "tokenizer": self.tokenizer,
             "max_context_tokens": self.max_context_tokens,
             "max_output_tokens": self.max_output_tokens,
+            "health_url": self.health_url,
             "request_kwargs": self.request_kwargs or None,
         }
         payload.update(self.generation_kwargs)
@@ -106,6 +110,7 @@ class HTTPProviderSettings:
             "tokenizer": self.tokenizer,
             "max_context_tokens": self.max_context_tokens,
             "max_output_tokens": self.max_output_tokens,
+            "health_url": self.health_url,
             "health_port": self.health_port,
             "request_kwargs": self.request_kwargs,
             "generation_kwargs": self.generation_kwargs,
@@ -114,8 +119,22 @@ class HTTPProviderSettings:
 
 
 def _load_http_provider(prefix: str, *, defaults: Dict[str, Any]) -> HTTPProviderSettings:
-    base_url = os.environ.get(f"{prefix}_BASE_URL", defaults["base_url"])
-    model = os.environ.get(f"{prefix}_MODEL", defaults["model"])
+    endpoint = None
+    if prefix == "VLLM":
+        endpoint_dir = resolve_endpoint_dir()
+        if endpoint_dir is not None:
+            endpoint = read_endpoint(endpoint_dir)
+
+    base_url = (
+        os.environ.get(f"{prefix}_BASE_URL")
+        or (endpoint.base_url if endpoint is not None else None)
+        or defaults["base_url"]
+    )
+    model = (
+        os.environ.get(f"{prefix}_MODEL")
+        or (endpoint.model if endpoint is not None else None)
+        or defaults["model"]
+    )
     api_key = os.environ.get(f"{prefix}_API_KEY")
     timeout = _env_float(f"{prefix}_TIMEOUT", defaults.get("timeout", 30.0)) or 30.0
     max_retries = _env_int(f"{prefix}_MAX_RETRIES", defaults.get("max_retries", 3)) or 3
@@ -129,6 +148,11 @@ def _load_http_provider(prefix: str, *, defaults: Dict[str, Any]) -> HTTPProvide
     )
     max_output_tokens = _env_int(
         f"{prefix}_MAX_OUTPUT_TOKENS", defaults.get("max_output_tokens")
+    )
+    health_url = (
+        os.environ.get(f"{prefix}_HEALTH_URL")
+        or (endpoint.health_url if endpoint is not None else None)
+        or defaults.get("health_url")
     )
     health_port = _env_int(f"{prefix}_HEALTH_PORT", defaults.get("health_port"))
     request_kwargs = defaults.get("request_kwargs", {}).copy()
@@ -163,6 +187,7 @@ def _load_http_provider(prefix: str, *, defaults: Dict[str, Any]) -> HTTPProvide
         tokenizer=tokenizer,
         max_context_tokens=max_context_tokens,
         max_output_tokens=max_output_tokens,
+        health_url=health_url,
         health_port=health_port,
         request_kwargs=request_kwargs,
         generation_kwargs=generation_kwargs,
@@ -204,6 +229,7 @@ VLLM_SETTINGS = _load_http_provider(
         "max_retries": 5,
         "backoff_factor": 2.0,
         "max_context_tokens": 8192,
+        "health_url": "http://127.0.0.1:8000/health",
         "generation_kwargs": {"temperature": 0.0},
     },
 )
@@ -242,6 +268,23 @@ def provider_kwargs(provider_name: str) -> Dict[str, Any]:
 def provider_health_port(provider_name: str) -> Optional[int]:
     settings = HTTP_PROVIDER_CONFIGS.get(provider_name.lower())
     return settings.health_port if settings else None
+
+
+def provider_health_url(provider_name: str, host: Optional[str] = None) -> Optional[str]:
+    settings = HTTP_PROVIDER_CONFIGS.get(provider_name.lower())
+    if not settings:
+        return None
+    if settings.health_url:
+        return settings.health_url
+    if settings.health_port is None:
+        return None
+    health_host = host or _host_from_base_url(settings.base_url)
+    return f"http://{health_host}:{settings.health_port}/healthz"
+
+
+def _host_from_base_url(base_url: str) -> str:
+    parsed = urlparse(base_url)
+    return parsed.hostname or "127.0.0.1"
 
 
 def persist_provider_settings(provider_name: str, directory: Path) -> Optional[Path]:

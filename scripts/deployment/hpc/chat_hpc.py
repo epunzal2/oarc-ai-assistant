@@ -125,10 +125,9 @@ def _ensure_provider_health(
     max_wait_seconds: float,
     interval_seconds: float,
 ) -> None:
-    port = config.provider_health_port(provider_name)
-    if port is None:
+    url = config.provider_health_url(provider_name, host=host)
+    if url is None:
         return
-    url = f"http://{host}:{port}/healthz"
     deadline = time.time() + max_wait_seconds
     while time.time() < deadline:
         try:
@@ -191,7 +190,7 @@ def main():
     logger.info(f"  Embedding model name: {config.EMBEDDING_MODEL}")
     logger.info(f"  FAISS index path: {args.faiss_dir}")
     logger.info(f"  k: {args.k}")
-    logger.info(f"  Maximum context length: 2048")
+    logger.info("  Maximum context length: 2048")
     logger.info(f"  LLM provider: {args.provider}")
 
     if args.web:

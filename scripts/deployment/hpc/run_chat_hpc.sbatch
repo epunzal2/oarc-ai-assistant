@@ -28,11 +28,8 @@ mkdir -p logs
 PROJECT_ROOT="${PROJECT_ROOT:-$PWD}"   # set explicitly if you sbatch from elsewhere
 cd "$PROJECT_ROOT"
 
-# --- Conda env ---
-CONDA_ENV_NAME="oarc-ai-rag-test"
-# If 'conda' isn't on PATH, this finds its base
-source "$(/usr/bin/conda info --base 2>/dev/null || conda info --base)/etc/profile.d/conda.sh"
-conda activate "$CONDA_ENV_NAME"
+# --- Repo-local virtual environment ---
+source "${PROJECT_ROOT}/scripts/common/activate_project_env.sh"
 
 # --- Python path so 'src/...' imports work when running from project root ---
 export PYTHONPATH="${SLURM_SUBMIT_DIR:-/scratch/ep523/oarc-ai-assistant}:${PYTHONPATH:-}"
@@ -87,6 +84,12 @@ except Exception:
     pass
 PY
 echo "LLM provider: ${LLM_PROVIDER} (health host: ${PROVIDER_HEALTH_HOST})"
+
+if [[ "${LLM_PROVIDER}" != "llama_cpp" ]]; then
+    echo "ERR: run_chat_hpc.sbatch is for local llama.cpp only." >&2
+    echo "Use scripts/deployment/hpc/run_chat_hpc_remote.sbatch for hosted HTTP providers such as vLLM." >&2
+    exit 1
+fi
 
 # --- fail fast on paths ---
 [[ -f "$LLAMA_CPP_MODEL_PATH" ]] || { echo "ERR: model not found: $LLAMA_CPP_MODEL_PATH"; exit 1; }
