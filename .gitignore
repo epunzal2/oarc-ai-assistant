@@ -146,6 +146,7 @@ TODO.md
 
 /.plans/*
 !/.plans/2026-04-14-uv-venv-migration.md
+!/.plans/2026-04-27-rag-openai-api-boundary.md
 /tmp/
 /results/
 /.roo/
