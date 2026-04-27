@@ -3,15 +3,28 @@
 import argparse
 import json
 import yaml
-import mlflow
 import pandas as pd
 from src.evaluation.llm_judge import LLMJudge
 from src.rag.llm_provider import get_llm_provider
 
+mlflow = None
+
+
+def _get_mlflow():
+    global mlflow
+    if mlflow is None:
+        import mlflow as mlflow_module
+
+        mlflow = mlflow_module
+    return mlflow
+
+
 def make_llm_judge_metric():
+    mlflow_client = _get_mlflow()
+
     def llm_judge_metric(eval_df, builtin_metrics):
         llm_provider = get_llm_provider(config["llm_judge"]["llm_provider"])
-        prompt = mlflow.get_prompt("llm_judge")
+        prompt = mlflow_client.get_prompt("llm_judge")
         llm_judge = LLMJudge({"prompt": prompt}, llm_provider)
         scores = []
         for index, row in eval_df.iterrows():
@@ -23,7 +36,7 @@ def make_llm_judge_metric():
             scores.append(score)
         return pd.Series(scores, index=eval_df.index)
 
-    return mlflow.metrics.make_metric(
+    return mlflow_client.metrics.make_metric(
         eval_fn=llm_judge_metric,
         greater_is_better=True,
         name="llm_judge_score",
@@ -47,9 +60,10 @@ def main():
     results_df = pd.read_json(args.results_path, lines=True)
     qrels_df = pd.read_csv(args.qrels_path, sep=" ", header=None, names=["query_id", "corpus_id", "score"])
 
-    with mlflow.start_run():
-        mlflow.log_params(config)
-        results = mlflow.evaluate(
+    mlflow_client = _get_mlflow()
+    with mlflow_client.start_run():
+        mlflow_client.log_params(config)
+        results = mlflow_client.evaluate(
             data=results_df,
             targets="ground_truth",
             predictions="answer",

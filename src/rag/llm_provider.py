@@ -10,10 +10,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, Iterator, Optional
 
 import requests
-from langchain_core.runnables import RunnableLambda
-from langchain_huggingface import HuggingFaceEndpoint
-from langchain_huggingface.chat_models import ChatHuggingFace
-from langchain_community.llms import LlamaCpp
 
 from src.rag.config import HF_API_TOKEN, LLAMA_CPP_MODEL_PATH
 from src.rag.logger import get_logger
@@ -47,6 +43,7 @@ class LLMResponse:
 
 def tokenize_len(text: str, *, encoding: Optional[str] = None) -> int:
     """Best-effort token count used for context guards and usage stats."""
+    text = _prompt_to_text(text)
     if not text:
         return 0
 
@@ -66,7 +63,17 @@ def tokenize_len(text: str, *, encoding: Optional[str] = None) -> int:
 
 
 def _hash_prompt(prompt: str) -> str:
+    prompt = _prompt_to_text(prompt)
     return hashlib.sha256(prompt.encode("utf-8", errors="ignore")).hexdigest()
+
+
+def _prompt_to_text(prompt: Any) -> str:
+    if isinstance(prompt, str):
+        return prompt
+    to_string = getattr(prompt, "to_string", None)
+    if callable(to_string):
+        return str(to_string())
+    return str(prompt)
 
 
 class LLMProvider(ABC):
@@ -93,6 +100,7 @@ class LLMProvider(ABC):
         return False
 
     def _guard_prompt(self, prompt: str) -> int:
+        prompt = _prompt_to_text(prompt)
         prompt_tokens = tokenize_len(prompt, encoding=self._tokenizer)
         if (
             self.max_context_tokens
@@ -192,6 +200,9 @@ class HuggingFaceAPIProvider(LLMProvider):
     def _get_or_create_llm(self):
         if self._cached_llm is None:
             logger.info("Creating Hugging Face LLM endpoint.")
+            from langchain_huggingface import HuggingFaceEndpoint
+            from langchain_huggingface.chat_models import ChatHuggingFace
+
             endpoint = HuggingFaceEndpoint(
                 repo_id=self.model_name,
                 huggingfacehub_api_token=self.api_token,
@@ -259,12 +270,14 @@ class LlamaCPPProvider(LLMProvider):
         )
         self.model_path = model_path
         self.model_kwargs = defaults
-        self._cached_llm: Optional[LlamaCpp] = None
+        self._cached_llm: Optional[Any] = None
         logger.info("Initialized LlamaCPPProvider with model: %s", self.model_path)
 
-    def _get_or_create_llm(self) -> LlamaCpp:
+    def _get_or_create_llm(self) -> Any:
         if self._cached_llm is None:
             logger.info("Creating Llama.cpp LLM instance.")
+            from langchain_community.llms import LlamaCpp
+
             self._cached_llm = LlamaCpp(
                 model_path=self.model_path,
                 **self.model_kwargs,
@@ -399,10 +412,13 @@ class OpenAICompatibleHTTPProvider(LLMProvider):
         raise last_exc
 
     def get_llm(self):
+        from langchain_core.runnables import RunnableLambda
+
         provider = self
-        return RunnableLambda(lambda prompt: provider.generate(prompt).text or "")
+        return RunnableLambda(lambda prompt: provider.generate(_prompt_to_text(prompt)).text or "")
 
     def generate(self, prompt: str, *, stream: bool = False) -> LLMResponse:
+        prompt = _prompt_to_text(prompt)
         prompt_tokens = self._guard_prompt(prompt)
         payload = self._payload(prompt, stream=stream)
         response = self._post(payload, stream=stream)

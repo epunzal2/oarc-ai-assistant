@@ -6,7 +6,11 @@ import json
 import random
 import time
 from pathlib import Path
-import mlflow
+
+try:  # pragma: no cover - optional dependency
+    import mlflow
+except Exception:  # pragma: no cover - optional dependency
+    mlflow = None
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -19,7 +23,12 @@ except Exception:  # pragma: no cover - optional dependency
     _ENCODING = None
 
 from src.rag import mlflow_tracker
-from src.rag.vector_store import get_vector_store, get_embedding_model
+from src.rag.vector_store import (
+    get_embedding_model,
+    get_keyword_retriever,
+    get_vector_store,
+    load_faiss_index,
+)
 from src.rag.llm_provider import get_llm_provider
 from src.rag.logger import get_logger
 from src.rag import config
@@ -193,9 +202,15 @@ def create_rag_chain(
     # Get the embedding model and vector store
     if retriever is None:
         logger.info("No retriever provided, creating a new one...")
-        embeddings = get_embedding_model()
-        vector_store = get_vector_store(embeddings, vector_store_type=vector_store_type)
-        retriever = vector_store.as_retriever()
+        if vector_store_type == "keyword":
+            retriever = get_keyword_retriever()
+        else:
+            embeddings = get_embedding_model()
+        if vector_store_type == "faiss":
+            retriever = load_faiss_index(config.FAISS_INDEX_PATH, embeddings)
+        elif vector_store_type != "keyword":
+            vector_store = get_vector_store(embeddings, vector_store_type=vector_store_type)
+            retriever = vector_store.as_retriever()
     else:
         logger.info("Using the provided retriever.")
 
@@ -379,6 +394,8 @@ def log_rag_chain_as_model():
     """
     Logs the RAG chain as an MLflow model.
     """
+    if mlflow is None:
+        raise RuntimeError("MLflow is required to log the RAG chain as a model.")
     mlflow.langchain.autolog()
     with mlflow.start_run():
         rag_chain = create_rag_chain()

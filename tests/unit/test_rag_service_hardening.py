@@ -11,6 +11,7 @@ from src.rag.service import RAGService
 ROOT = Path(__file__).resolve().parents[2]
 MACOS_GATEWAY = ROOT / "scripts" / "deployment" / "macos" / "run_rag_gateway.sh"
 HPC_GATEWAY = ROOT / "scripts" / "deployment" / "hpc" / "run_rag_gateway.sbatch"
+HPC_PHASE3 = ROOT / "scripts" / "deployment" / "hpc" / "run_phase3_openwebui_verification.sbatch"
 
 
 class FakeDoc:
@@ -137,10 +138,16 @@ def test_rag_service_health_reports_degraded_provider_without_chain_init(monkeyp
 def test_rag_gateway_launch_scripts_exist_and_reference_fastapi_entrypoint() -> None:
     macos_text = MACOS_GATEWAY.read_text(encoding="utf-8")
     hpc_text = HPC_GATEWAY.read_text(encoding="utf-8")
+    phase3_text = HPC_PHASE3.read_text(encoding="utf-8")
 
     assert os.access(MACOS_GATEWAY, os.X_OK)
     assert os.access(HPC_GATEWAY, os.X_OK)
+    assert os.access(HPC_PHASE3, os.X_OK)
     assert "uvicorn src.rag.api:app" in macos_text
     assert "uvicorn src.rag.api:app" in hpc_text
+    assert "uvicorn src.rag.api:app" in phase3_text
+    assert "vllm serve" in phase3_text
+    assert "oarc-rag-v1" in phase3_text
+    assert "OpenWebUI" in phase3_text
     assert "RAG_GATEWAY_LLM_PROVIDER" in macos_text
     assert "RAG_GATEWAY_VECTOR_STORE" in hpc_text

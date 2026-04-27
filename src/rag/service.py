@@ -49,8 +49,8 @@ class RAGService:
     ) -> None:
         self._chain_factory = chain_factory or _default_rag_chain_factory
         self._chain_instance: Any = None
-        self.provider_name = provider_name
-        self.vector_store_type = vector_store_type
+        self.provider_name = os.environ.get("RAG_GATEWAY_LLM_PROVIDER", provider_name)
+        self.vector_store_type = os.environ.get("RAG_GATEWAY_VECTOR_STORE", vector_store_type)
 
     def answer(self, question: str) -> RAGServiceResult:
         request_id = self.new_request_id()
