@@ -358,6 +358,46 @@ Verification checklist:
 - [ ] Add configurable timeouts, retries, and health checks for vLLM.
 - [ ] Add deployment scripts for the FastAPI gateway on macOS and HPC.
 
+Detailed plan: `.plans/2026-04-27-rag-service-hardening.md`.
+
+Phase 4 hardens the RAG gateway without changing the public OpenAI-compatible API added in
+Phases 1 and 2. The main boundary change is to keep FastAPI focused on HTTP concerns while a
+`RAGService` owns request orchestration, chain invocation, request metadata, provider metadata, and
+sanitized telemetry.
+
+The existing custom RAG pipeline and vLLM backend remain the runtime path. `create_rag_chain()`
+continues to own retrieval, prompt assembly, and provider invocation; the new service wraps that path
+with operational controls that make the gateway easier to test, observe, and deploy.
+
+```mermaid
+flowchart LR
+    Client["OpenAI-compatible client"]
+    API["FastAPI RAG Gateway<br/>HTTP contract only"]
+    Service["RAGService<br/>request orchestration<br/>request IDs<br/>latency + metadata"]
+    Pipeline["Existing create_rag_chain()<br/>retrieval + prompt assembly"]
+    Store["FAISS or Qdrant<br/>indexed corpus"]
+    VLLM["vLLM provider<br/>timeouts<br/>retries<br/>health checks"]
+    MLflow["MLflow telemetry<br/>hashes + metrics<br/>no raw prompts"]
+    Deploy["macOS + HPC<br/>gateway launch scripts"]
+
+    Client --> API
+    API --> Service
+    Service --> Pipeline
+    Pipeline --> Store
+    Pipeline --> VLLM
+    Service --> MLflow
+    Deploy --> API
+```
+
+Implementation notes:
+
+- Preserve `GET /health`, `GET /v1/models`, non-streaming chat completions, streaming chat
+  completions, `rag_request_id`, and `rag_sources`.
+- Keep raw prompts, raw user questions, and raw retrieved document text out of MLflow telemetry.
+- Report degraded vLLM/provider health without forcing vector-store or full RAG initialization.
+- Add macOS and HPC gateway startup scripts that assume vLLM and vector-store settings are supplied
+  through environment variables.
+
 ### Phase 5: Quality, Telemetry, and Multi-User Readiness
 
 - [ ] Run answer-quality evaluations against the gold datasets and qrels.

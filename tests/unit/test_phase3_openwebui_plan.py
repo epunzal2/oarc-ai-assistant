@@ -6,6 +6,7 @@ DESIGN = ROOT / "project_docs" / "DESIGN.md"
 PHASE_1_PLAN = ROOT / ".plans" / "2026-04-27-rag-openai-api-boundary.md"
 PHASE_2_PLAN = ROOT / ".plans" / "2026-04-27-rag-streaming-source-metadata.md"
 PHASE_3_PLAN = ROOT / ".plans" / "2026-04-27-openwebui-rag-gateway-integration.md"
+PHASE_4_PLAN = ROOT / ".plans" / "2026-04-27-rag-service-hardening.md"
 GITIGNORE = ROOT / ".gitignore"
 
 
@@ -58,3 +59,26 @@ def test_phase_3_plan_file_exists_and_is_unignored() -> None:
     assert "Status: Draft" in plan
     assert "flowchart LR" in plan
     assert "!/.plans/2026-04-27-openwebui-rag-gateway-integration.md" in gitignore
+
+
+def test_phase_4_design_links_plan_and_service_hardening_diagram() -> None:
+    phase_4 = _phase_text("### Phase 4: Service Hardening", "### Phase 5:")
+
+    assert ".plans/2026-04-27-rag-service-hardening.md" in phase_4
+    assert "flowchart LR" in phase_4
+    assert "RAGService" in phase_4
+    assert "HTTP contract only" in phase_4
+    assert "hashes + metrics" in phase_4
+    assert "gateway launch scripts" in phase_4
+
+
+def test_phase_4_plan_file_exists_and_is_unignored() -> None:
+    plan = PHASE_4_PLAN.read_text(encoding="utf-8")
+    gitignore = GITIGNORE.read_text(encoding="utf-8")
+
+    assert "Title: RAG Service Hardening" in plan
+    assert "Status: Draft" in plan
+    assert "RAGService" in plan
+    assert "MLflow telemetry" in plan
+    assert "no raw prompts" in plan
+    assert "!/.plans/2026-04-27-rag-service-hardening.md" in gitignore
