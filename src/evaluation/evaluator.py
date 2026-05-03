@@ -1,4 +1,4 @@
-# src/evaluation/evaluator.py
+"""MLflow evaluation wrapper for saved RAG result JSONL files."""
 
 import argparse
 import json
@@ -11,6 +11,8 @@ mlflow = None
 
 
 def _get_mlflow():
+    """Import MLflow lazily so normal test collection does not require it."""
+
     global mlflow
     if mlflow is None:
         import mlflow as mlflow_module
@@ -20,6 +22,8 @@ def _get_mlflow():
 
 
 def make_llm_judge_metric():
+    """Create an MLflow custom metric backed by the configured LLM judge."""
+
     mlflow_client = _get_mlflow()
 
     def llm_judge_metric(eval_df, builtin_metrics):
@@ -43,9 +47,8 @@ def make_llm_judge_metric():
     )
 
 def main():
-    """
-    Main function to evaluate the results of a RAG pipeline run.
-    """
+    """Evaluate saved RAG outputs and write MLflow metrics to JSON."""
+
     parser = argparse.ArgumentParser(description="Evaluate the results of a RAG pipeline run.")
     parser.add_argument("--results_path", type=str, required=True, help="Path to the results file in JSONL format.")
     parser.add_argument("--qrels_path", type=str, required=True, help="Path to the qrels file in TSV format.")
@@ -58,7 +61,7 @@ def main():
         config = yaml.safe_load(f)
 
     results_df = pd.read_json(args.results_path, lines=True)
-    qrels_df = pd.read_csv(args.qrels_path, sep=" ", header=None, names=["query_id", "corpus_id", "score"])
+    pd.read_csv(args.qrels_path, sep=" ", header=None, names=["query_id", "corpus_id", "score"])
 
     mlflow_client = _get_mlflow()
     with mlflow_client.start_run():

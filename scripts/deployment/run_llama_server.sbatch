@@ -1,4 +1,6 @@
 #!/bin/bash
+# Legacy direct llama.cpp server launcher. It bypasses the RAG gateway and uses
+# hard-coded scratch paths, so keep it for reference rather than new deployments.
 #SBATCH --job-name=llama_server
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G

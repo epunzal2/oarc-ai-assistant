@@ -1,3 +1,5 @@
+"""Telemetry sampler backend selection and buffer tests."""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -49,4 +51,3 @@ def test_flush_clears_buffer(monkeypatch: pytest.MonkeyPatch):
     first_flush = sampler.flush()
     assert first_flush == [{"cpu.percent": 10.0}]
     assert sampler.flush() == []
-

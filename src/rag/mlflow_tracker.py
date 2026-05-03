@@ -1,3 +1,10 @@
+"""Privacy-preserving wrappers around optional MLflow logging.
+
+Runtime and evaluation code should use this module instead of importing MLflow
+directly. The helpers no-op when MLflow is disabled/unavailable, hash raw
+prompts, cap artifacts, and filter metric values that MLflow cannot accept.
+"""
+
 from __future__ import annotations
 
 import contextlib
@@ -27,6 +34,8 @@ def _mlflow_enabled() -> bool:
 
 
 class _NullRun(contextlib.AbstractContextManager):
+    """No-op context manager matching the subset of MLflow run behavior we use."""
+
     def __enter__(self):
         return None
 
@@ -64,6 +73,8 @@ def start_run(run_name: str, tags: Optional[Dict[str, Any]] = None, nested: bool
 
 
 def log_params(params: Dict[str, Any]) -> None:
+    """Log params after converting nested values to deterministic strings."""
+
     if not _mlflow_enabled() or not params:
         return
     safe_params = {k: _stringify(v) for k, v in params.items()}
@@ -74,6 +85,8 @@ def log_params(params: Dict[str, Any]) -> None:
 
 
 def log_metrics(metrics: Dict[str, Any], step: Optional[int] = None) -> None:
+    """Log only numeric metric values; skip non-numeric metadata safely."""
+
     if not _mlflow_enabled() or not metrics:
         return
     safe_metrics = {}
@@ -97,6 +110,8 @@ def log_dict(payload: Dict[str, Any], artifact_file: str) -> None:
 
 
 def log_jsonl(records: Sequence[Dict[str, Any]], artifact_file: str) -> None:
+    """Log JSONL records as a text artifact subject to the artifact byte cap."""
+
     if not _mlflow_enabled():
         return
     _log_json_payload(list(records), artifact_file, jsonl=True)
@@ -125,6 +140,8 @@ def log_artifact_from_path(path: Path, artifact_path: Optional[str] = None) -> N
 
 
 def hash_text(value: str) -> str:
+    """Return a short stable hash for prompts, answers, and config text."""
+
     if not value:
         return "0000000000000000"
     digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
@@ -169,6 +186,8 @@ def sanitize_records(
     top_k: int,
     include_answer: bool = True,
 ) -> List[Dict[str, Any]]:
+    """Sanitize a sequence of prompt records for MLflow artifacts."""
+
     return [
         sanitize_prompt_record(record, top_k=top_k, include_answer=include_answer)
         for record in records

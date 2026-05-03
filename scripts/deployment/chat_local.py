@@ -1,3 +1,9 @@
+"""Legacy local Flask/CLI chat harness backed directly by llama.cpp.
+
+This bypasses retrieval and the FastAPI RAG gateway. Prefer
+`scripts/deployment/macos/run_rag_gateway.sh` for new local gateway testing.
+"""
+
 from llama_cpp import Llama
 import sys
 import os
@@ -109,6 +115,8 @@ def start_web_chat():
     app.run(host="0.0.0.0", port=5000)
 
 def main():
+    """Parse `--web` and start either CLI or Flask chat."""
+
     parser = argparse.ArgumentParser(description="Chat with a local Llama model.")
     parser.add_argument("--web", action="store_true", help="Start the web-based chat interface.")
     args = parser.parse_args()

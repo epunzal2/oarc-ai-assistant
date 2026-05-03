@@ -1,10 +1,11 @@
+"""Register evaluation prompts in the configured MLflow Prompt Registry."""
+
 import yaml
 import mlflow
 
 def main():
-    """
-    Registers prompts with the MLflow Prompt Registry.
-    """
+    """Read the default evaluation config and register the judge prompt."""
+
     with open("configs/evaluation/default.yml", "r") as f:
         config = yaml.safe_load(f)
 

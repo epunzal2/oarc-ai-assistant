@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Run the full embedding bakeoff on a GPU node. Inputs come from the selected
+# YAML config; outputs are written under that config's experiment output_dir.
 
 # Slurm Directives
 # ----------------

@@ -1,3 +1,5 @@
+"""Model registry helpers for local embeddings and GGUF LLM binaries."""
+
 import os
 import glob
 import logging
@@ -15,7 +17,8 @@ class ModelNotReadyError(FileNotFoundError):
     """Raised when a model is declared in the registry but not present on disk."""
 
 def get_model_config():
-    """Loads the model registry configuration."""
+    """Load `configs/models.yml` from the repository."""
+
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'models.yml')
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
@@ -86,7 +89,8 @@ def get_llm_model_path(llm_name: str) -> str:
     """Returns the absolute path to a locally managed LLM binary.
 
     If the model file is sharded (downloaded as multiple `*-00001-of-*.gguf`),
-    this function assembles the shards into the expected single file.
+    this function returns the first shard so llama.cpp can load the shard set
+    natively.
     """
     config = get_model_config()
     model_info = next((m for m in config.get("llms", []) if m["name"] == llm_name), None)

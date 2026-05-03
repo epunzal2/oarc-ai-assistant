@@ -1,12 +1,11 @@
-# src/evaluation/reporter.py
+"""Small text report generator for evaluation metric JSON files."""
 
 import argparse
 import json
 
 def generate_text_report(metrics):
-    """
-    Generates a simple text-based report.
-    """
+    """Render numeric metrics as a human-readable text report."""
+
     report = "Evaluation Report\n"
     report += "=================\n\n"
     for key, value in metrics.items():
@@ -14,9 +13,8 @@ def generate_text_report(metrics):
     return report
 
 def main():
-    """
-    Main function to generate reports from evaluation results.
-    """
+    """Read metric JSON and write a text report."""
+
     parser = argparse.ArgumentParser(description="Generate reports from evaluation results.")
     parser.add_argument("--metrics_path", type=str, required=True, help="Path to the evaluation metrics file in JSON format.")
     parser.add_argument("--output_path", type=str, required=True, help="Path to save the report.")

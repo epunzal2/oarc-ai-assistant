@@ -1,3 +1,5 @@
+"""Logging helpers with basic secret redaction for runtime scripts."""
+
 import logging
 import os
 from logging.handlers import RotatingFileHandler

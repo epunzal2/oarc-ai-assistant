@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Legacy Phase 1 macOS bootstrap for downloading the Phi-3 GGUF model. Prefer
+# current uv/model-registry workflows for new work.
 
 # This script sets up the environment for Phase 1 deployment on macOS using Homebrew.
 

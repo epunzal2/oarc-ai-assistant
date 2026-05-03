@@ -1,5 +1,6 @@
 #!/bin/bash
-# This script launches a local MLflow tracking server with a SQLite backend.
+# Launch a local MLflow tracking server with a SQLite backend and local artifact
+# directory under `mlflow_store/`.
 
 # Create directories for the backend store and artifacts if they don't exist
 mkdir -p mlflow_store/artifacts

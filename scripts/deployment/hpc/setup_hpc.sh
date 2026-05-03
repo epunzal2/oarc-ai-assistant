@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# Build or refresh the repo-local HPC virtual environment with uv. Requires uv
+# on PATH and may load optional CUDA/compiler modules when the cluster exposes
+# the `module` command.
 
 set -euo pipefail
 

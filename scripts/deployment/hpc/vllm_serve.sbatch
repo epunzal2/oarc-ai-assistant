@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Run a vLLM OpenAI-compatible server inside a Slurm allocation and optionally
+# publish `vllm-endpoint.json` for gateway/client discovery.
 # ----------------
 #SBATCH --job-name=vllm_serve
 #SBATCH --output=logs/%x_%N_%j.out

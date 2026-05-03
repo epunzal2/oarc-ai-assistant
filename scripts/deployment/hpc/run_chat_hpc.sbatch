@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# Launch the legacy Flask/CLI RAG chat harness on one GPU node using a local
+# provider and persisted FAISS index. Prefer `run_rag_gateway.sbatch` for the
+# OpenAI-compatible gateway path.
 
 # USAGE: sbatch --export=HPC_USER=ep523,LOGIN_HOST=login1.myhpc.edu run_chat.sbatch
 

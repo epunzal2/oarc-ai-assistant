@@ -1,3 +1,5 @@
+"""Endpoint discovery tests for hosted vLLM metadata."""
+
 from src.rag.endpoint_discovery import read_endpoint, resolve_endpoint_dir
 
 

@@ -1,3 +1,5 @@
+"""Shared pytest setup for fast local unit-test collection."""
+
 import os
 import sys
 from pathlib import Path
@@ -11,7 +13,7 @@ os.environ.setdefault("PYDANTIC_DISABLE_PLUGINS", "1")
 # do not exercise parquet/feather functionality.
 sys.modules.setdefault("pyarrow", None)
 
-# Ensure src/ package is importable when running pytest without editable install.
+# Ensure the repository root is importable when running pytest without editable install.
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))

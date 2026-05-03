@@ -1,11 +1,12 @@
+"""Run saved-result evaluation inside an explicit MLflow run."""
+
 import argparse
 import mlflow
 from src.evaluation.evaluator import main as run_evaluation
 
 def main():
-    """
-    Main function to run the MLflow evaluation.
-    """
+    """Parse result/qrels paths, start MLflow, and delegate to evaluator."""
+
     parser = argparse.ArgumentParser(description="Run RAG pipeline evaluation with MLflow.")
     parser.add_argument(
         "--config",

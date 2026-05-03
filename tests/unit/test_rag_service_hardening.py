@@ -1,3 +1,5 @@
+"""Tests for RAGService operational hardening and privacy contracts."""
+
 from __future__ import annotations
 
 import contextlib
@@ -15,12 +17,16 @@ HPC_PHASE3 = ROOT / "scripts" / "deployment" / "hpc" / "run_phase3_openwebui_ver
 
 
 class FakeDoc:
+    """Minimal document object carrying content and metadata."""
+
     def __init__(self, page_content: str, metadata: dict[str, Any] | None = None) -> None:
         self.page_content = page_content
         self.metadata = metadata or {}
 
 
 class FakeRAGChain:
+    """Non-streaming chain fake used to verify service telemetry boundaries."""
+
     def __init__(self) -> None:
         self.prompts: list[str] = []
 
@@ -38,6 +44,8 @@ class FakeRAGChain:
 
 
 class StreamingFakeRAGChain(FakeRAGChain):
+    """Streaming fake used to verify finalization and completion hashing."""
+
     def stream_answer(self, prompt: str) -> dict[str, Any]:
         self.prompts.append(prompt)
         return {

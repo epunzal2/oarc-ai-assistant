@@ -1,3 +1,5 @@
+"""Slurm corpus importer tests using a synthetic local source archive."""
+
 from __future__ import annotations
 
 import base64
@@ -39,6 +41,8 @@ PANDOC_UNAVAILABLE = shutil.which("pandoc") is None
 
 
 def _build_fixture_archive(path: Path) -> None:
+    """Build a tiny Slurm-like tarball for importer tests."""
+
     with tarfile.open(path, "w:bz2") as archive:
         _add_text_file(
             archive,
@@ -109,6 +113,8 @@ sbatch submits a batch script to Slurm.
 
 
 def _add_text_file(archive: tarfile.TarFile, name: str, text: str) -> None:
+    """Add UTF-8 text content to the synthetic tarball."""
+
     encoded = text.encode("utf-8")
     info = tarfile.TarInfo(name=name)
     info.size = len(encoded)
@@ -116,6 +122,8 @@ def _add_text_file(archive: tarfile.TarFile, name: str, text: str) -> None:
 
 
 def _add_binary_file(archive: tarfile.TarFile, name: str, data: bytes) -> None:
+    """Add binary fixture content to the synthetic tarball."""
+
     info = tarfile.TarInfo(name=name)
     info.size = len(data)
     archive.addfile(info, io.BytesIO(data))

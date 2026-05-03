@@ -1,3 +1,5 @@
+"""LLM-as-judge helper used by evaluation sweeps and MLflow metrics."""
+
 import json
 import re
 from typing import Any, Dict, Tuple
@@ -6,9 +8,7 @@ from src.rag.llm_provider import LlmProvider
 
 
 class LLMJudge:
-    """
-    A class to evaluate the quality of a generated answer using a language model.
-    """
+    """Evaluate generated answers against ground truth with a scoring LLM."""
 
     def __init__(self, config: Dict[str, Any], llm_provider: LlmProvider):
         """
@@ -23,8 +23,8 @@ class LLMJudge:
         self.prompt_template = self._load_prompt_template()
 
     def _load_prompt_template(self) -> str:
-        """Loads the prompt template from the config."""
-        # This will be expanded to load from a file or a more complex structure
+        """Load the prompt template string from the provided config."""
+
         return self.config.get(
             "prompt",
             "Evaluate the following answer on a scale of 1-5. Question: {question} Answer: {answer} Ground Truth: {ground_truth}",
@@ -54,7 +54,8 @@ class LLMJudge:
         )
         response = self.llm_provider.get_completion(prompt)
 
-        # Try robust JSON extraction: direct parse, code block, then best-effort search
+        # Judge models sometimes wrap JSON in prose or code fences; keep parsing
+        # tolerant while still returning a bounded numeric score.
         obj = None
         # 1) Direct JSON
         try:
@@ -79,7 +80,6 @@ class LLMJudge:
             start = response.find("{")
             end = response.rfind("}")
             if start != -1 and end != -1 and end > start:
-                snippet = response[start : end + 1]
                 # Try progressively to parse shorter endings if large
                 for r in range(end, start + 1, -1):
                     try:

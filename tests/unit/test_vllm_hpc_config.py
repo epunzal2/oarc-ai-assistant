@@ -1,3 +1,5 @@
+"""Configuration precedence tests for vLLM/SGLang HPC providers."""
+
 from importlib import reload
 
 from src.rag import config as config_module

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Legacy macOS bootstrap for local llama.cpp experiments. Prefer `uv sync` plus
+# `scripts/deployment/macos/run_rag_gateway.sh` for new RAG gateway work.
 
 # This script sets up the environment for Phase 1 deployment on macOS using Homebrew.
 

@@ -1,3 +1,5 @@
+"""Legacy HPC CLI/Flask chat harness for an injected RAG chain."""
+
 import argparse
 import socket
 import time
@@ -125,6 +127,8 @@ def _ensure_provider_health(
     max_wait_seconds: float,
     interval_seconds: float,
 ) -> None:
+    """Wait for an HTTP provider health endpoint before starting the chat app."""
+
     url = config.provider_health_url(provider_name, host=host)
     if url is None:
         return
@@ -151,6 +155,8 @@ def _ensure_provider_health(
 
 
 def main():
+    """Load the persisted FAISS index, create the RAG chain, and start chat."""
+
     parser = argparse.ArgumentParser(description="Chat with a local Llama model using RAG.")
     parser.add_argument("--vector-store", type=str, default="faiss", help="The vector store to use.")
     parser.add_argument("--faiss-dir", type=str, default="vector_index/faiss_amarel", help="Path to the saved FAISS index.")

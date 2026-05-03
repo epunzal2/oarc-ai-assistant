@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Submit the ServiceNow preparation and FAISS vector-store build pipeline to a
+# CPU Slurm allocation. The script writes logs and vector_index/faiss_amarel.
 
 # Slurm Directives
 # ----------------

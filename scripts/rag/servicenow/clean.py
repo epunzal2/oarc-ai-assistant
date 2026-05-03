@@ -1,3 +1,10 @@
+"""Clean and anonymize approved ServiceNow exports before embedding.
+
+The script reads an operator-supplied JSON export, keeps only selected fields,
+normalizes choice/boolean values, redacts common PII patterns, and writes a
+cleaned JSON file under the requested output path.
+"""
+
 import json
 import re
 import os
@@ -180,6 +187,8 @@ def clean_description(text):
 
 
 def normalize_boolean(value: Any) -> Any:
+    """Normalize ServiceNow boolean strings while preserving unknown values."""
+
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
@@ -192,6 +201,8 @@ def normalize_boolean(value: Any) -> Any:
 
 
 def map_choice_value(field: str, value: Any) -> Any:
+    """Map known ServiceNow choice codes to human-readable labels."""
+
     if not isinstance(value, str):
         return value
     mapping = CHOICE_FIELD_LABELS.get(field)
@@ -202,6 +213,8 @@ def map_choice_value(field: str, value: Any) -> Any:
 
 
 def should_keep_field(field: str) -> bool:
+    """Return whether a ServiceNow field participates in the prepared corpus."""
+
     return field in FIELDS_TO_KEEP
 
 

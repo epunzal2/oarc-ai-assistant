@@ -4,6 +4,8 @@
 # It runs a sequence of Python scripts to clean, prepare, and
 # create a vector store from the raw ServiceNow data.
 # ServiceNow-specific processing lives under scripts/rag/servicenow/.
+# Inputs and outputs are fixed below; run from the repo root or through the
+# matching Slurm wrapper so relative paths resolve correctly.
 
 # Exit immediately if a command exits with a non-zero status.
 set -e

@@ -1,10 +1,13 @@
 # RAG System for OARC Documentation
 
-This project implements a Retrieval-Augmented Generation (RAG) system to answer questions about the Amarel cluster based on the OARC Google Sites guide and ServiceNow data. The architecture of the system, including the data pipeline and deployment on the HPC cluster, is detailed in the flowchart below.
+This project implements a Retrieval-Augmented Generation (RAG) system to answer questions about the
+Amarel cluster from OARC, Slurm, and prepared ServiceNow-derived sources. The canonical current
+architecture guide is [`project_docs/ARCHITECTURE.md`](project_docs/ARCHITECTURE.md).
 
 ## RAG Architecture Flowchart
 
-This flowchart illustrates the general architecture of the RAG system. The HPC deployment specifically utilizes the FAISS index for storage and the Phi-3-mini model for generation, as depicted in the diagram.
+This flowchart shows the main data and runtime path. See the architecture guide for the full
+gateway, evaluation, telemetry, and script contracts.
 
 ```mermaid
 graph TD
@@ -14,8 +17,8 @@ graph TD
     end
 
     subgraph Processing
-        C[run_pipeline.sh: Preprocessing and Chunking]
-        D[Embedding Model: all-MiniLM-L6-v2]
+        C[run_pipeline.sh: Cleaning, preparation, and chunking]
+        D[Embedding Model]
     end
 
     subgraph Storage
@@ -29,7 +32,7 @@ graph TD
     end
 
     subgraph Generation
-        I[LLM: Phi-3-mini]
+        I[Configured LLM Provider]
         J[Generated Answer]
     end
 
@@ -65,7 +68,11 @@ environment variables first, then from `VLLM_ENDPOINT_DIR/vllm-endpoint.json` wh
 
 ## Architecture
 
-The system is built with Python, LangChain, and a Hugging Face model. It supports both Qdrant and an in-memory FAISS vector store. For a detailed explanation of the architecture, please see the [`architecture/architecture.md`](./architecture/architecture.md) file.
+The system is built with Python, LangChain, FastAPI, FAISS/Qdrant, and pluggable LLM providers
+including local `llama_cpp`, Hugging Face endpoints, vLLM, and SGLang. The canonical architecture
+guide is [`project_docs/ARCHITECTURE.md`](project_docs/ARCHITECTURE.md). The older
+[`architecture/architecture.md`](architecture/architecture.md) path is kept only as a compatibility
+pointer.
 
 ## RAG Evaluation Test Suite
 
@@ -247,8 +254,9 @@ local runs write to `file:mlruns` under the repo root; override the destination 
 All prompts are SHA256 hashed before persistence; only the hash and the generated answer are stored.
 Evaluation jobs persist `doc_id_map.json`, metrics, and prompt/retriever configs as artifacts. Runtime
 invocations log latency, retrieval counts, and (if available) GPU/CPU telemetry captured via
-`pynvml`, `nvidia-smi`, or `psutil` (in that order). See `docs/mlflow_logging_spec.md` for the
-complete parameter/metric schema.
+`pynvml`, `nvidia-smi`, or `psutil` (in that order). See
+[`project_docs/mlflow_logging_spec.md`](project_docs/mlflow_logging_spec.md) for the complete
+parameter/metric schema.
 
 ### HPC workflow
 
@@ -358,31 +366,28 @@ The method for running the chatbot differs depending on whether you are in a loc
 
 ### Running Locally
 
-For local execution, you can run the Streamlit chatbot interface directly. The script accepts command-line arguments to select the LLM provider and the vector store.
+For local execution, you can run the Streamlit chatbot interface directly. The script accepts
+command-line arguments to select the LLM provider and vector store.
 
--   `--llm-provider`: Choose between `huggingface` (default) and `ollama`.
--   `--vector-store`: Choose between `qdrant` (default) and `in_memory`.
+-   `--provider`: Choose `llama_cpp`, `huggingface_api`, `vllm`, `vllm_api`, `sglang`, or
+    `sglang_api`.
+-   `--vector-store`: Choose `qdrant` or `in_memory`.
 
 **Examples:**
 
-**Using Hugging Face and Qdrant (default):**
+**Using the configured default provider and in-memory vector store:**
 ```bash
 streamlit run src/rag/main.py
 ```
 
-**Using Ollama and Qdrant:**
+**Using vLLM and Qdrant:**
 ```bash
-streamlit run src/rag/main.py -- --llm-provider ollama
+streamlit run src/rag/main.py -- --provider vllm --vector-store qdrant
 ```
 
-**Using Hugging Face and In-Memory FAISS:**
+**Using local llama.cpp and in-memory FAISS:**
 ```bash
-streamlit run src/rag/main.py -- --vector-store in_memory
-```
-
-**Using Ollama and In-Memory FAISS:**
-```bash
-streamlit run src/rag/main.py -- --llm-provider ollama --vector-store in_memory
+streamlit run src/rag/main.py -- --provider llama_cpp --vector-store in_memory
 ```
 
 The app will be available at `http://localhost:8501`.
@@ -402,6 +407,13 @@ Then refer to the **HPC Deployment** section for the appropriate `sbatch` entryp
 ### Deployment on an HPC Cluster
 
 Use one of the following launch paths:
+
+- Preferred OpenAI-compatible RAG gateway:
+
+```bash
+sbatch --export=ALL,PROJECT_ROOT=/scratch/$USER/oarc-ai-assistant \
+  scripts/deployment/hpc/run_rag_gateway.sbatch
+```
 
 - Local `llama_cpp` on the allocated node:
 
@@ -439,3 +451,15 @@ sequenceDiagram
 
 For hosted vLLM, start the serve job first and point the remote chat launcher at
 `VLLM_ENDPOINT_DIR` so the app can resolve the published `base_url`, `health_url`, and model.
+
+## Documentation Maintenance
+
+Update architecture docs, test docs, relevant developer docs, and meaningful inline comments when a
+significant change alters modules, scripts, tests, fixtures, public APIs, internal abstractions,
+data flow, control flow, configuration, environment variables, deployment behavior, testing
+strategy, external integrations, invariants, privacy behavior, side effects, or operations.
+
+For project architecture and developer-facing behavior, update
+[`project_docs/ARCHITECTURE.md`](project_docs/ARCHITECTURE.md). Keep corpus and supporting runbook
+classification in [`docs/README.md`](docs/README.md), and avoid duplicating architecture details in
+multiple places.

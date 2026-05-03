@@ -1,3 +1,5 @@
+"""Read endpoint metadata published by hosted vLLM Slurm jobs."""
+
 from __future__ import annotations
 
 import json
@@ -24,6 +26,8 @@ class EndpointInfo:
 
 
 def resolve_endpoint_dir(environ: Optional[Mapping[str, str]] = None) -> Optional[Path]:
+    """Return `VLLM_ENDPOINT_DIR` when configured, otherwise `None`."""
+
     env = environ if environ is not None else os.environ
     raw_value = env.get("VLLM_ENDPOINT_DIR")
     if raw_value is None or raw_value == "":
@@ -32,6 +36,8 @@ def resolve_endpoint_dir(environ: Optional[Mapping[str, str]] = None) -> Optiona
 
 
 def read_endpoint(endpoint_dir: str | Path) -> Optional[EndpointInfo]:
+    """Read `vllm-endpoint.json` from an endpoint directory if it exists."""
+
     endpoint_path = Path(endpoint_dir) / _ENDPOINT_FILENAME
     if not endpoint_path.exists():
         return None

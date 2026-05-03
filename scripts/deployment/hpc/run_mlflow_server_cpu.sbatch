@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Start an MLflow tracking server in a CPU Slurm allocation for runs that do
+# not need GPU resources.
 
 # USAGE: sbatch run_mlflow_server_cpu.sbatch
 

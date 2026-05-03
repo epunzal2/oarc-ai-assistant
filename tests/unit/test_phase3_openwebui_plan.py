@@ -1,3 +1,5 @@
+"""Plan/design consistency tests for Phase 3 OpenWebUI integration."""
+
 from pathlib import Path
 
 

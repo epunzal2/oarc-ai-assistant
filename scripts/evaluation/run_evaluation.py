@@ -1,3 +1,5 @@
+"""CLI wrapper for `src.evaluation.batch_runner.BatchRunner`."""
+
 import argparse
 
 import yaml
@@ -7,8 +9,7 @@ from src.evaluation.batch_runner import BatchRunner
 DEFAULT_CONFIG = "configs/evaluation/embedding_bakeoff.yml"
 
 def main(config_path: str):
-    """
-    Main function to run the batch evaluation.
+    """Run the batch evaluation using a YAML config file.
 
     Args:
         config_path (str): Path to the evaluation configuration file.

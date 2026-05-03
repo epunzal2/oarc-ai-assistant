@@ -1,3 +1,5 @@
+"""Provider tests that avoid real model servers by mocking HTTP requests."""
+
 from importlib import reload
 from unittest.mock import MagicMock, patch
 

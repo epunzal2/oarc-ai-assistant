@@ -1,3 +1,5 @@
+"""Build the runtime vector store from configured corpora."""
+
 import sys
 import os
 import argparse
@@ -12,9 +14,8 @@ from src.rag.logger import get_logger
 logger = get_logger(__name__)
 
 def main(vector_store_type, persist_dir, servicenow_path):
-    """
-    Main function to create the vector store.
-    """
+    """Load documents, chunk them, embed them, and persist or populate a store."""
+
     logger.info("Starting the vector store creation process...")
     
     # Load and chunk documents

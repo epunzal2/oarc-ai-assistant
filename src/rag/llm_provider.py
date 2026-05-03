@@ -1,3 +1,5 @@
+"""LLM provider abstraction for local and OpenAI-compatible backends."""
+
 from __future__ import annotations
 
 import hashlib

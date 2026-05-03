@@ -1,3 +1,5 @@
+"""Import official Slurm source documentation into a RAG-ready corpus tree."""
+
 from __future__ import annotations
 
 import hashlib

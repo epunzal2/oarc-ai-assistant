@@ -43,26 +43,36 @@ logger = get_logger(__name__)
 
 @dataclass
 class QueryExample:
+    """Gold query example loaded from JSONL."""
+
     query_id: str
     text: str
 
 
 @dataclass
 class Answer:
+    """Gold answer keyed by query ID."""
+
     query_id: str
     text: str
 
 
 def load_jsonl(path: str) -> List[Dict[str, Any]]:
+    """Load newline-delimited JSON records."""
+
     with open(path, "r") as handle:
         return [json.loads(line) for line in handle]
 
 
 def load_queries(path: str) -> List[QueryExample]:
+    """Load query examples from the gold dataset."""
+
     return [QueryExample(query_id=entry["id"], text=entry["text"]) for entry in load_jsonl(path)]
 
 
 def load_answers(path: str) -> Dict[str, Answer]:
+    """Load answers keyed by query ID for judge/evaluator inputs."""
+
     answers = {}
     for entry in load_jsonl(path):
         answers[entry["id"]] = Answer(query_id=entry["id"], text=entry["text"])
@@ -70,6 +80,8 @@ def load_answers(path: str) -> Dict[str, Answer]:
 
 
 def load_qrels(path: str) -> Dict[str, List[str]]:
+    """Load positive qrels from a TREC-style whitespace-delimited file."""
+
     mapping: Dict[str, List[str]] = {}
     with open(path, "r") as handle:
         for line in handle:
@@ -81,6 +93,8 @@ def load_qrels(path: str) -> Dict[str, List[str]]:
 
 
 def load_corpus(markdown_dir: str, servicenow_jsonl: str | None) -> List[Document]:
+    """Load the evaluation corpus from Markdown plus optional prepared ServiceNow JSONL."""
+
     loader = DirectoryLoader(markdown_dir, glob="**/*.md", show_progress=True)
     documents = loader.load()
     if servicenow_jsonl:
@@ -167,6 +181,8 @@ def chunk_documents(
     chunk_overlap: int,
     key_to_docid: Dict[str, str] | None = None,
 ) -> List[Document]:
+    """Split corpus documents and assign qrels-compatible parent doc IDs."""
+
     # Ensure list realization for stable ordering
     docs_list = list(documents)
     try:
@@ -200,6 +216,8 @@ def chunk_documents(
 
 
 def build_vector_store(chunks: List[Document], embedding_model) -> FAISS:
+    """Build an in-memory FAISS index for one evaluation sweep run."""
+
     return FAISS.from_documents(
         chunks,
         embedding_model,
@@ -208,10 +226,14 @@ def build_vector_store(chunks: List[Document], embedding_model) -> FAISS:
 
 
 def sanitize_name(name: str) -> str:
+    """Normalize a model/config name for filesystem-safe run IDs."""
+
     return name.replace("/", "_").replace(" ", "-")
 
 
 def recall_at_k(retrieved: List[str], relevant: List[str], k: int) -> float:
+    """Compute document-level recall at k after deduplicating retrieved IDs."""
+
     if not relevant:
         return 0.0
     relevant_set = set(relevant)
@@ -229,6 +251,8 @@ def recall_at_k(retrieved: List[str], relevant: List[str], k: int) -> float:
 
 
 def ndcg_at_k(retrieved: List[str], relevant: List[str], k: int) -> float:
+    """Compute binary nDCG at k after deduplicating retrieved IDs."""
+
     # Deduplicate retrieved IDs in order
     seen = set()
     unique_retrieved: List[str] = []
@@ -257,6 +281,8 @@ def ndcg_at_k(retrieved: List[str], relevant: List[str], k: int) -> float:
 
 
 class BatchRunner:
+    """Execute a configured embedding/retrieval/generation evaluation sweep."""
+
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         dataset_cfg = config["dataset"]

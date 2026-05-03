@@ -1,3 +1,5 @@
+"""Background host/GPU telemetry sampler used by instrumented RAG runs."""
+
 from __future__ import annotations
 
 import shutil
@@ -24,7 +26,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 class TelemetrySampler:
-    """Background sampler that collects host + GPU telemetry."""
+    """Collects bounded telemetry samples without blocking request execution."""
 
     def __init__(self) -> None:
         self.interval = max(1.0, float(config.TELEMETRY.interval_seconds))
@@ -40,6 +42,8 @@ class TelemetrySampler:
         self._initialized_nvml = False
 
     def start(self) -> None:
+        """Start the daemon sampler when telemetry is enabled and available."""
+
         if not config.TELEMETRY.enabled:
             return
         if self.backend == "none":
@@ -57,6 +61,8 @@ class TelemetrySampler:
         self._thread.start()
 
     def stop(self) -> None:
+        """Stop the sampler and release NVML if that backend was initialized."""
+
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=self.timeout)
@@ -69,6 +75,8 @@ class TelemetrySampler:
                 self._initialized_nvml = False
 
     def flush(self) -> List[Dict[str, Any]]:
+        """Return buffered samples and clear the in-memory window."""
+
         with self._lock:
             payload = list(self._buffer)
             self._buffer.clear()
@@ -221,8 +229,9 @@ _SAMPLER: Optional[TelemetrySampler] = None
 
 
 def get_sampler() -> TelemetrySampler:
+    """Return the process-wide telemetry sampler."""
+
     global _SAMPLER
     if _SAMPLER is None:
         _SAMPLER = TelemetrySampler()
     return _SAMPLER
-

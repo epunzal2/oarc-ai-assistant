@@ -1,3 +1,5 @@
+"""Contract tests for repo-local environment setup scripts."""
+
 from pathlib import Path
 
 

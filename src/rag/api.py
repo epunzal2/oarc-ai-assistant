@@ -1,3 +1,11 @@
+"""OpenAI-compatible HTTP boundary for the OARC RAG service.
+
+This module intentionally owns only request validation, response formatting, and
+streaming wire shape. Retrieval, prompt construction, provider calls, source
+extraction, and telemetry stay behind `RAGService` so UI/API tests can use fake
+chains without initializing vector stores or model backends.
+"""
+
 from __future__ import annotations
 
 import json
@@ -28,6 +36,8 @@ SSE_MEDIA_TYPE = "text/event-stream"
 
 
 class ChatMessage(BaseModel):
+    """Subset of OpenAI chat message fields consumed by the gateway."""
+
     role: str
     content: Any
 
@@ -35,6 +45,8 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
+    """OpenAI-compatible chat completion request with extension fields allowed."""
+
     model: str
     messages: list[ChatMessage] = Field(min_length=1)
     stream: bool = False
@@ -48,6 +60,8 @@ def create_app(
     rag_service: Optional[RAGService] = None,
     model_id: str = RAG_MODEL_ID,
 ) -> FastAPI:
+    """Create the FastAPI app with injectable RAG dependencies for tests."""
+
     app = FastAPI(
         title="OARC RAG Gateway",
         version="0.1.0",
@@ -135,6 +149,8 @@ def create_app(
 
 
 def extract_latest_user_question(messages: Sequence[ChatMessage]) -> str:
+    """Return the latest non-empty user text from OpenAI-style chat messages."""
+
     for message in reversed(messages):
         if message.role != "user":
             continue
@@ -153,6 +169,8 @@ def format_chat_completion_response(
     sources: Optional[list[dict[str, Any]]] = None,
     metadata: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
+    """Format a non-streaming completion response with RAG extension fields."""
+
     prompt_tokens = tokenize_len(question)
     completion_tokens = tokenize_len(answer)
     response = {
@@ -189,6 +207,8 @@ def _streaming_completion_response(
     question: str,
     model: str,
 ) -> StreamingResponse | JSONResponse:
+    """Start an SSE response or return JSON if setup fails before streaming."""
+
     try:
         stream = service.start_stream(question)
     except Exception:
@@ -211,6 +231,8 @@ def _iter_service_stream(
     stream: RAGServiceStream,
     model: str,
 ) -> Iterable[str]:
+    """Yield OpenAI-style SSE chunks and finalize telemetry after the stream ends."""
+
     completion_id = _chat_completion_id()
     created = int(time.time())
     answer_parts: list[str] = []
@@ -301,6 +323,8 @@ def _chat_completion_id() -> str:
 
 
 def _content_to_text(content: Any) -> str:
+    """Normalize supported OpenAI content shapes to plain user text."""
+
     if isinstance(content, str):
         return content.strip()
     if isinstance(content, list):
@@ -320,6 +344,8 @@ def _content_to_text(content: Any) -> str:
 
 
 def _public_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Remove private fields before exposing request metadata to API clients."""
+
     return {
         key: value
         for key, value in metadata.items()

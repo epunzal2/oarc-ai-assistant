@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Validate operator inputs and submit `vllm_serve.sbatch`. Side effects include
+# Slurm job submission and optional API-key generation printed to stdout.
 
 set -euo pipefail
 

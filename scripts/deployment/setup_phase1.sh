@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Legacy Phase 1 bootstrap that clones and builds llama.cpp plus downloads an
+# older Mistral GGUF. Prefer current uv/model-registry workflows for new work.
 
 # This script sets up the environment for Phase 1 deployment.
 

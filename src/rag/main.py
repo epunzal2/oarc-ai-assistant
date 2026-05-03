@@ -1,3 +1,5 @@
+"""Streamlit developer UI for probing the local RAG pipeline."""
+
 import sys
 import os
 import argparse
@@ -13,9 +15,8 @@ from src.rag.logger import get_logger
 logger = get_logger(__name__)
 
 def parse_args():
-    """
-    Parses command-line arguments for the RAG System Chatbot.
-    """
+    """Parse provider and vector-store options for the Streamlit app."""
+
     parser = argparse.ArgumentParser(description="Run the RAG System Chatbot.")
     parser.add_argument(
         "--provider",

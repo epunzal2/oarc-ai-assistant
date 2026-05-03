@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Start an MLflow tracking server in a GPU Slurm allocation. Other jobs must
+# receive the printed MLFLOW_TRACKING_URI via `sbatch --export`.
 
 # USAGE: sbatch run_mlflow_server.sbatch
 

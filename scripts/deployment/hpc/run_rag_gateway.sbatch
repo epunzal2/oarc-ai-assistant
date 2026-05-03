@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Start the FastAPI RAG gateway on HPC. Inputs are provided through environment
+# variables; side effects are logs plus a long-running uvicorn process.
 
 # USAGE:
 #   sbatch --export=ALL,PROJECT_ROOT=/scratch/$USER/oarc-ai-assistant scripts/deployment/hpc/run_rag_gateway.sbatch

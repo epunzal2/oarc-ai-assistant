@@ -1,11 +1,12 @@
+"""Verify locally downloaded model artifacts declared in `configs/models.yml`."""
+
 import yaml
 import os
 import glob
 
 def verify_models():
-    """
-    Parses the models.yml file and verifies the integrity of the downloaded models.
-    """
+    """Check required model files/directories and report missing artifacts."""
+
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'models.yml')
     with open(config_path, 'r') as f:
         models_config = yaml.safe_load(f)
@@ -30,7 +31,7 @@ def verify_models():
             print(f"ℹ️  Sharded model detected in {local_dir} (will be assembled at runtime):")
             for s in shards:
                 print(f"   - {os.path.basename(s)}")
-            # Treat as present since runtime can assemble
+            # Treat as present because llama.cpp can load the shard set natively.
             continue
 
         print(f"❌ Missing: {model_path}")

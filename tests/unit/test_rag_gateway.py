@@ -1,3 +1,5 @@
+"""Contract tests for the OpenAI-compatible RAG gateway."""
+
 from __future__ import annotations
 
 import json
@@ -9,12 +11,16 @@ from src.rag.api import RAG_MODEL_ID, create_app
 
 
 class FakeDoc:
+    """Minimal LangChain-like document used for source extraction tests."""
+
     def __init__(self, page_content: str, metadata: dict | None = None) -> None:
         self.page_content = page_content
         self.metadata = metadata or {}
 
 
 class FakeRAGChain:
+    """In-process chain fake that records prompts and returns configured results."""
+
     def __init__(self, result="RAG answer") -> None:
         self.result = result
         self.prompts: list[str] = []
@@ -27,6 +33,8 @@ class FakeRAGChain:
 
 
 class StreamingFakeRAGChain(FakeRAGChain):
+    """Chain fake exposing the streaming hook expected by `RAGService`."""
+
     def __init__(self, chunks, context=None) -> None:
         super().__init__()
         self.chunks = chunks
@@ -42,6 +50,8 @@ def _client_for(chain: FakeRAGChain) -> TestClient:
 
 
 def _sse_payloads(text: str) -> list[dict]:
+    """Parse non-DONE SSE data payloads from TestClient response text."""
+
     payloads = []
     for block in text.strip().split("\n\n"):
         for line in block.splitlines():

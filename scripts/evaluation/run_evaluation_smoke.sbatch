@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Run a short GPU smoke evaluation and verify model paths before starting the
+# configured bakeoff subset.
 
 # Slurm Directives for smoke test
 #SBATCH --job-name=rag_eval_smoke

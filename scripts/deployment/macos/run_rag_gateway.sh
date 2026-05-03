@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Start the FastAPI RAG gateway on a local workstation. Inputs are host/port
+# flags plus provider/vector settings from environment variables.
 
 set -euo pipefail
 

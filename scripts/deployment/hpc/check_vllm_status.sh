@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Inspect the endpoint metadata produced by `vllm_serve.sbatch`, check the
+# Slurm job state when available, and probe the published health URL.
 
 set -euo pipefail
 

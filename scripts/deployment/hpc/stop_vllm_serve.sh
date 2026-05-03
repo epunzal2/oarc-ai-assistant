@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Stop a hosted vLLM Slurm job and remove its discovery metadata. Inputs are a
+# job ID or an endpoint directory containing `vllm-endpoint.json`.
 
 set -euo pipefail
 

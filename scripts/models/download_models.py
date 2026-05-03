@@ -1,11 +1,12 @@
+"""Download models declared in `configs/models.yml` with `huggingface-cli`."""
+
 import yaml
 import subprocess
 import os
 
 def download_models():
-    """
-    Parses the models.yml file and downloads the models using huggingface-cli.
-    """
+    """Download LLM binaries and embedding model directories into `models/`."""
+
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'models.yml')
     with open(config_path, 'r') as f:
         models_config = yaml.safe_load(f)

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Start vLLM and the FastAPI RAG gateway in one allocation for manual OpenWebUI
+# verification. The job prints tunnel instructions and can keep services alive.
 
 # USAGE:
 #   sbatch --export=ALL,PROJECT_ROOT=/scratch/$USER/oarc-ai-assistant \

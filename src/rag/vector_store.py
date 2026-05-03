@@ -1,7 +1,11 @@
+"""Retriever and vector-store factories for runtime and index-building scripts."""
+
 import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+from qdrant_client.http.models import Distance, VectorParams
 
 from src.rag.config import EMBEDDING_MODEL, QDRANT_HOST, QDRANT_PORT, QDRANT_COLLECTION_NAME
 from src.rag.logger import get_logger
@@ -11,11 +15,15 @@ logger = get_logger(__name__)
 
 @dataclass
 class KeywordDocument:
+    """Minimal document shape used by the lightweight keyword retriever."""
+
     page_content: str
     metadata: dict
 
 
 class KeywordRetriever:
+    """Simple in-process retriever used when vector stores are unavailable."""
+
     def __init__(self, documents, *, k=4):
         self.documents = documents
         self.k = k
@@ -46,9 +54,8 @@ class KeywordRetriever:
         return self.invoke(query)
 
 def get_embedding_model():
-    """
-    Returns the embedding model.
-    """
+    """Load the configured Hugging Face embedding model."""
+
     logger.info(f"Loading embedding model: {EMBEDDING_MODEL}")
     model_kwargs = {}
     embedding_device = os.environ.get("EMBEDDING_DEVICE")
@@ -61,6 +68,12 @@ def get_embedding_model():
 
 
 def get_keyword_retriever(paths=None, *, k=4):
+    """Build a keyword retriever from Markdown corpus paths.
+
+    Raw ServiceNow task JSON is intentionally ignored here; approved ServiceNow
+    content should be prepared to JSONL and loaded through `data_loader.py`.
+    """
+
     raw_paths = paths or os.environ.get(
         "KEYWORD_CORPUS_PATHS",
         "docs/google_sites_guide:docs/slurm-23.02.7/markdown",
@@ -80,6 +93,8 @@ def get_keyword_retriever(paths=None, *, k=4):
 
 
 def _chunk_keyword_document(path, text, *, chunk_chars=1400, overlap=200):
+    """Split one Markdown file into overlapping keyword-searchable chunks."""
+
     normalized = "\n".join(line.rstrip() for line in text.splitlines())
     chunks = []
     start = 0
@@ -123,15 +138,14 @@ def _terms(text):
 
 
 def _is_blocked_path(path):
+    """Prevent raw ServiceNow task JSON from entering keyword retrieval."""
+
     parts = {part.lower() for part in path.parts}
     return "servicenow" in parts and path.name.startswith("task") and path.suffix == ".json"
 
-from qdrant_client.http.models import Distance, VectorParams
-
 def get_vector_store(embeddings, vector_store_type="qdrant", documents=None):
-    """
-    Creates or gets the vector store based on the vector_store_type.
-    """
+    """Create or connect to the requested vector-store backend."""
+
     if vector_store_type == "qdrant":
         from langchain_community.vectorstores import Qdrant
         from qdrant_client import QdrantClient
@@ -173,9 +187,8 @@ def get_vector_store(embeddings, vector_store_type="qdrant", documents=None):
         return FAISS.from_documents(documents, embeddings)
 
 def load_faiss_index(persist_dir, embedding_model):
-    """
-    Loads a persisted FAISS index from disk.
-    """
+    """Load a persisted FAISS index and expose it as a retriever."""
+
     from langchain_community.vectorstores import FAISS
 
     logger.info(f"Loading FAISS index from '{persist_dir}'...")
@@ -184,9 +197,8 @@ def load_faiss_index(persist_dir, embedding_model):
     return vector_store.as_retriever()
 
 def add_documents_to_store(vector_store, documents, vector_store_type="qdrant"):
-    """
-    Adds documents to the Qdrant vector store.
-    """
+    """Add documents to mutable vector-store backends."""
+
     if vector_store_type == "qdrant":
         logger.info(f"Adding {len(documents)} documents to the vector store.")
         vector_store.add_documents(documents)

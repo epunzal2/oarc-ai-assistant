@@ -1,3 +1,5 @@
+"""Tests for the MLflow custom LLM-judge metric wrapper."""
+
 from unittest.mock import MagicMock, patch
 import pandas as pd
 from src.evaluation.evaluator import make_llm_judge_metric

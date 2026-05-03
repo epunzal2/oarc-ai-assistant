@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+#
+# Shared helper sourced by launch scripts to activate the repo-local virtual
+# environment. Inputs: PROJECT_ROOT and VENV_DIR. Side effect: modifies the
+# caller shell by sourcing `.venv/bin/activate`.
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "Source this script from another shell script instead of executing it directly." >&2

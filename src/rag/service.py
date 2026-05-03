@@ -1,3 +1,10 @@
+"""Gateway-facing orchestration for RAG requests and telemetry.
+
+The FastAPI layer delegates here so health checks, source metadata extraction,
+request IDs, provider metadata, and privacy-preserving MLflow logging are tested
+independently from HTTP routing.
+"""
+
 from __future__ import annotations
 
 import os
@@ -21,6 +28,8 @@ SOURCE_SNIPPET_CHARS = 280
 
 @dataclass
 class RAGServiceResult:
+    """Completed non-streaming RAG answer plus public metadata."""
+
     request_id: str
     answer: str
     sources: list[dict[str, Any]]
@@ -29,6 +38,8 @@ class RAGServiceResult:
 
 @dataclass
 class RAGServiceStream:
+    """Streaming RAG response state used to finalize telemetry after SSE output."""
+
     request_id: str
     chunks: Iterable[str]
     sources: list[dict[str, Any]]
@@ -38,7 +49,7 @@ class RAGServiceStream:
 
 
 class RAGService:
-    """Gateway-facing orchestration layer for the existing custom RAG pipeline."""
+    """Orchestrates chain invocation, source extraction, health, and logging."""
 
     def __init__(
         self,
@@ -53,6 +64,8 @@ class RAGService:
         self.vector_store_type = os.environ.get("RAG_GATEWAY_VECTOR_STORE", vector_store_type)
 
     def answer(self, question: str) -> RAGServiceResult:
+        """Run a non-streaming RAG request and log sanitized request metadata."""
+
         request_id = self.new_request_id()
         started_at = time.perf_counter()
         result = self._get_chain().invoke(question)
@@ -73,6 +86,8 @@ class RAGService:
         )
 
     def start_stream(self, question: str) -> RAGServiceStream:
+        """Start a streaming response, falling back to one chunk when needed."""
+
         request_id = self.new_request_id()
         started_at = time.perf_counter()
         chain = self._get_chain()
@@ -111,6 +126,8 @@ class RAGService:
         )
 
     def finalize_stream(self, stream: RAGServiceStream, answer: str) -> dict[str, Any]:
+        """Record successful stream completion and return public metadata."""
+
         metadata = dict(stream.metadata)
         metadata["latency_ms"] = _elapsed_ms(stream.started_at)
         metadata["completion_hash"] = mlflow_tracker.hash_text(answer)
@@ -119,6 +136,8 @@ class RAGService:
         return metadata
 
     def fail_stream(self, stream: RAGServiceStream, exc: Exception) -> dict[str, Any]:
+        """Record stream failure without persisting raw question or answer text."""
+
         metadata = dict(stream.metadata)
         metadata["latency_ms"] = _elapsed_ms(stream.started_at)
         metadata["error_type"] = exc.__class__.__name__
@@ -127,6 +146,8 @@ class RAGService:
         return metadata
 
     def health(self) -> dict[str, Any]:
+        """Return gateway health without initializing the expensive RAG chain."""
+
         backend = self.provider_metadata()
         provider_health = self.provider_health()
         return {
@@ -139,6 +160,8 @@ class RAGService:
         }
 
     def provider_metadata(self) -> dict[str, Any]:
+        """Expose safe provider/vector settings for health and model metadata."""
+
         provider_kwargs = config.provider_kwargs(self.provider_name)
         return {
             "backing_provider": self.provider_name,
@@ -151,6 +174,8 @@ class RAGService:
         }
 
     def provider_health(self) -> dict[str, Any]:
+        """Probe the backing model server health endpoint when configured."""
+
         health_url = config.provider_health_url(self.provider_name)
         if not health_url:
             return {"status": "unknown", "reason": "no_health_url"}
@@ -190,6 +215,8 @@ class RAGService:
         }
 
     def log_request(self, metadata: dict[str, Any], *, failed: bool = False) -> None:
+        """Log one gateway request to MLflow with raw prompt fields stripped."""
+
         tags = {
             "run_type": "gateway",
             "provider": str(metadata.get("backing_provider") or ""),
@@ -235,6 +262,8 @@ class RAGService:
             mlflow_tracker.log_jsonl([sanitized], "gateway/requests.jsonl")
 
     def new_request_id(self) -> str:
+        """Return an opaque request identifier suitable for logs and clients."""
+
         return f"rag-{uuid.uuid4().hex}"
 
     def _get_chain(self) -> Any:
@@ -278,6 +307,8 @@ class RAGService:
 
 
 def normalize_rag_answer(result: Any) -> str:
+    """Normalize LangChain/string RAG outputs to a response string."""
+
     if isinstance(result, dict) and "answer" in result:
         answer = result.get("answer")
         return "" if answer is None else str(answer)
@@ -285,6 +316,8 @@ def normalize_rag_answer(result: Any) -> str:
 
 
 def extract_rag_sources(result: Any) -> list[dict[str, Any]]:
+    """Extract stable, deduplicated source metadata from RAG context docs."""
+
     if not isinstance(result, dict):
         return []
 
@@ -310,6 +343,8 @@ def extract_rag_sources(result: Any) -> list[dict[str, Any]]:
 
 
 def _default_rag_chain_factory() -> Any:
+    """Build the default RAG chain lazily so health checks stay lightweight."""
+
     from src.rag.rag_pipeline import create_rag_chain
 
     provider_name = os.environ.get("RAG_GATEWAY_LLM_PROVIDER", DEFAULT_GATEWAY_PROVIDER)

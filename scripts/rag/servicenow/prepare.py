@@ -1,3 +1,5 @@
+"""Prepare cleaned ServiceNow records as JSONL documents for embeddings."""
+
 import json
 import os
 import logging
@@ -22,10 +24,8 @@ logging.basicConfig(
 
 
 def prepare_for_embedding(input_path, output_path):
-    """
-    Reads cleaned ServiceNow data, combines relevant text fields for embedding,
-    and saves the result to a JSONL file.
-    """
+    """Combine cleaned ticket text fields and write LangChain-friendly JSONL."""
+
     try:
         with open(input_path, 'r') as f:
             raw_data = json.load(f)

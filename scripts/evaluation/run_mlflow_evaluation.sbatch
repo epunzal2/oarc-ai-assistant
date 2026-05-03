@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Run saved-result evaluation with an existing MLflow tracking server. Requires
+# MLFLOW_TRACKING_URI to be exported by the submit command.
 
 # USAGE: sbatch --export=MLFLOW_TRACKING_URI='http://<hostname>:<port>' run_mlflow_evaluation.sbatch
 

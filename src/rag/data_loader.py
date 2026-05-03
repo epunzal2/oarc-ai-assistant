@@ -1,3 +1,5 @@
+"""Corpus loaders shared by index-building and runtime setup code."""
+
 import json
 from langchain_core.documents import Document
 from langchain_community.document_loaders import DirectoryLoader
@@ -9,9 +11,8 @@ logger = get_logger(__name__)
 
 
 def load_servicenow_documents(servicenow_path=SERVICE_NOW_DATA_PATH):
-    """
-    Loads documents from the ServiceNow JSONL file.
-    """
+    """Load prepared ServiceNow JSONL records into LangChain documents."""
+
     logger.info(f"Loading documents from {servicenow_path}")
     documents = []
     try:
@@ -30,9 +31,8 @@ def load_servicenow_documents(servicenow_path=SERVICE_NOW_DATA_PATH):
 
 
 def load_documents(servicenow_path=SERVICE_NOW_DATA_PATH):
-    """
-    Loads all .md files from the directory specified in the config.
-    """
+    """Load configured Markdown corpus and optional prepared ServiceNow records."""
+
     logger.info(f"Loading documents from {DATA_PATH}")
     loader = DirectoryLoader(DATA_PATH, glob="**/*.md", show_progress=True)
     markdown_documents = loader.load()
@@ -45,9 +45,8 @@ def load_documents(servicenow_path=SERVICE_NOW_DATA_PATH):
     return documents
 
 def chunk_documents(documents):
-    """
-    Splits the loaded documents into smaller chunks.
-    """
+    """Split loaded documents with the runtime chunking defaults."""
+
     logger.info("Chunking documents...")
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,

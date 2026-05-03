@@ -1,3 +1,5 @@
+"""Contract tests for hosted vLLM HPC launcher scripts."""
+
 from pathlib import Path
 
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""CLI for importing official Slurm docs into `docs/slurm-<version>`."""
 
 from __future__ import annotations
 
@@ -12,6 +13,8 @@ from src.rag.slurm_docs import import_slurm_docs
 
 
 def main() -> None:
+    """Parse import options and run the Slurm corpus importer."""
+
     parser = argparse.ArgumentParser(
         description="Import the official Slurm source docs into a local RAG-ready corpus.",
     )

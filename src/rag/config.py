@@ -1,3 +1,11 @@
+"""Environment-first configuration for local, gateway, and HPC RAG runs.
+
+Defaults make local development possible without a large exported environment,
+while Slurm jobs and service launch scripts override these values explicitly.
+No secrets should be logged directly; provider settings expose sanitized views
+for observability artifacts.
+"""
+
 from __future__ import annotations
 
 import json
@@ -12,14 +20,10 @@ from src.rag.endpoint_discovery import read_endpoint, resolve_endpoint_dir
 
 load_dotenv()
 
-"""Centralized configuration with env-first overrides.
-
-These values provide convenient defaults for local runs while allowing Slurm
-jobs and other environments to override via exported environment variables.
-"""
-
 
 def _env_int(name: str, default: Optional[int] = None) -> Optional[int]:
+    """Read an integer env var, returning the default on missing/invalid input."""
+
     value = os.environ.get(name)
     if value is None:
         return default
@@ -30,6 +34,8 @@ def _env_int(name: str, default: Optional[int] = None) -> Optional[int]:
 
 
 def _env_float(name: str, default: Optional[float] = None) -> Optional[float]:
+    """Read a float env var, returning the default on missing/invalid input."""
+
     value = os.environ.get(name)
     if value is None:
         return default
@@ -40,6 +46,8 @@ def _env_float(name: str, default: Optional[float] = None) -> Optional[float]:
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
+    """Read a bool env var using common shell-friendly truthy values."""
+
     value = os.environ.get(name)
     if value is None:
         return default
@@ -47,6 +55,8 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 
 def _json_env(name: str) -> Dict[str, Any]:
+    """Read a JSON object env var; invalid or non-object values are ignored."""
+
     raw = os.environ.get(name)
     if not raw:
         return {}
@@ -119,6 +129,8 @@ class HTTPProviderSettings:
 
 
 def _load_http_provider(prefix: str, *, defaults: Dict[str, Any]) -> HTTPProviderSettings:
+    """Resolve HTTP provider settings from endpoint metadata, env, then defaults."""
+
     endpoint = None
     if prefix == "VLLM":
         endpoint_dir = resolve_endpoint_dir()

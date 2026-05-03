@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Launch the legacy chat harness while delegating generation to a hosted HTTP
+# provider such as vLLM. Requires VLLM_* env vars or VLLM_ENDPOINT_DIR metadata.
 
 # Slurm Directives
 # ----------------

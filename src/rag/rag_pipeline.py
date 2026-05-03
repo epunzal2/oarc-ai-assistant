@@ -1,3 +1,5 @@
+"""LangChain RAG chain construction and runtime instrumentation."""
+
 from typing import Callable, Iterable, Optional, Dict, Any
 import os
 import hashlib
@@ -186,9 +188,13 @@ def create_rag_chain(
     llm_provider_kwargs: Optional[Dict[str, Any]] = None,
     max_context_chars: Optional[int] = None,
 ):
+    """Create an instrumented retriever-plus-LLM RAG chain.
+
+    Callers may inject a retriever or LLM for tests/evaluation. When they do
+    not, this function resolves the configured vector store and provider from
+    environment-backed settings in `src.rag.config`.
     """
-    Creates the RAG chain.
-    """
+
     provider_name = (llm_provider_name or config.DEFAULT_LLM_PROVIDER).lower()
     logger.info(
         "Creating RAG chain with LLM provider: %s and vector store: %s...",
@@ -391,9 +397,8 @@ def create_rag_chain(
     )
 
 def log_rag_chain_as_model():
-    """
-    Logs the RAG chain as an MLflow model.
-    """
+    """Log the default RAG chain as an MLflow model artifact."""
+
     if mlflow is None:
         raise RuntimeError("MLflow is required to log the RAG chain as a model.")
     mlflow.langchain.autolog()
