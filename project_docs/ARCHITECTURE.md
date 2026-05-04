@@ -32,6 +32,10 @@ src/
     llm_provider.py        Provider abstraction for llama.cpp, Hugging Face, vLLM, and SGLang.
     vector_store.py        Embeddings, Qdrant, FAISS, and keyword retriever factories.
     data_loader.py         Markdown and prepared ServiceNow loading plus chunking.
+    source_manifest.py     Optional Research Pro source config loading and skip policy.
+    source_importer.py     Dry-run/controlled import for optional external/upstream docs.
+    source_metadata.py     Authority metadata enrichment and cluster-specific detection.
+    retrieval_policy.py    Source-priority post-processing for mixed authority corpora.
     config.py              Environment-first runtime, provider, MLflow, and telemetry settings.
     endpoint_discovery.py  Reads hosted vLLM endpoint metadata from `vllm-endpoint.json`.
     mlflow_tracker.py      Safe MLflow wrappers and prompt-record sanitization.
@@ -150,7 +154,10 @@ normalizes usage counts when the backend emits them.
 ### Retrieval and Corpora
 
 `src/rag/data_loader.py` loads Markdown from `DATA_PATH` and optional prepared ServiceNow JSONL from
-`SERVICE_NOW_DATA_PATH`, then chunks documents with LangChain's recursive character splitter.
+`SERVICE_NOW_DATA_PATH`, then chunks documents with the runtime character splitter defaults.
+`DATA_PATH` can be one root or an `os.pathsep`-separated list. Markdown front matter or JSON
+sidecars are merged into document metadata, and existing local guide/Slurm paths receive inferred
+authority metadata when no front matter is present.
 
 `src/rag/vector_store.py` supports:
 
@@ -161,6 +168,18 @@ normalizes usage counts when the backend emits them.
 The keyword retriever intentionally skips ServiceNow task JSON files; ServiceNow data should enter
 runtime through the prepared JSONL path, not as raw task exports.
 
+Optional Research Pro source configuration lives in
+`configs/rag_sources/hpc_research_pro_sources.json`. It is not ingested by default. Operators can
+dry-run or explicitly import the `hpc_additional_docs_first_pass` group with
+`scripts/rag/import_hpc_sources.py`. The importer keeps crawls same-domain, constrained by
+include/exclude rules, capped per source, and robots-aware. License-pending sources are skipped
+unless an explicit override is provided.
+
+`src/rag/retrieval_policy.py` wraps base retrievers with authority-aware post-processing. Local OARC
+guidance wins for local operational facts, Slurm docs win for scheduler syntax/behavior, official
+upstream/vendor docs win for general tool behavior, and `external_hpc` docs are suppressed for local
+operational questions unless the user explicitly asks for external examples.
+
 ### Configuration
 
 Runtime config is env-first and centralized in `src/rag/config.py`. `.env` is loaded for local
@@ -168,7 +187,8 @@ development, while Slurm jobs typically export variables explicitly.
 
 Important groups:
 
-- Corpus and index: `DATA_PATH`, `SERVICE_NOW_DATA_PATH`, `EMBEDDING_MODEL`, `FAISS_INDEX_PATH`.
+- Corpus and index: `DATA_PATH`, `SERVICE_NOW_DATA_PATH`, `EMBEDDING_MODEL`, `FAISS_INDEX_PATH`,
+  `RAG_SOURCE_POLICY_ENABLED`.
 - Qdrant: `QDRANT_HOST`, `QDRANT_PORT`, `QDRANT_COLLECTION_NAME`.
 - Local LLM: `LLAMA_CPP_MODEL_PATH`, `LLM_PROVIDER`.
 - vLLM: `VLLM_BASE_URL`, `VLLM_MODEL`, `VLLM_API_KEY`, `VLLM_HEALTH_URL`,
@@ -330,6 +350,7 @@ Scripts are thin operational wrappers around `src/` code or external services.
 | `scripts/rag/run_pipeline.sh` | ServiceNow clean/prepare plus FAISS build. | Raw ServiceNow export path, prepared output path, vector index path. | Writes cleaned/prepared files, logs, and FAISS index. |
 | `scripts/rag/create_vector_store.py` | Build Qdrant or FAISS vector store. | `--vector-store`, `--persist-dir`, `--servicenow-path`; config env vars. | Writes FAISS index or mutates Qdrant collection. |
 | `scripts/rag/import_slurm_docs.py` | Import official Slurm docs. | `--version`, `--output-dir`, `--force`; requires `pandoc`. | Rebuilds corpus tree and manifest. |
+| `scripts/rag/import_hpc_sources.py` | Dry-run or explicitly import Research Pro HPC sources. | `--manifest`, `--group`, `--dry-run`, `--ingest`, `--allow-license-pending`, `--max-pages-per-source`. | Writes optional staged Markdown and reports under `logs/rag_source_imports/<run-id>/`. |
 | `scripts/rag/servicenow/clean.py` | Clean and anonymize ServiceNow export. | `--input-path`, `--output-path`. | Writes cleaned JSON and dated log file. |
 | `scripts/rag/servicenow/prepare.py` | Convert cleaned ServiceNow data to JSONL. | `--input-path`, `--output-path`. | Writes prepared JSONL for embedding. |
 | `scripts/deployment/macos/run_rag_gateway.sh` | Local FastAPI gateway. | Gateway/provider/vector env vars. | Starts `uvicorn`; binds configured host/port. |
@@ -394,6 +415,8 @@ HPC tests only when a behavior cannot be asserted by file-contract or in-process
 - `docs/google_sites_guide/`: OARC/Amarel guide corpus.
 - `docs/slurm-23.02.7/`: vendored Slurm corpus with upstream, rendered, and Markdown outputs.
 - `docs/corpus/`: future authority-tiered corpus layout.
+  - Optional generated first-pass imports belong under
+    `docs/corpus/staging/hpc_additional_docs_first_pass/`.
 - `docs/hpc-vllm-runbook.md`: hosted vLLM operational runbook.
 - `docs/onboarding/`: supporting user-facing HPC material, not architecture documentation.
 

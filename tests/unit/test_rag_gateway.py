@@ -328,6 +328,48 @@ def test_source_extraction_omits_missing_metadata_and_deduplicates() -> None:
     ]
 
 
+def test_source_extraction_exposes_authority_metadata() -> None:
+    doc = FakeDoc(
+        "External example with a local-looking path.",
+        {
+            "source": "nersc.md",
+            "source_id": "nersc_docs",
+            "source_title": "NERSC Technical Documentation",
+            "organization_or_maintainer": "NERSC",
+            "canonical_url": "https://docs.nersc.gov/example/",
+            "source_group": "external_hpc",
+            "source_type": "national lab docs",
+            "trust_tier": "Tier 2",
+            "authority_scope": ["teaching_example"],
+            "topic_tags": ["nersc", "hpc-basics"],
+            "local_conflict_risk": "high",
+            "cluster_specific": True,
+            "cluster_specific_fields_detected": ["paths"],
+            "example_only": True,
+            "license_note": "Review before redistribution.",
+            "retrieval_weight": 0.65,
+        },
+    )
+    chain = FakeRAGChain({"answer": "Answer", "context": [doc]})
+    client = _client_for(chain)
+
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": RAG_MODEL_ID,
+            "messages": [{"role": "user", "content": "Hello"}],
+        },
+    )
+
+    source = response.json()["rag_sources"][0]
+    assert source["url"] == "https://docs.nersc.gov/example/"
+    assert source["source_id"] == "nersc_docs"
+    assert source["source_group"] == "external_hpc"
+    assert source["cluster_specific"] is True
+    assert source["example_only"] is True
+    assert source["retrieval_weight"] == 0.65
+
+
 def test_chat_completion_requires_non_empty_user_message() -> None:
     client = _client_for(FakeRAGChain())
 

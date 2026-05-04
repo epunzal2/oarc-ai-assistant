@@ -155,6 +155,48 @@ The repository now includes a versioned Slurm corpus under `docs/slurm-23.02.7`.
 - Evaluation: set `dataset.document_source.markdown_dir: "docs/slurm-23.02.7/markdown"`
 - Default behavior is unchanged; the app still uses `docs/google_sites_guide` unless you opt in.
 
+### Optional Research Pro HPC sources
+
+Research Pro source recommendations are configured under
+`configs/rag_sources/hpc_research_pro_sources.json`. They are not fetched or indexed by default.
+The first-pass group is `hpc_additional_docs_first_pass`.
+
+Dry-run the first-pass group:
+
+```bash
+python scripts/rag/import_hpc_sources.py \
+  --manifest configs/rag_sources/hpc_research_pro_sources.json \
+  --group hpc_additional_docs_first_pass \
+  --dry-run
+```
+
+After license/manual review, explicitly import reviewed sources:
+
+```bash
+python scripts/rag/import_hpc_sources.py \
+  --manifest configs/rag_sources/hpc_research_pro_sources.json \
+  --group hpc_additional_docs_first_pass \
+  --ingest \
+  --allow-license-pending
+```
+
+Reports are written under `logs/rag_source_imports/<run-id>/`. Imported Markdown goes under
+`docs/corpus/staging/hpc_additional_docs_first_pass` unless `--output-dir` is provided.
+
+To build an index that includes local, Slurm, and reviewed first-pass imports, use an
+`os.pathsep`-separated `DATA_PATH`:
+
+```bash
+DATA_PATH="docs/google_sites_guide:docs/slurm-23.02.7/markdown:docs/corpus/staging/hpc_additional_docs_first_pass" \
+  python scripts/rag/create_vector_store.py --vector-store faiss --persist-dir vector_index/faiss_amarel
+```
+
+Authority order is enforced in metadata and retrieval post-processing: the local OARC guide wins for
+Amarel-specific facts, Slurm docs win for scheduler syntax and behavior, official upstream/vendor
+docs win for general tool behavior, and external HPC-center docs are examples/troubleshooting only.
+External HPC chunks with local-looking paths, queues, modules, support contacts, or policies are
+tagged `cluster_specific=true` and `example_only=true`.
+
 ### Choosing an LLM provider
 
 The runtime now supports four LLM providers:

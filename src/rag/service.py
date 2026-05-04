@@ -363,10 +363,25 @@ def _source_from_doc(doc: Any) -> dict[str, Any]:
     field_map = {
         "id": ("id", "document_id", "doc_id"),
         "source": ("source", "path", "file_path"),
-        "title": ("title", "name"),
-        "url": ("url", "source_url"),
+        "title": ("title", "source_title", "name"),
+        "url": ("url", "canonical_url", "source_url"),
         "chunk_id": ("chunk_id",),
         "score": ("score", "relevance_score"),
+        "source_id": ("source_id",),
+        "source_title": ("source_title",),
+        "organization_or_maintainer": ("organization_or_maintainer",),
+        "canonical_url": ("canonical_url",),
+        "source_group": ("source_group",),
+        "source_type": ("source_type",),
+        "trust_tier": ("trust_tier",),
+        "authority_scope": ("authority_scope",),
+        "topic_tags": ("topic_tags", "tags"),
+        "local_conflict_risk": ("local_conflict_risk",),
+        "cluster_specific": ("cluster_specific",),
+        "cluster_specific_fields_detected": ("cluster_specific_fields_detected",),
+        "example_only": ("example_only",),
+        "license_note": ("license_note",),
+        "retrieval_weight": ("retrieval_weight",),
     }
     for output_key, metadata_keys in field_map.items():
         value = _first_metadata_value(metadata, metadata_keys)

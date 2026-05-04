@@ -29,6 +29,8 @@ general documentation.
   - `reference/`: upstream software documentation such as Slurm.
   - `external/`: non-Rutgers examples and supplementary references.
   - `staging/`: temporary generated corpus builds.
+  - `staging/hpc_additional_docs_first_pass/`: optional Research Pro first-pass imports when
+    explicitly generated.
 
 ## Miscellaneous or Supporting Docs
 
@@ -45,10 +47,29 @@ and add an audit note here instead of deleting or moving it.
 - Slurm web docs only: `docs/slurm-23.02.7/markdown/html`
 - Slurm manpages only: `docs/slurm-23.02.7/markdown/man`
 - Slurm PDF companions only: `docs/slurm-23.02.7/markdown/pdf`
+- Reviewed Research Pro first-pass imports:
+  `docs/corpus/staging/hpc_additional_docs_first_pass`
 
-The current loader in `src/rag/data_loader.py` ingests Markdown from `DATA_PATH`, so the Slurm
-`markdown/` tree is the correct root for that corpus. Prepared ServiceNow JSONL, when approved for
-a run, is configured separately with `SERVICE_NOW_DATA_PATH`.
+The current loader in `src/rag/data_loader.py` ingests Markdown from `DATA_PATH`, which can be a
+single path or an `os.pathsep`-separated path list. Prepared ServiceNow JSONL, when approved for a
+run, is configured separately with `SERVICE_NOW_DATA_PATH`.
+
+## Optional Research Pro Sources
+
+`configs/rag_sources/hpc_research_pro_sources.json` records official upstream/vendor docs and
+external HPC-center examples from the Research Pro manifest. These sources are opt-in and dry-run by
+default:
+
+```bash
+python scripts/rag/import_hpc_sources.py \
+  --manifest configs/rag_sources/hpc_research_pro_sources.json \
+  --group hpc_additional_docs_first_pass \
+  --dry-run
+```
+
+The importer writes reports under `logs/rag_source_imports/<run-id>/` and skips license-pending or
+manual-review sources unless the operator explicitly overrides that behavior. External HPC-center
+content must remain example-only for local operational questions.
 
 ## Do Not Use These Paths As `DATA_PATH`
 

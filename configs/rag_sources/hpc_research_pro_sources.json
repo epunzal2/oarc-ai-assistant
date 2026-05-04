@@ -1,0 +1,2444 @@
+{
+  "defaults": {
+    "extract_main_content_only": true,
+    "license_pending_fetch_default": "skip",
+    "max_pages_per_source": 25,
+    "obey_robots_txt": true,
+    "output_root": "docs/corpus/staging/hpc_additional_docs_first_pass",
+    "report_root": "logs/rag_source_imports",
+    "same_domain_only": true
+  },
+  "exclude_rules": [
+    {
+      "category": "external_cluster_specific_operational_pages",
+      "examples": [
+        "account",
+        "allocation",
+        "MFA",
+        "VPN",
+        "hostnames",
+        "queues",
+        "partitions",
+        "QoS",
+        "module versions",
+        "quotas",
+        "billing",
+        "support contacts"
+      ],
+      "why": "These conflict with the local guide, which is authoritative for cluster-specific facts."
+    },
+    {
+      "category": "stale_ai_gpu_install_recipes",
+      "examples": [
+        "old CUDA",
+        "old cuDNN",
+        "old TensorFlow/PyTorch",
+        "archived compiler/container docs"
+      ],
+      "why": "AI/GPU software changes quickly; stale install commands produce broken environments."
+    },
+    {
+      "category": "unreviewed_blogs_forums_gists",
+      "examples": [
+        "personal blogs",
+        "Stack Overflow",
+        "Reddit",
+        "Medium",
+        "random GitHub gists"
+      ],
+      "why": "Not authoritative enough for a maintainable RAG corpus unless manually curated as known-error notes."
+    },
+    {
+      "category": "admin_deployment_docs_for_user_corpus",
+      "examples": [
+        "OOD deployment",
+        "JupyterHub deployment",
+        "Posit Workbench server admin",
+        "Docker daemon admin",
+        "MATLAB server deployment"
+      ],
+      "why": "Admin instructions confuse end users and may encourage unsupported privileged operations."
+    },
+    {
+      "category": "full_dense_standards_before_reference_guides",
+      "examples": [
+        "full MPI standard",
+        "full OpenMP spec"
+      ],
+      "why": "Useful as secondary references but too dense/noisy for first-pass user answers."
+    },
+    {
+      "category": "docker_compose_kubernetes_cloud_native_docs",
+      "examples": [
+        "Docker Compose",
+        "Swarm",
+        "Kubernetes tutorials",
+        "cloud container deployment"
+      ],
+      "why": "Usually irrelevant to shared HPC and may encourage unsupported workflows."
+    },
+    {
+      "category": "root_driver_install_pages",
+      "examples": [
+        "NVIDIA driver installation as root",
+        "CUDA driver installation",
+        "kernel modules"
+      ],
+      "why": "HPC users generally cannot install drivers on cluster nodes; local admins control the driver stack."
+    },
+    {
+      "category": "large_api_references_unless_needed",
+      "examples": [
+        "cuDNN API reference",
+        "full NCCL API",
+        "all MPI language bindings"
+      ],
+      "why": "Adds retrieval noise for most user-support questions; ingest selected task sections first."
+    },
+    {
+      "category": "training_pdfs_without_manual_review",
+      "examples": [
+        "slide decks",
+        "workshop PDFs"
+      ],
+      "why": "Often contain stale screenshots, cluster-specific commands, embedded images, and poor text extraction."
+    }
+  ],
+  "generated_at": "2026-05-04T00:00:00-04:00",
+  "generated_from": "tmp/research-pro/hpc_rag_sources.codex.json",
+  "groups": {
+    "hpc_additional_docs_first_pass": [
+      "gnu_bash_reference_manual",
+      "gnu_coreutils_manual",
+      "openssh_manual_pages",
+      "rsync_documentation",
+      "gnu_tar_manual",
+      "gnu_gzip_manual",
+      "lmod_docs",
+      "conda_manage_environments",
+      "python_venv_docs",
+      "pypa_pip_venv_guide",
+      "pip_user_guide",
+      "apptainer_user_guide",
+      "nersc_docs",
+      "princeton_research_computing_kb",
+      "yale_ycrc_docs"
+    ]
+  },
+  "manifest_name": "hpc_research_pro_sources",
+  "manual_review_or_link_only": [
+    "matlab_parallel_server",
+    "matlab_batch_function",
+    "intel_oneapi_hpc_toolkit",
+    "nvidia_hpc_sdk_docs",
+    "cuda_toolkit_docs",
+    "nvidia_smi_docs",
+    "nvidia_nccl_docs",
+    "nvidia_cudnn_docs",
+    "posit_workbench_docs",
+    "access_ci_globus_docs",
+    "docker_rootless_docs"
+  ],
+  "preexisting_authorities": [
+    {
+      "authority": "highest priority for local policies, paths, queues, partitions, QoS, accounts, modules, support contacts, and cluster-specific instructions",
+      "description": "Existing local HPC guide converted to Markdown.",
+      "included_in_sources_list": false,
+      "source_id": "local_university_hpc_guide"
+    },
+    {
+      "authority": "scheduler syntax and scheduler behavior; local guide overrides local defaults/policies",
+      "description": "Existing Slurm documentation.",
+      "included_in_sources_list": false,
+      "source_id": "slurm_documentation"
+    }
+  ],
+  "purpose": "Codex-ingestible source manifest for building a RAG corpus for university HPC user support.",
+  "retrieval_policy": {
+    "authority_order": [
+      "local_university_hpc_guide",
+      "slurm_documentation",
+      "official_upstream_vendor_docs",
+      "external_university_hpc_center_docs",
+      "supplemental_reviewed_notes"
+    ],
+    "cluster_specific_detectors": [
+      "absolute paths like /global, /scratch, /home, /gpfs, /glade, /ocean, /work",
+      "queue/partition/QoS names",
+      "module version strings",
+      "hostnames and login nodes",
+      "support emails/ticket URLs",
+      "quota/purge/backups/accounts/allocation policies"
+    ],
+    "rules": [
+      {
+        "action": "retrieve local docs first; suppress external HPC docs unless explicitly requested as examples; require local citation or state local corpus lacks the information",
+        "when": "query asks about local path, quota, queue, partition, QoS, account, PI/project, module name/version, support contact, Globus collection, OOD URL, license availability, VPN/MFA, or data policy"
+      },
+      {
+        "action": "retrieve official upstream/vendor docs first, then local docs for local invocation/module loading, then external examples if helpful",
+        "when": "query asks about command syntax or general tool behavior"
+      },
+      {
+        "action": "retrieve local guide for local defaults/policies and Slurm docs for syntax/semantics; use external Slurm examples only as clearly labeled examples",
+        "when": "query asks about Slurm syntax or scheduler semantics"
+      },
+      {
+        "action": "tag chunk as example_only and do not use it for local operational answers",
+        "when": "external doc contains cluster-specific paths or policies"
+      },
+      {
+        "action": "attribute authority explicitly: 'local guide says', 'upstream docs say', 'external example from NERSC/Yale/etc.'",
+        "when": "answer combines source types"
+      }
+    ]
+  },
+  "schema_version": "1.0.0",
+  "source_priority": {
+    "1": "Local university HPC guide for local cluster-specific facts.",
+    "2": "Slurm docs for Slurm syntax and scheduler behavior.",
+    "3": "Official upstream/vendor docs for tool behavior.",
+    "4": "External university/HPC-center docs for examples, teaching explanations, and troubleshooting patterns only.",
+    "5": "Supplemental reviewed notes only when they fill a clear gap."
+  },
+  "sources": [
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "user_training"
+      ],
+      "chunking_strategy": "chunk by manual subsection; preserve command examples and variable names; target 800-1200 tokens.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "10 Installing Bash",
+        "bug reporting appendices except admin corpus"
+      ],
+      "include_rules": [
+        "3 Basic Shell Features",
+        "3.5 Shell Expansions",
+        "3.6 Redirections",
+        "3.7.4 Environment",
+        "5 Shell Variables",
+        "6.2 Bash Startup Files",
+        "7 Job Control"
+      ],
+      "license_note": "GNU manual; preserve GNU license notices and review FDL/GPL terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "GNU Project",
+      "public_url": "https://www.gnu.org/software/bash/manual/bash.html",
+      "rank": 1,
+      "recommended_ingestion_method": "download rendered static docs or Texinfo",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "gnu_bash_reference_manual",
+      "source_type": "official upstream docs",
+      "tags": [
+        "bash",
+        "shell",
+        "env-vars",
+        "linux-basics"
+      ],
+      "title": "GNU Bash Reference Manual",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "user_training"
+      ],
+      "chunking_strategy": "chunk one command or command family per chunk; include option tables as separate chunks.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "package build/install sections",
+        "admin-only utility internals"
+      ],
+      "include_rules": [
+        "file utilities",
+        "permissions",
+        "chown/chgrp/chmod",
+        "du",
+        "df",
+        "sort",
+        "wc",
+        "head",
+        "tail",
+        "ln",
+        "cp",
+        "mv",
+        "rm"
+      ],
+      "license_note": "GNU manual; preserve GNU license notices and review FDL/GPL terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "GNU Project",
+      "public_url": "https://www.gnu.org/software/coreutils/manual/coreutils.html",
+      "rank": 2,
+      "recommended_ingestion_method": "download rendered static docs or Texinfo",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "low",
+      "source_group": "official",
+      "source_id": "gnu_coreutils_manual",
+      "source_type": "official upstream docs",
+      "tags": [
+        "coreutils",
+        "permissions",
+        "file-management",
+        "linux-basics"
+      ],
+      "title": "GNU Coreutils Manual",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "reference"
+      ],
+      "chunking_strategy": "one man page per document; split SYNOPSIS, DESCRIPTION, OPTIONS, EXAMPLES if long.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "unrelated kernel API pages",
+        "driver/internal pages"
+      ],
+      "include_rules": [
+        "proc(5)",
+        "signal(7)",
+        "kill(1)",
+        "chmod(1/2)",
+        "chown(1/2)",
+        "stat(1/2)",
+        "getrlimit(2)",
+        "ps/top pages if available"
+      ],
+      "license_note": "Per-page licenses vary; verify selected pages before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Linux man-pages project / man7.org",
+      "public_url": "https://man7.org/linux/man-pages/",
+      "rank": 3,
+      "recommended_ingestion_method": "scrape selected man pages or ingest man-pages tarball",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "low",
+      "source_group": "official",
+      "source_id": "linux_man_pages",
+      "source_type": "manual page",
+      "tags": [
+        "linux",
+        "manpages",
+        "processes",
+        "signals",
+        "permissions"
+      ],
+      "title": "Linux man-pages online",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "secure_access_reference"
+      ],
+      "chunking_strategy": "chunk by command/options; preserve option names and examples.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "sshd_config(5)",
+        "server daemon administration",
+        "privileged server hardening except admin corpus"
+      ],
+      "include_rules": [
+        "ssh(1)",
+        "scp(1)",
+        "sftp(1)",
+        "ssh_config(5)",
+        "ssh-keygen(1) user sections"
+      ],
+      "license_note": "OpenSSH/OpenBSD licensing; preserve notices and verify reuse for selected pages.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "OpenSSH / OpenBSD",
+      "public_url": "https://www.openssh.com/manual.html",
+      "rank": 4,
+      "recommended_ingestion_method": "scrape selected manual pages",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "openssh_manual_pages",
+      "source_type": "manual page",
+      "tags": [
+        "ssh",
+        "remote-login",
+        "scp",
+        "sftp",
+        "keys"
+      ],
+      "title": "OpenSSH Manual Pages",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "data_transfer"
+      ],
+      "chunking_strategy": "chunk by option group and workflow; keep warning blocks with related options.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "daemon/admin configuration unless admin corpus"
+      ],
+      "include_rules": [
+        "rsync(1)",
+        "archive mode",
+        "dry-run",
+        "delete",
+        "include/exclude filters",
+        "partial/resume",
+        "ssh transport"
+      ],
+      "license_note": "Verify rsync documentation license in source distribution before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "rsync / Samba project",
+      "public_url": "https://rsync.samba.org/documentation.html",
+      "rank": 5,
+      "recommended_ingestion_method": "download rendered static docs or selected man page",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "rsync_documentation",
+      "source_type": "official upstream docs",
+      "tags": [
+        "rsync",
+        "data-transfer",
+        "sync",
+        "backup"
+      ],
+      "title": "rsync documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "data_transfer"
+      ],
+      "chunking_strategy": "chunk by user task; keep GUI steps separate from CLI steps.",
+      "crawler_hints": {},
+      "decision": "ingest_if_terms_allow_else_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "admin endpoint deployment unless admin corpus",
+        "subscription/account management pages except local overlay"
+      ],
+      "include_rules": [
+        "https://docs.globus.org/how-to/get-started/",
+        "https://docs.globus.org/how-to/share-files/",
+        "https://docs.globus.org/cli/reference/transfer/"
+      ],
+      "license_note": "Review Globus documentation terms before bulk redistribution; link-only if reuse is not permitted.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Globus",
+      "public_url": "https://docs.globus.org/how-to/get-started/",
+      "rank": 6,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "globus_docs",
+      "source_type": "vendor docs",
+      "tags": [
+        "globus",
+        "data-transfer",
+        "sharing",
+        "collections"
+      ],
+      "title": "Globus user docs and CLI reference",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "data_management"
+      ],
+      "chunking_strategy": "chunk by task and option family; preserve warning/admonition blocks.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "installation/build sections",
+        "remote tape/device sections unless relevant"
+      ],
+      "include_rules": [
+        "creating archives",
+        "extracting archives",
+        "compression options",
+        "listed incremental archives",
+        "safety caveats"
+      ],
+      "license_note": "GNU manual; preserve GNU license notices and review FDL/GPL terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "GNU Project",
+      "public_url": "https://www.gnu.org/software/tar/manual/tar.html",
+      "rank": 7,
+      "recommended_ingestion_method": "download rendered static docs or Texinfo",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "low",
+      "source_group": "official",
+      "source_id": "gnu_tar_manual",
+      "source_type": "official upstream docs",
+      "tags": [
+        "tar",
+        "archive",
+        "compression",
+        "data-management"
+      ],
+      "title": "GNU tar Manual",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "data_management"
+      ],
+      "chunking_strategy": "chunk by command and option group.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "installation/build sections"
+      ],
+      "include_rules": [
+        "invocation",
+        "options",
+        "environment",
+        "sample workflows"
+      ],
+      "license_note": "GNU manual; preserve GNU license notices and review FDL/GPL terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "GNU Project",
+      "public_url": "https://www.gnu.org/software/gzip/manual/gzip.html",
+      "rank": 8,
+      "recommended_ingestion_method": "download rendered static docs or Texinfo",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "low",
+      "source_group": "official",
+      "source_id": "gnu_gzip_manual",
+      "source_type": "official upstream docs",
+      "tags": [
+        "gzip",
+        "compression",
+        "archive"
+      ],
+      "title": "GNU Gzip Manual",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by guide heading and command; preserve shell examples.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "site admin configuration",
+        "modulefile authoring internals unless admin corpus"
+      ],
+      "include_rules": [
+        "User Guide for Lmod",
+        "Frequently Asked Questions",
+        "Using the module spider command",
+        "Lmod Environment variables",
+        "Advanced User Guide for Personal Modulefiles"
+      ],
+      "license_note": "Review repository/docs license; preserve copyright notices.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "git_repo",
+      "organization_or_maintainer": "TACC / Lmod project",
+      "public_url": "https://lmod.readthedocs.io/en/latest/",
+      "rank": 9,
+      "recommended_ingestion_method": "clone repo or download rendered static docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "lmod_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "lmod",
+        "modules",
+        "software-env",
+        "module-spider"
+      ],
+      "title": "Lmod documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by command/reference section.",
+      "crawler_hints": {},
+      "decision": "review_manually",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "developer notes",
+        "modulefile authoring details unless admin corpus"
+      ],
+      "include_rules": [
+        "module command reference",
+        "ml reference",
+        "basic user docs"
+      ],
+      "license_note": "Review docs/repo license before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "git_repo",
+      "organization_or_maintainer": "Environment Modules project",
+      "public_url": "https://modules.readthedocs.io/en/latest/",
+      "rank": 10,
+      "recommended_ingestion_method": "clone repo or download rendered static docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "environment_modules_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "environment-modules",
+        "modules",
+        "software-env"
+      ],
+      "title": "Environment Modules documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by task workflow; keep commands with explanation and warnings.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "installer/admin docs unless users self-install",
+        "plugin developer internals"
+      ],
+      "include_rules": [
+        "manage-environments",
+        "manage-pkgs",
+        "channels",
+        "configuration",
+        "command reference for env/package commands"
+      ],
+      "license_note": "Review conda docs license/terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "conda project",
+      "public_url": "https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html",
+      "rank": 11,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "conda_manage_environments",
+      "source_type": "official upstream docs",
+      "tags": [
+        "conda",
+        "python",
+        "environments",
+        "packages"
+      ],
+      "title": "Conda: Managing environments",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by subsection; preserve cross-version versionchanged notes.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "Python build/install docs unless admin corpus"
+      ],
+      "include_rules": [
+        "venv module",
+        "Creating virtual environments",
+        "How venvs work",
+        "API sections if useful"
+      ],
+      "license_note": "PSF docs license; preserve notices and verify reuse.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "Python Software Foundation",
+      "public_url": "https://docs.python.org/3/library/venv.html",
+      "rank": 12,
+      "recommended_ingestion_method": "download rendered static docs for installed Python versions",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "python_venv_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "python",
+        "venv",
+        "virtualenv",
+        "packages"
+      ],
+      "title": "Python venv documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by step/task; preserve OS-specific tabs as separate chunks if present.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "publishing/package-author guides unless needed"
+      ],
+      "include_rules": [
+        "guides/installing-using-pip-and-virtual-environments",
+        "pip user workflows"
+      ],
+      "license_note": "Review PyPA documentation license; preserve notices.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Python Packaging Authority",
+      "public_url": "https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/",
+      "rank": 13,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "pypa_pip_venv_guide",
+      "source_type": "official upstream docs",
+      "tags": [
+        "pypa",
+        "pip",
+        "python",
+        "venv"
+      ],
+      "title": "Installing packages using pip and virtual environments",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by task and concept.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "internal architecture",
+        "development docs unless needed"
+      ],
+      "include_rules": [
+        "user guide",
+        "requirements files",
+        "constraints files",
+        "installing from VCS if needed"
+      ],
+      "license_note": "Review pip docs license; preserve notices.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "pip / PyPA",
+      "public_url": "https://pip.pypa.io/en/stable/user_guide/",
+      "rank": 14,
+      "recommended_ingestion_method": "download rendered static docs or scrape stable path",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "pip_user_guide",
+      "source_type": "official upstream docs",
+      "tags": [
+        "pip",
+        "python",
+        "requirements",
+        "packages"
+      ],
+      "title": "pip User Guide",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by function page and major section; keep Details and Locking together.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "R internals",
+        "Windows/macOS details unless relevant"
+      ],
+      "include_rules": [
+        "install.packages",
+        ".libPaths",
+        "R Installation and Administration package sections"
+      ],
+      "license_note": "R documentation license varies; verify selected manual pages before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "manual_review",
+      "organization_or_maintainer": "R Project / R Core",
+      "public_url": "https://stat.ethz.ch/R-manual/R-devel/library/utils/html/install.packages.html",
+      "rank": 15,
+      "recommended_ingestion_method": "download selected rendered docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "r_install_packages",
+      "source_type": "official upstream docs",
+      "tags": [
+        "r",
+        "cran",
+        "packages",
+        "libraries"
+      ],
+      "title": "R install.packages documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "single function page chunk, split Details if needed.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "R internals"
+      ],
+      "include_rules": [
+        ".libPaths",
+        "R startup environment variables"
+      ],
+      "license_note": "R documentation license varies; verify selected manual pages before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "manual_review",
+      "organization_or_maintainer": "R Project / R Core",
+      "public_url": "https://stat.ethz.ch/R-manual/R-devel/library/base/html/libPaths.html",
+      "rank": 16,
+      "recommended_ingestion_method": "download selected rendered docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "r_libpaths",
+      "source_type": "official upstream docs",
+      "tags": [
+        "r",
+        "libpaths",
+        "R_LIBS_USER",
+        "packages"
+      ],
+      "title": "R .libPaths documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by documentation page and task; preserve REPL examples.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "Creating packages unless developer corpus",
+        "API reference unless needed"
+      ],
+      "include_rules": [
+        "Getting Started",
+        "Managing Packages",
+        "Working with Environments",
+        "Project.toml and Manifest.toml",
+        "REPL Mode Reference"
+      ],
+      "license_note": "Review Julia/Pkg docs license in repository before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "git_repo",
+      "organization_or_maintainer": "Julia project / Pkg.jl",
+      "public_url": "https://pkgdocs.julialang.org/v1/",
+      "rank": 17,
+      "recommended_ingestion_method": "clone docs repo or download rendered static docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "julia_pkg_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "julia",
+        "pkg",
+        "environments",
+        "reproducibility"
+      ],
+      "title": "Julia Pkg documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "software_environment"
+      ],
+      "chunking_strategy": "chunk by user task; avoid ingesting license/admin sections for user corpus.",
+      "crawler_hints": {},
+      "decision": "review_manually_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "installation/admin deployment",
+        "licensing administration unless admin corpus"
+      ],
+      "include_rules": [
+        "Run Code on Clusters and Cloud Platforms",
+        "Troubleshooting in MATLAB Parallel Server",
+        "batch-related user workflows"
+      ],
+      "license_note": "MathWorks terms apply; likely needs manual review or link-only ingestion.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "manual_review",
+      "organization_or_maintainer": "MathWorks",
+      "public_url": "https://www.mathworks.com/help/matlab-parallel-server/index.html",
+      "rank": 18,
+      "recommended_ingestion_method": "manual export or link-only after terms review",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "matlab_parallel_server",
+      "source_type": "vendor docs",
+      "tags": [
+        "matlab",
+        "parallel-server",
+        "batch",
+        "license"
+      ],
+      "title": "MATLAB Parallel Server documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior"
+      ],
+      "chunking_strategy": "chunk examples and option groups separately.",
+      "crawler_hints": {},
+      "decision": "review_manually_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "cluster admin setup",
+        "unrelated desktop-only examples if noisy"
+      ],
+      "include_rules": [
+        "batch examples",
+        "worker behavior",
+        "fetchOutputs",
+        "job management"
+      ],
+      "license_note": "MathWorks terms apply; likely needs manual review or link-only ingestion.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "manual_review",
+      "organization_or_maintainer": "MathWorks",
+      "public_url": "https://www.mathworks.com/help/parallel-computing/batch.html",
+      "rank": 19,
+      "recommended_ingestion_method": "manual export or link-only after terms review",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "matlab_batch_function",
+      "source_type": "vendor docs",
+      "tags": [
+        "matlab",
+        "batch",
+        "parallel-computing"
+      ],
+      "title": "MATLAB batch function documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "compiler_reference"
+      ],
+      "chunking_strategy": "chunk by manual and option family; ingest installed versions first.",
+      "crawler_hints": {},
+      "decision": "ingest_installed_versions_first",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "GNAT/Ada, Go, COBOL, Modula-2 unless used locally",
+        "compiler internals"
+      ],
+      "include_rules": [
+        "installed local GCC version manuals",
+        "GCC Manual",
+        "GNU Fortran Manual",
+        "CPP Manual",
+        "Offloading and Multi Processing Runtime Library Manual"
+      ],
+      "license_note": "GNU manuals; preserve GNU license notices and review FDL/GPL terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "GNU GCC",
+      "public_url": "https://gcc.gnu.org/onlinedocs/",
+      "rank": 20,
+      "recommended_ingestion_method": "download HTML tarball or Texinfo for installed compiler versions",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "gcc_online_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "gcc",
+        "compiler",
+        "c",
+        "cxx",
+        "fortran",
+        "openmp"
+      ],
+      "title": "GCC online documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "compiler_reference"
+      ],
+      "chunking_strategy": "chunk by component and task; label toolkit version clearly.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "installation/admin docs unless users self-install"
+      ],
+      "include_rules": [
+        "Linux get-started",
+        "compiler invocation",
+        "Intel MPI basics",
+        "setvars/module interaction notes"
+      ],
+      "license_note": "Intel terms apply; review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Intel",
+      "public_url": "https://www.intel.com/content/www/us/en/docs/oneapi-hpc-toolkit/get-started-guide-linux/2025-1/overview.html",
+      "rank": 21,
+      "recommended_ingestion_method": "manual export or scrape if terms allow",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "intel_oneapi_hpc_toolkit",
+      "source_type": "vendor docs",
+      "tags": [
+        "intel-oneapi",
+        "compiler",
+        "mpi",
+        "ifx",
+        "icx"
+      ],
+      "title": "Intel oneAPI HPC Toolkit Linux get-started guide",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "compiler_reference",
+        "gpu"
+      ],
+      "chunking_strategy": "chunk by compiler and flag/topic; label version.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "installation/admin docs unless users self-install"
+      ],
+      "include_rules": [
+        "compiler user guide",
+        "release notes matching local version",
+        "OpenACC/OpenMP offload user sections"
+      ],
+      "license_note": "NVIDIA docs terms apply; review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "NVIDIA",
+      "public_url": "https://docs.nvidia.com/hpc-sdk/",
+      "rank": 22,
+      "recommended_ingestion_method": "download rendered static docs if terms allow",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "nvidia_hpc_sdk_docs",
+      "source_type": "vendor docs",
+      "tags": [
+        "nvidia-hpc-sdk",
+        "compiler",
+        "gpu",
+        "openacc",
+        "cuda"
+      ],
+      "title": "NVIDIA HPC SDK documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "standard",
+        "tool_behavior"
+      ],
+      "chunking_strategy": "chunk by directive/environment variable; reference guides before full spec.",
+      "crawler_hints": {},
+      "decision": "ingest_reference_guides_first",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "full standard as primary retrieval for beginners",
+        "committee/admin pages"
+      ],
+      "include_rules": [
+        "current reference guide",
+        "examples document",
+        "environment variable sections",
+        "compiler support notes"
+      ],
+      "license_note": "OpenMP spec/reuse terms should be reviewed; prefer reference guides when available.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "manual_review",
+      "organization_or_maintainer": "OpenMP Architecture Review Board",
+      "public_url": "https://www.openmp.org/specifications/",
+      "rank": 23,
+      "recommended_ingestion_method": "download PDF/HTML reference material after license review",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "openmp_specifications",
+      "source_type": "official standard",
+      "tags": [
+        "openmp",
+        "threads",
+        "parallel",
+        "directives"
+      ],
+      "title": "OpenMP specifications",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "mpi_reference"
+      ],
+      "chunking_strategy": "chunk by chapter and task; keep implementation version metadata.",
+      "crawler_hints": {},
+      "decision": "ingest_if_openmpi_local",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "building/installing Open MPI unless users compile MPI",
+        "developer guide unless needed"
+      ],
+      "include_rules": [
+        "Quick start",
+        "Building MPI applications",
+        "Launching MPI applications",
+        "Launching with Slurm",
+        "Run-time operation",
+        "Processor and memory affinity",
+        "manual pages for commands"
+      ],
+      "license_note": "Open MPI docs include a license section; preserve notices and verify redistribution terms.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "Open MPI Project",
+      "public_url": "https://docs.open-mpi.org/",
+      "rank": 24,
+      "recommended_ingestion_method": "clone/download rendered static docs matching local installed version",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "openmpi_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "mpi",
+        "openmpi",
+        "mpirun",
+        "mpicc",
+        "parallel"
+      ],
+      "title": "Open MPI documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "mpi_reference"
+      ],
+      "chunking_strategy": "chunk by guide section/manpage.",
+      "crawler_hints": {},
+      "decision": "review_or_ingest_if_local",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "developer docs",
+        "build/install unless users compile MPI"
+      ],
+      "include_rules": [
+        "User guide",
+        "manpages",
+        "Hydra usage if local MPICH uses it"
+      ],
+      "license_note": "Review MPICH documentation license/terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "manual_review",
+      "organization_or_maintainer": "MPICH Project",
+      "public_url": "https://www.mpich.org/documentation/guides/",
+      "rank": 25,
+      "recommended_ingestion_method": "download selected guides/manpages if locally relevant",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "mpich_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "mpi",
+        "mpich",
+        "mpiexec",
+        "parallel"
+      ],
+      "title": "MPICH guides and manpages",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "standard"
+      ],
+      "chunking_strategy": "chunk by standard chapter; low retrieval weight unless standards-level answer needed.",
+      "crawler_hints": {},
+      "decision": "ingest_as_secondary_reference_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "full standard as primary beginner docs",
+        "committee process pages"
+      ],
+      "include_rules": [
+        "current MPI standard",
+        "terms and glossary",
+        "point-to-point/collective concepts"
+      ],
+      "license_note": "Review MPI Forum document reuse terms; standards may be link-only if necessary.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "manual_review",
+      "organization_or_maintainer": "MPI Forum",
+      "public_url": "https://www.mpi-forum.org/docs/",
+      "rank": 26,
+      "recommended_ingestion_method": "download current standard PDFs/HTML after license review",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "mpi_forum_docs",
+      "source_type": "official standard",
+      "tags": [
+        "mpi",
+        "standard",
+        "parallel",
+        "collectives"
+      ],
+      "title": "MPI Forum documents",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "gpu_reference"
+      ],
+      "chunking_strategy": "chunk by guide and topic; keep version/compatibility tables as table chunks.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "driver installation as root",
+        "Windows/macOS docs unless local users need them"
+      ],
+      "include_rules": [
+        "CUDA C++ Programming Guide basics",
+        "nvcc docs",
+        "CUDA compatibility docs",
+        "Linux install verification/user-safe checks"
+      ],
+      "license_note": "NVIDIA docs terms apply; review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "NVIDIA",
+      "public_url": "https://docs.nvidia.com/cuda/",
+      "rank": 27,
+      "recommended_ingestion_method": "download rendered static docs if terms allow",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "cuda_toolkit_docs",
+      "source_type": "vendor docs",
+      "tags": [
+        "cuda",
+        "gpu",
+        "nvcc",
+        "nvidia"
+      ],
+      "title": "CUDA Toolkit Documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "gpu_monitoring"
+      ],
+      "chunking_strategy": "chunk by option/query-field group; mark privileged commands.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "privileged management actions",
+        "driver persistence/admin controls unless admin corpus"
+      ],
+      "include_rules": [
+        "query options",
+        "display utilization/memory/processes",
+        "CSV/XML output",
+        "helpful user-safe monitoring examples"
+      ],
+      "license_note": "NVIDIA docs terms apply; review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "NVIDIA",
+      "public_url": "https://docs.nvidia.com/deploy/nvidia-smi/",
+      "rank": 28,
+      "recommended_ingestion_method": "download rendered static docs if terms allow",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "nvidia_smi_docs",
+      "source_type": "vendor docs",
+      "tags": [
+        "nvidia-smi",
+        "gpu-monitoring",
+        "cuda",
+        "troubleshooting"
+      ],
+      "title": "NVIDIA System Management Interface documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "gpu_reference",
+        "ml"
+      ],
+      "chunking_strategy": "chunk by environment variable group, MPI integration, and troubleshooting topic.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "full API reference unless AI developers need it",
+        "device-initiated advanced sections unless relevant"
+      ],
+      "include_rules": [
+        "overview",
+        "using NCCL",
+        "NCCL and MPI",
+        "environment variables",
+        "troubleshooting-relevant debug vars"
+      ],
+      "license_note": "NVIDIA docs terms apply; review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "NVIDIA",
+      "public_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/",
+      "rank": 29,
+      "recommended_ingestion_method": "download rendered static docs if terms allow",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "nvidia_nccl_docs",
+      "source_type": "vendor docs",
+      "tags": [
+        "nccl",
+        "distributed-training",
+        "gpu",
+        "ml"
+      ],
+      "title": "NVIDIA NCCL documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "gpu_reference",
+        "ml"
+      ],
+      "chunking_strategy": "chunk overview/release compatibility sections; avoid huge API chunks for general users.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "low-level API reference unless developer corpus"
+      ],
+      "include_rules": [
+        "overview",
+        "installation/compatibility notes",
+        "release notes matching local version"
+      ],
+      "license_note": "NVIDIA docs terms apply; review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "NVIDIA",
+      "public_url": "https://docs.nvidia.com/deeplearning/cudnn/latest/",
+      "rank": 30,
+      "recommended_ingestion_method": "download rendered static docs if terms allow",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "nvidia_cudnn_docs",
+      "source_type": "vendor docs",
+      "tags": [
+        "cudnn",
+        "gpu",
+        "ml",
+        "compatibility"
+      ],
+      "title": "NVIDIA cuDNN documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "ml"
+      ],
+      "chunking_strategy": "chunk by install scenario; keep version/compute-platform metadata.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "nightly/preview install commands unless separately tagged",
+        "old version selector output"
+      ],
+      "include_rules": [
+        "Start Locally",
+        "stable install selector guidance",
+        "CUDA support notes"
+      ],
+      "license_note": "Review PyTorch docs license/terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "PyTorch Foundation",
+      "public_url": "https://pytorch.org/get-started/locally/",
+      "rank": 31,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "pytorch_start_locally",
+      "source_type": "official upstream docs",
+      "tags": [
+        "pytorch",
+        "cuda",
+        "ml",
+        "python"
+      ],
+      "title": "PyTorch Start Locally",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "ml"
+      ],
+      "chunking_strategy": "chunk by note subsection; preserve warning blocks.",
+      "crawler_hints": {},
+      "decision": "ingest_if_scrapeable_else_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "unrelated Python API reference"
+      ],
+      "include_rules": [
+        "CUDA semantics",
+        "memory management",
+        "environment variables if relevant"
+      ],
+      "license_note": "Review PyTorch docs license/terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "PyTorch Foundation",
+      "public_url": "https://docs.pytorch.org/docs/stable/notes/cuda.html",
+      "rank": 32,
+      "recommended_ingestion_method": "scrape stable docs if parser supports page; otherwise link-only",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "pytorch_cuda_semantics",
+      "source_type": "official upstream docs",
+      "tags": [
+        "pytorch",
+        "cuda",
+        "gpu-memory",
+        "ml"
+      ],
+      "title": "PyTorch CUDA semantics notes",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "ml"
+      ],
+      "chunking_strategy": "chunk by install scenario and verification step; label date/version.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "old tensorflow-gpu guidance",
+        "Windows GPU if irrelevant",
+        "source build docs unless developer corpus"
+      ],
+      "include_rules": [
+        "pip install guide",
+        "GPU verification",
+        "supported Python/platform/version notes"
+      ],
+      "license_note": "TensorFlow documentation terms/license should be reviewed; preserve notices.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "TensorFlow",
+      "public_url": "https://www.tensorflow.org/install/pip",
+      "rank": 33,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "tensorflow_pip_install",
+      "source_type": "official upstream docs",
+      "tags": [
+        "tensorflow",
+        "cuda",
+        "ml",
+        "python"
+      ],
+      "title": "Install TensorFlow with pip",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "interactive_services"
+      ],
+      "chunking_strategy": "chunk by feature and app type; mark admin-only chunks.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "installation/admin cluster configuration for user corpus",
+        "site-specific app form examples unless tagged"
+      ],
+      "include_rules": [
+        "FAQ overview",
+        "interactive app concepts",
+        "user-facing app behavior",
+        "tutorials for Jupyter/RStudio/MATLAB apps if admin/developer corpus needs them"
+      ],
+      "license_note": "Review docs/repo license; preserve OSC copyright notices.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "git_repo",
+      "organization_or_maintainer": "Ohio Supercomputer Center / Open OnDemand Project",
+      "public_url": "https://osc.github.io/ood-documentation/latest/",
+      "rank": 34,
+      "recommended_ingestion_method": "clone repo or download rendered static docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "open_ondemand_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "open-ondemand",
+        "ood",
+        "interactive",
+        "portal"
+      ],
+      "title": "Open OnDemand documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "interactive_services"
+      ],
+      "chunking_strategy": "chunk by user task; preserve UI step sequences.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "deployment/admin docs except admin corpus"
+      ],
+      "include_rules": [
+        "usage docs",
+        "notebook basics",
+        "kernels basics",
+        "troubleshooting user-level docs"
+      ],
+      "license_note": "Review Jupyter docs license/repo terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "git_repo",
+      "organization_or_maintainer": "Project Jupyter",
+      "public_url": "https://docs.jupyter.org/en/latest/",
+      "rank": 35,
+      "recommended_ingestion_method": "clone docs repo or download rendered static docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "jupyter_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "jupyter",
+        "notebooks",
+        "kernels",
+        "interactive"
+      ],
+      "title": "Project Jupyter Documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "interactive_services"
+      ],
+      "chunking_strategy": "chunk user sections separately from admin deployment.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "deployment/admin configuration except admin corpus"
+      ],
+      "include_rules": [
+        "user-facing concepts",
+        "how JupyterHub works",
+        "troubleshooting user sessions"
+      ],
+      "license_note": "Review JupyterHub docs license/repo terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "git_repo",
+      "organization_or_maintainer": "Project Jupyter / JupyterHub",
+      "public_url": "https://jupyterhub.readthedocs.io/en/latest/",
+      "rank": 36,
+      "recommended_ingestion_method": "clone docs repo or download rendered static docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "jupyterhub_docs",
+      "source_type": "official upstream docs",
+      "tags": [
+        "jupyterhub",
+        "jupyter",
+        "interactive",
+        "sessions"
+      ],
+      "title": "JupyterHub documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "interactive_services"
+      ],
+      "chunking_strategy": "chunk by user workflow; exclude admin-only sections for user corpus.",
+      "crawler_hints": {},
+      "decision": "review_manually_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "server admin/deployment/licensing unless admin corpus"
+      ],
+      "include_rules": [
+        "user guide",
+        "session usage",
+        "IDE basics",
+        "troubleshooting user sessions"
+      ],
+      "license_note": "Posit documentation terms apply; likely manual review/link-only.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "manual_review",
+      "organization_or_maintainer": "Posit",
+      "public_url": "https://docs.posit.co/ide/server-pro/",
+      "rank": 37,
+      "recommended_ingestion_method": "manual export or link-only after terms review",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "posit_workbench_docs",
+      "source_type": "vendor docs",
+      "tags": [
+        "posit",
+        "rstudio",
+        "r",
+        "interactive"
+      ],
+      "title": "Posit Workbench documentation",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "containers"
+      ],
+      "chunking_strategy": "chunk by command/task; keep command reference separate from conceptual pages.",
+      "crawler_hints": {},
+      "decision": "ingest",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "installation/admin config unless admin corpus",
+        "privileged features unless local policy allows"
+      ],
+      "include_rules": [
+        "quick start",
+        "running containers",
+        "bind paths and mounts",
+        "definition files",
+        "Docker/OCI",
+        "GPU support",
+        "MPI applications",
+        "environment variables",
+        "cache"
+      ],
+      "license_note": "Apptainer docs/repo license should be reviewed; preserve notices.",
+      "license_review_required": false,
+      "normalized_ingestion_method": "git_repo",
+      "organization_or_maintainer": "Apptainer project",
+      "public_url": "https://apptainer.org/docs/user/main/",
+      "rank": 38,
+      "recommended_ingestion_method": "clone docs repo or download rendered static docs",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "apptainer_user_guide",
+      "source_type": "official upstream docs",
+      "tags": [
+        "apptainer",
+        "containers",
+        "singularity",
+        "docker",
+        "gpu",
+        "mpi"
+      ],
+      "title": "Apptainer User Guide",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "tool_behavior",
+        "containers"
+      ],
+      "chunking_strategy": "chunk by command/task; label runtime separately from Apptainer.",
+      "crawler_hints": {},
+      "decision": "review_manually_or_ingest_if_local",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "admin guide",
+        "installation/config",
+        "remote services unless local uses them"
+      ],
+      "include_rules": [
+        "quick start",
+        "bind paths and mounts",
+        "support for Docker/OCI containers",
+        "GPU support",
+        "Singularity and MPI applications"
+      ],
+      "license_note": "Sylabs docs terms apply; review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "static_manual",
+      "organization_or_maintainer": "Sylabs / SingularityCE",
+      "public_url": "https://docs.sylabs.io/guides/latest/user-guide/",
+      "rank": 39,
+      "recommended_ingestion_method": "download rendered static docs if locally relevant",
+      "retrieval_weight": 1.0,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "official",
+      "source_id": "singularityce_user_guide",
+      "source_type": "official upstream docs",
+      "tags": [
+        "singularityce",
+        "containers",
+        "apptainer",
+        "gpu",
+        "mpi"
+      ],
+      "title": "SingularityCE User Guide",
+      "trust_tier": "Tier 1"
+    },
+    {
+      "authority_scope": [
+        "supplemental_explanation",
+        "containers"
+      ],
+      "chunking_strategy": "single-page chunk by heading; tag supplemental.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_as_supplemental_or_link_only",
+      "enabled_by_default": false,
+      "example_only_default": false,
+      "exclude_rules": [
+        "Docker Compose",
+        "Swarm/Kubernetes",
+        "daemon administration",
+        "cloud/native tutorials"
+      ],
+      "include_rules": [
+        "rootless mode overview",
+        "security model",
+        "troubleshooting high-level points"
+      ],
+      "license_note": "Docker docs terms apply; review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Docker",
+      "public_url": "https://docs.docker.com/engine/security/rootless/",
+      "rank": 40,
+      "recommended_ingestion_method": "scrape selected page or link-only",
+      "retrieval_weight": 0.35,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "official",
+      "source_id": "docker_rootless_docs",
+      "source_type": "vendor docs",
+      "tags": [
+        "docker",
+        "containers",
+        "security",
+        "hpc-limitations"
+      ],
+      "title": "Docker rootless mode documentation",
+      "trust_tier": "Tier 3"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk by MkDocs page heading; tag any path/queue/module as external_cluster_specific.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "accounts",
+        "MFA",
+        "Perlmutter-specific queues/charges",
+        "NERSC-specific paths except example-only",
+        "support/contact pages"
+      ],
+      "include_rules": [
+        "Absolute Beginner's Guide",
+        "Unix File Permissions",
+        "Filesystems Overview",
+        "Quotas",
+        "File Transfer Software",
+        "Globus",
+        "Troubleshooting Jobs",
+        "Monitoring",
+        "Jupyter Overview",
+        "Python Overview",
+        "Containers"
+      ],
+      "license_note": "License not obvious on landing page; verify docs repo/site terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "National Energy Research Scientific Computing Center",
+      "public_url": "https://docs.nersc.gov/",
+      "rank": 1,
+      "recommended_ingestion_method": "scrape approved path prefix or clone docs repo if license permits",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "nersc_docs",
+      "source_type": "national lab docs",
+      "tags": [
+        "nersc",
+        "hpc-basics",
+        "storage",
+        "troubleshooting",
+        "jupyter"
+      ],
+      "title": "NERSC Technical Documentation",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk by page/heading; tag Yale-specific paths/resources.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "Yale cluster names",
+        "accounts/access",
+        "support contacts",
+        "partition/module/version pages unless examples"
+      ],
+      "include_rules": [
+        "resource requests",
+        "job monitoring",
+        "storage overview",
+        "data transfer",
+        "Globus",
+        "Conda guide",
+        "OOD overview"
+      ],
+      "license_note": "Verify site license/reuse terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Yale Center for Research Computing",
+      "public_url": "https://docs.ycrc.yale.edu/clusters-at-yale/",
+      "rank": 2,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "yale_ycrc_docs",
+      "source_type": "university HPC docs",
+      "tags": [
+        "yale",
+        "hpc-concepts",
+        "resource-requests",
+        "storage",
+        "monitoring"
+      ],
+      "title": "Yale YCRC documentation",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk by KB page; keep code examples as separate chunks with example-only metadata.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "Princeton cluster details",
+        "account/support pages",
+        "cluster-specific module/queue/path pages unless examples"
+      ],
+      "include_rules": [
+        "data transfer",
+        "memory",
+        "parallel code",
+        "scaling analysis",
+        "sharing data",
+        "environment modules",
+        "Singularity/containers"
+      ],
+      "license_note": "Verify site license/reuse terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Princeton Research Computing",
+      "public_url": "https://researchcomputing.princeton.edu/support/knowledge-base",
+      "rank": 3,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "princeton_research_computing_kb",
+      "source_type": "university HPC docs",
+      "tags": [
+        "princeton",
+        "memory",
+        "parallel",
+        "data-transfer",
+        "containers"
+      ],
+      "title": "Princeton Research Computing Knowledge Base",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk by page heading; tag system-specific hardware/module data.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "Frontier/Andes-specific queues, accounts, paths, module names unless example-only"
+      ],
+      "include_rules": [
+        "storage concepts",
+        "data transfer",
+        "Jupyter overview",
+        "Python environments",
+        "containers",
+        "troubleshooting user jobs"
+      ],
+      "license_note": "Verify docs license/reuse terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Oak Ridge Leadership Computing Facility",
+      "public_url": "https://docs.olcf.ornl.gov/",
+      "rank": 4,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "olcf_docs",
+      "source_type": "national lab docs",
+      "tags": [
+        "olcf",
+        "storage",
+        "jupyter",
+        "python",
+        "frontier-examples"
+      ],
+      "title": "OLCF User Documentation",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk by page and task; tag system-specific examples.",
+      "crawler_hints": {},
+      "decision": "review_and_ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "Aurora/Polaris-specific hardware, queues, accounts, filesystem paths unless examples"
+      ],
+      "include_rules": [
+        "data management overview",
+        "Globus",
+        "container concepts",
+        "framework examples",
+        "Jupyter concepts"
+      ],
+      "license_note": "Verify docs license/reuse terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Argonne Leadership Computing Facility",
+      "public_url": "https://docs.alcf.anl.gov/",
+      "rank": 5,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "alcf_docs",
+      "source_type": "national lab docs",
+      "tags": [
+        "alcf",
+        "globus",
+        "containers",
+        "gpu",
+        "ml"
+      ],
+      "title": "ALCF User Guides",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk by MkDocs heading; tag PBS/GLADE as external-specific.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "NCAR accounts/VPN",
+        "PBS queues/charging",
+        "GLADE paths, Derecho/Casper details unless example-only"
+      ],
+      "include_rules": [
+        "User Environment",
+        "Using Modules",
+        "Environment & Package Managers",
+        "Containers",
+        "Storage Systems and Data Transfer",
+        "Transferring Data",
+        "Common Causes of Job Failures",
+        "JupyterHub"
+      ],
+      "license_note": "Landing page shows CC-BY-SA 4.0; preserve attribution/share-alike requirements.",
+      "license_review_required": false,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "NSF NCAR CISL",
+      "public_url": "https://ncar-hpc-docs.readthedocs.io/en/latest/",
+      "rank": 6,
+      "recommended_ingestion_method": "clone GitHub repo or scrape approved path prefix",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "ncar_hpc_docs",
+      "source_type": "national lab docs",
+      "tags": [
+        "ncar",
+        "modules",
+        "package-managers",
+        "globus",
+        "jupyterhub"
+      ],
+      "title": "NCAR HPC Documentation",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk by page heading; tag examples as SuperCloud-specific.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "account/policy/resource-limit pages",
+        "downtime/support contacts",
+        "LLMapReduce/pMatlab site-specific details unless relevant examples"
+      ],
+      "include_rules": [
+        "Software and Package Management",
+        "Using Jupyter Notebooks",
+        "Best Practices for Jupyter Notebooks",
+        "Troubleshooting Jupyter Notebooks",
+        "Python Troubleshooting Checklist",
+        "Using Environment Variables"
+      ],
+      "license_note": "Verify site license/reuse terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "MIT SuperCloud / MIT Lincoln Laboratory",
+      "public_url": "https://mit-supercloud.github.io/supercloud-docs/",
+      "rank": 7,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "mit_supercloud_docs",
+      "source_type": "university HPC docs",
+      "tags": [
+        "mit-supercloud",
+        "jupyter",
+        "packages",
+        "troubleshooting",
+        "gpu"
+      ],
+      "title": "MIT SuperCloud Docs",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "split by major heading; mark all partition/path/account sections as external_cluster_specific.",
+      "crawler_hints": {},
+      "decision": "review_and_ingest_selected_sections",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "allocations/account/password/security policy",
+        "Bridges-2 partitions/nodes/accounting",
+        "system configuration unless example-only"
+      ],
+      "include_rules": [
+        "File spaces",
+        "Transfer files",
+        "Programming environment",
+        "OnDemand introduction",
+        "Using Jupyter notebooks",
+        "Conda best practices",
+        "Containers",
+        "Singularity Containers"
+      ],
+      "license_note": "Verify PSC page license/reuse terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Pittsburgh Supercomputing Center",
+      "public_url": "https://www.psc.edu/resources/bridges-2/user-guide/",
+      "rank": 8,
+      "recommended_ingestion_method": "controlled scrape of selected sections",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "psc_bridges2_user_guide",
+      "source_type": "university HPC docs",
+      "tags": [
+        "psc",
+        "bridges-2",
+        "ondemand",
+        "jupyter",
+        "conda",
+        "containers"
+      ],
+      "title": "Bridges-2 User Guide",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk by docs page; tag cluster-specific facts.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_pages",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "Sherlock login/account/partitions/quotas/pricing/support, hostnames, path examples unless example-only"
+      ],
+      "include_rules": [
+        "storage concepts",
+        "data transfer",
+        "software/modules",
+        "Conda",
+        "Jupyter",
+        "Open OnDemand",
+        "containers"
+      ],
+      "license_note": "Verify site license/reuse terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Stanford Research Computing",
+      "public_url": "https://www.sherlock.stanford.edu/docs/",
+      "rank": 9,
+      "recommended_ingestion_method": "scrape approved path prefix",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "stanford_sherlock_docs",
+      "source_type": "university HPC docs",
+      "tags": [
+        "stanford",
+        "sherlock",
+        "storage",
+        "ondemand",
+        "containers"
+      ],
+      "title": "Sherlock documentation",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "chunk HTML pages by heading; PDFs only after manual review.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_html_review_pdfs",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "VPN/access/account/support contacts",
+        "FASSE/FASRC system-specific paths and queues unless examples",
+        "PDF slides without manual review"
+      ],
+      "include_rules": [
+        "storage overview",
+        "data transfer",
+        "Open OnDemand",
+        "remote desktop",
+        "Jupyter/RStudio user pages"
+      ],
+      "license_note": "Verify site license/reuse terms before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "Harvard FAS Research Computing",
+      "public_url": "https://docs.rc.fas.harvard.edu/",
+      "rank": 10,
+      "recommended_ingestion_method": "scrape approved path prefix; manually review PDFs",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "harvard_fasrc_docs",
+      "source_type": "university HPC docs",
+      "tags": [
+        "harvard",
+        "fasrc",
+        "ood",
+        "storage",
+        "training"
+      ],
+      "title": "Harvard FASRC Docs",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "data_transfer"
+      ],
+      "chunking_strategy": "chunk by task; mark ACCESS-specific identity steps.",
+      "crawler_hints": {},
+      "decision": "ingest_selected_if_terms_allow_else_link_only",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "ACCESS identity/account/allocation specifics",
+        "resource provider availability details unless example-only"
+      ],
+      "include_rules": [
+        "Using Globus",
+        "upload/download/move files",
+        "share data",
+        "CLI/API/shell script pages"
+      ],
+      "license_note": "Atlassian/ACCESS terms require review before redistribution.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "ACCESS CI",
+      "public_url": "https://access-ci.atlassian.net/wiki/spaces/ACCESSdocumentation/pages/552861697/Using+Globus",
+      "rank": 11,
+      "recommended_ingestion_method": "manual export or scrape approved Confluence pages if permitted",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "external_hpc",
+      "source_id": "access_ci_globus_docs",
+      "source_type": "HPC-center docs",
+      "tags": [
+        "access-ci",
+        "globus",
+        "data-transfer",
+        "sharing"
+      ],
+      "title": "ACCESS CI Using Globus",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "data_transfer"
+      ],
+      "chunking_strategy": "chunk by transfer method; tag NIH-specific endpoints.",
+      "crawler_hints": {},
+      "decision": "review_and_ingest_selected",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "Biowulf hostnames, NIH account/security/support-specific steps"
+      ],
+      "include_rules": [
+        "transfer overview",
+        "secure transfer options",
+        "Globus sections",
+        "rsync/scp examples"
+      ],
+      "license_note": "Federal/public-site terms likely permissive but verify page terms.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "NIH HPC / Biowulf",
+      "public_url": "https://hpc.nih.gov/docs/transfer.html",
+      "rank": 12,
+      "recommended_ingestion_method": "scrape selected page if terms allow",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "medium",
+      "source_group": "external_hpc",
+      "source_id": "nih_biowulf_transfer_docs",
+      "source_type": "national lab docs",
+      "tags": [
+        "nih",
+        "biowulf",
+        "data-transfer",
+        "sensitive-data"
+      ],
+      "title": "NIH Biowulf data transfer documentation",
+      "trust_tier": "Tier 2"
+    },
+    {
+      "authority_scope": [
+        "teaching_example",
+        "troubleshooting_pattern"
+      ],
+      "chunking_strategy": "manual review page-by-page; tag UMD-specific content.",
+      "crawler_hints": {},
+      "decision": "review_manually_before_ingest",
+      "enabled_by_default": false,
+      "example_only_default": true,
+      "exclude_rules": [
+        "UMD account/access/support/cluster-specific paths and partitions"
+      ],
+      "include_rules": [
+        "file transfer",
+        "running jobs",
+        "software/modules",
+        "OOM/job failure troubleshooting if accessible"
+      ],
+      "license_note": "Site had access/parser issues during check; verify accessibility and terms before ingestion.",
+      "license_review_required": true,
+      "normalized_ingestion_method": "controlled_website",
+      "organization_or_maintainer": "University of Maryland",
+      "public_url": "https://hpcc.umd.edu/kb/",
+      "rank": 13,
+      "recommended_ingestion_method": "manual review; scrape only if pages are accessible and licensed",
+      "retrieval_weight": 0.65,
+      "risk_of_conflicting_with_local_docs": "high",
+      "source_group": "external_hpc",
+      "source_id": "umd_hpcc_docs",
+      "source_type": "university HPC docs",
+      "tags": [
+        "umd",
+        "hpcc",
+        "troubleshooting",
+        "software"
+      ],
+      "title": "University of Maryland HPCC documentation",
+      "trust_tier": "Tier 2"
+    }
+  ]
+}

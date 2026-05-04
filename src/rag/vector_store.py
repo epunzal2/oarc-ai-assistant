@@ -9,6 +9,7 @@ from qdrant_client.http.models import Distance, VectorParams
 
 from src.rag.config import EMBEDDING_MODEL, QDRANT_HOST, QDRANT_PORT, QDRANT_COLLECTION_NAME
 from src.rag.logger import get_logger
+from src.rag.source_metadata import infer_source_metadata_from_path, stable_content_hash
 
 logger = get_logger(__name__)
 
@@ -109,6 +110,8 @@ def _chunk_keyword_document(path, text, *, chunk_chars=1400, overlap=200):
                         "source": str(path),
                         "title": path.stem.replace("-", " ").replace("_", " ").title(),
                         "chunk_id": f"{path}:{index}",
+                        "content_hash": stable_content_hash(chunk),
+                        **infer_source_metadata_from_path(path, content=chunk),
                     },
                 )
             )

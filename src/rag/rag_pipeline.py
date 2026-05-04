@@ -35,6 +35,7 @@ from src.rag.llm_provider import get_llm_provider
 from src.rag.logger import get_logger
 from src.rag import config
 from src.rag.telemetry import get_sampler
+from src.rag.retrieval_policy import maybe_wrap_retriever
 
 logger = get_logger(__name__)
 
@@ -219,6 +220,8 @@ def create_rag_chain(
             retriever = vector_store.as_retriever()
     else:
         logger.info("Using the provided retriever.")
+
+    retriever = maybe_wrap_retriever(retriever)
 
     # Get the LLM provider unless an explicit LLM instance was supplied
     if llm is None:

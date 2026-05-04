@@ -26,9 +26,28 @@ prompting, and answer synthesis.
 
 ## Current Runtime Note
 
-The current loader still expects a single Markdown root via `DATA_PATH`. This tree is therefore the
-authoritative source layout for future ingestion, while any combined runtime corpus should be built
-from these directories in a controlled way.
+The loader accepts a single Markdown root or an `os.pathsep`-separated `DATA_PATH` list. This tree is
+therefore the authority-tiered source layout for optional ingestion, while any combined runtime
+corpus should be built from these directories in a controlled way.
+
+## Optional Research Pro Imports
+
+Research Pro source configuration lives in `configs/rag_sources/hpc_research_pro_sources.json`.
+The first-pass group is `hpc_additional_docs_first_pass`; imported Markdown, when explicitly
+generated, should live under `staging/hpc_additional_docs_first_pass/`.
+
+Dry-run before import:
+
+```bash
+python scripts/rag/import_hpc_sources.py \
+  --manifest configs/rag_sources/hpc_research_pro_sources.json \
+  --group hpc_additional_docs_first_pass \
+  --dry-run
+```
+
+External HPC-center docs are teaching/troubleshooting examples only. They must not answer local
+operational questions about Amarel paths, queues, partitions, QoS, accounts, modules, software
+versions, support contacts, OOD/Globus endpoints, MFA/VPN, licenses, data policy, or quotas.
 
 ## Suggested Workflow
 
