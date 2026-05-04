@@ -70,6 +70,7 @@ def test_controlled_import_restricts_domain_rules_robots_and_page_caps(tmp_path:
             dry_run=False,
             allow_license_pending=True,
             max_pages_per_source=5,
+            request_timeout=5.0,
             run_id="crawl",
         ),
         session=FakeSession(routes),

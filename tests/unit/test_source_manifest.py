@@ -8,6 +8,7 @@ from src.rag.source_importer import ImportOptions, import_sources
 from src.rag.source_manifest import (
     CONFIG_PATH,
     SourceManifest,
+    SourceRecord,
     normalize_ingestion_method,
     source_skip_reasons,
 )
@@ -57,14 +58,23 @@ def test_skip_reasons_are_conservative_for_license_and_repo_sources() -> None:
     sources = manifest.source_by_id()
 
     bash = sources["gnu_bash_reference_manual"]
-    apptainer = sources["apptainer_user_guide"]
+    missing_repo = SourceRecord.from_dict(
+        {
+            "source_id": "repo_source",
+            "title": "Repo Source",
+            "public_url": "https://example.edu/repo",
+            "recommended_ingestion_method": "clone repo",
+            "normalized_ingestion_method": "git_repo",
+            "decision": "ingest",
+        }
+    )
 
     assert "license_review_pending" in source_skip_reasons(bash)
     assert "license_review_pending" not in source_skip_reasons(
         bash,
         allow_license_pending=True,
     )
-    assert source_skip_reasons(apptainer, allow_license_pending=True) == ["repo_url_required"]
+    assert source_skip_reasons(missing_repo, allow_license_pending=True) == ["repo_url_required"]
 
 
 def test_dry_run_writes_reports_without_fetching(tmp_path: Path) -> None:

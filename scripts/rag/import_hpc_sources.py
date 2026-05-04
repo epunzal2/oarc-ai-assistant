@@ -60,6 +60,18 @@ def main() -> None:
         help="Cap crawled pages per source.",
     )
     parser.add_argument(
+        "--source-id",
+        action="append",
+        default=None,
+        help="Limit the run to one source id. Repeat to include multiple sources.",
+    )
+    parser.add_argument(
+        "--request-timeout",
+        type=float,
+        default=20.0,
+        help="HTTP timeout per robots/page request in seconds.",
+    )
+    parser.add_argument(
         "--ignore-robots",
         action="store_true",
         help="Do not check robots.txt. Use only for local fixtures or reviewed mirrors.",
@@ -82,6 +94,8 @@ def main() -> None:
             dry_run=dry_run,
             allow_license_pending=args.allow_license_pending,
             max_pages_per_source=args.max_pages_per_source,
+            source_ids=args.source_id,
+            request_timeout=args.request_timeout,
             obey_robots_txt=not args.ignore_robots,
             run_id=args.run_id,
         )

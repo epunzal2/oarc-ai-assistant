@@ -26,13 +26,12 @@ MODULE_RE = re.compile(
     re.IGNORECASE,
 )
 HOSTNAME_RE = re.compile(
-    r"\b(?:login|dtn|ood|ondemand|globus|vpn)[A-Za-z0-9.-]*\.(?:edu|org|gov)\b|"
-    r"\b[A-Za-z0-9.-]*(?:login|dtn|ood|ondemand)[A-Za-z0-9.-]*\b",
+    r"\b(?:login|dtn|ood|ondemand|globus|vpn)[A-Za-z0-9.-]*\.[A-Za-z]{2,}\b",
     re.IGNORECASE,
 )
 SUPPORT_RE = re.compile(
     r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b|"
-    r"\b(?:support|helpdesk|ticket|service desk)\b|https?://\S*(?:ticket|support|helpdesk)\S*",
+    r"\b(?:helpdesk|ticket|service desk)\b|https?://\S*(?:ticket|support|helpdesk)\S*",
     re.IGNORECASE,
 )
 QUOTA_RE = re.compile(
@@ -63,7 +62,23 @@ def detect_cluster_specific_fields(text: str) -> list[str]:
     """Return cluster-specific field categories detected in text."""
 
     body = str(text or "")
-    return [name for name, pattern in DETECTORS if pattern.search(body)]
+    fields = []
+    for name, pattern in DETECTORS:
+        match = pattern.search(body)
+        if not match:
+            continue
+        if name == "support" and not _is_support_contact_match(body, match):
+            continue
+        fields.append(name)
+    return fields
+
+
+def _is_support_contact_match(text: str, match: re.Match[str]) -> bool:
+    matched = match.group(0)
+    if "@" not in matched:
+        return True
+    window = text[max(0, match.start() - 80) : match.end() + 80]
+    return bool(re.search(r"\b(contact|support|helpdesk|ticket|email|write to)\b", window, re.IGNORECASE))
 
 
 def stable_content_hash(text: str) -> str:

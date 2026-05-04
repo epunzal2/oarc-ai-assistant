@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -58,6 +60,8 @@ class ImportOptions:
     allow_license_pending: bool = False
     max_pages_per_source: int | None = None
     obey_robots_txt: bool | None = None
+    source_ids: list[str] | None = None
+    request_timeout: float = 20.0
     user_agent: str = DEFAULT_USER_AGENT
     run_id: str | None = None
 
@@ -84,6 +88,9 @@ def import_sources(
 
     manifest = SourceManifest.from_file(options.manifest_path)
     sources = manifest.resolve_group(options.group)
+    if options.source_ids:
+        requested = set(options.source_ids)
+        sources = [source for source in sources if source.source_id in requested]
     defaults = manifest.defaults
     report = ImportReport()
 
@@ -99,7 +106,12 @@ def import_sources(
     )
     active_session = session or requests.Session()
     active_session.headers.update({"User-Agent": options.user_agent})
-    robots = RobotsCache(active_session, user_agent=options.user_agent, enabled=obey_robots)
+    robots = RobotsCache(
+        active_session,
+        user_agent=options.user_agent,
+        enabled=obey_robots,
+        request_timeout=options.request_timeout,
+    )
 
     for source in sources:
         skip_reasons = source_skip_reasons(
@@ -124,6 +136,7 @@ def import_sources(
                 session=active_session,
                 robots=robots,
                 max_pages=max_pages,
+                request_timeout=options.request_timeout,
                 report=report,
             )
             report.sources_imported.append(
@@ -150,6 +163,7 @@ def import_sources(
         "ingest": options.ingest,
         "allow_license_pending": options.allow_license_pending,
         "source_count": len(sources),
+        "source_ids": [source.source_id for source in sources],
         "sources_imported": len(report.sources_imported),
         "sources_skipped": len(report.sources_skipped),
         "pages_skipped": len(report.pages_skipped),
@@ -166,10 +180,18 @@ def import_sources(
 class RobotsCache:
     """Small robots.txt cache using the active HTTP session."""
 
-    def __init__(self, session: requests.Session, *, user_agent: str, enabled: bool) -> None:
+    def __init__(
+        self,
+        session: requests.Session,
+        *,
+        user_agent: str,
+        enabled: bool,
+        request_timeout: float,
+    ) -> None:
         self.session = session
         self.user_agent = user_agent
         self.enabled = enabled
+        self.request_timeout = request_timeout
         self._cache: dict[str, RobotFileParser | None] = {}
 
     def can_fetch(self, url: str) -> bool:
@@ -188,7 +210,7 @@ class RobotsCache:
 
     def _load(self, base: str) -> RobotFileParser | None:
         try:
-            response = self.session.get(f"{base}/robots.txt", timeout=20)
+            response = self.session.get(f"{base}/robots.txt", timeout=self.request_timeout)
         except requests.RequestException:
             return None
         if response.status_code >= 400:
@@ -223,6 +245,7 @@ def _import_source(
     session: requests.Session,
     robots: RobotsCache,
     max_pages: int,
+    request_timeout: float,
     report: ImportReport,
 ) -> int:
     if source.normalized_ingestion_method == "git_repo":
@@ -253,7 +276,7 @@ def _import_source(
             continue
 
         try:
-            response = session.get(normalized_url, timeout=60)
+            response = session.get(normalized_url, timeout=request_timeout)
             response.raise_for_status()
         except requests.RequestException as exc:
             report.crawl_errors.append(
@@ -329,14 +352,53 @@ def html_to_markdown(html: str, *, canonical_url: str) -> dict[str, str]:
         or soup
     )
     fragment = BeautifulSoup(str(main), "html.parser")
-    for tag in fragment.select("script, style, nav, header, footer, form"):
+    for tag in fragment.select(
+        "script, style, nav, header, footer, form, #searchbox, .headerlink, "
+        ".bd-header-article, .skip-link, .sr-only, .visually-hidden, [aria-label='breadcrumb']"
+    ):
         tag.decompose()
+    for tag in fragment.find_all(["div", "span"]):
+        tag.unwrap()
     title_tag = fragment.find(["h1", "title"]) or soup.find("title")
     title = " ".join(title_tag.stripped_strings) if title_tag else canonical_url
-    markdown = _node_to_markdown(fragment).strip()
+    markdown = _pandoc_html_to_markdown(str(fragment)) or _node_to_markdown(fragment).strip()
+    markdown = _strip_raw_html_wrappers(markdown)
     if title and not markdown.startswith("# "):
         markdown = f"# {title}\n\n{markdown}".strip()
     return {"title": title, "markdown": markdown + "\n"}
+
+
+def _pandoc_html_to_markdown(html: str) -> str:
+    if shutil.which("pandoc") is None:
+        return ""
+    result = subprocess.run(
+        ["pandoc", "-f", "html", "-t", "gfm", "--wrap=auto", "--columns=100"],
+        input=html,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def _strip_raw_html_wrappers(markdown: str) -> str:
+    lines = []
+    skip_img_continuation = False
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        if skip_img_continuation:
+            if stripped.endswith("/>") or stripped.endswith(">"):
+                skip_img_continuation = False
+            continue
+        if re.fullmatch(r"</?(?:div|span|section|article|main|figure)(?:\s[^>]*)?>", stripped):
+            continue
+        if stripped.startswith("<img "):
+            skip_img_continuation = not (stripped.endswith("/>") or stripped.endswith(">"))
+            continue
+        lines.append(line)
+    return _clean_markdown("\n".join(lines)).strip()
 
 
 def _node_to_markdown(node: Any) -> str:
