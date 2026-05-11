@@ -425,6 +425,17 @@ Implementation notes:
   not stored unless explicitly approved.
 - [ ] Document an operator workflow for monitoring the service and diagnosing bad answers.
 
+Detailed plan: `.plans/2026-04-28-phase-5-quality-ops-readiness.md`.
+
+Phase 5 planning can begin after local Phase 3 verification because the gateway/OpenWebUI contract
+is proven locally. HPC-derived settings remain provisional until
+`scripts/deployment/hpc/run_phase3_openwebui_verification.sbatch` passes on the cluster. Do not
+finalize GPU sizing, exact tunnel behavior, timeout policy, model/index choice, or operating limits
+from local-only evidence.
+
+This phase keeps project documentation under `project_docs/` and plans under `.plans/`; `docs/`
+remains reserved for corpus-related RAG content.
+
 ### Phase 6: Final Product UI
 
 - [ ] Build the React/Next.js frontend against the hardened FastAPI API.
