@@ -29,6 +29,11 @@ def main() -> None:
         help="Configured source group to resolve.",
     )
     parser.add_argument(
+        "--all-sources",
+        action="store_true",
+        help="Import every configured source in the manifest instead of resolving --group.",
+    )
+    parser.add_argument(
         "--output-dir",
         default=None,
         help="Destination for generated Markdown when --ingest is used.",
@@ -54,6 +59,11 @@ def main() -> None:
         help="Allow fetching sources whose license/reuse notes still require review.",
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Bypass manual-review/link-only skip reasons for an explicit broad import.",
+    )
+    parser.add_argument(
         "--max-pages-per-source",
         type=int,
         default=None,
@@ -77,6 +87,11 @@ def main() -> None:
         help="Do not check robots.txt. Use only for local fixtures or reviewed mirrors.",
     )
     parser.add_argument(
+        "--no-verify-ssl",
+        action="store_true",
+        help="Disable TLS certificate verification for explicitly targeted recovery imports.",
+    )
+    parser.add_argument(
         "--run-id",
         default=None,
         help="Optional stable report run id.",
@@ -93,10 +108,13 @@ def main() -> None:
             ingest=args.ingest,
             dry_run=dry_run,
             allow_license_pending=args.allow_license_pending,
+            all_sources=args.all_sources,
+            force=args.force,
             max_pages_per_source=args.max_pages_per_source,
             source_ids=args.source_id,
             request_timeout=args.request_timeout,
             obey_robots_txt=not args.ignore_robots,
+            verify_ssl=not args.no_verify_ssl,
             run_id=args.run_id,
         )
     )

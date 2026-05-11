@@ -64,6 +64,9 @@ class ImportOptions:
     request_timeout: float = 20.0
     user_agent: str = DEFAULT_USER_AGENT
     run_id: str | None = None
+    all_sources: bool = False
+    force: bool = False
+    verify_ssl: bool = True
 
 
 @dataclass
@@ -87,7 +90,7 @@ def import_sources(
     """Run a dry-run or explicit import for a configured source group."""
 
     manifest = SourceManifest.from_file(options.manifest_path)
-    sources = manifest.resolve_group(options.group)
+    sources = manifest.sources if options.all_sources else manifest.resolve_group(options.group)
     if options.source_ids:
         requested = set(options.source_ids)
         sources = [source for source in sources if source.source_id in requested]
@@ -106,6 +109,7 @@ def import_sources(
     )
     active_session = session or requests.Session()
     active_session.headers.update({"User-Agent": options.user_agent})
+    active_session.verify = options.verify_ssl
     robots = RobotsCache(
         active_session,
         user_agent=options.user_agent,
@@ -114,9 +118,13 @@ def import_sources(
     )
 
     for source in sources:
-        skip_reasons = source_skip_reasons(
-            source,
-            allow_license_pending=options.allow_license_pending,
+        skip_reasons = (
+            []
+            if options.force
+            else source_skip_reasons(
+                source,
+                allow_license_pending=options.allow_license_pending,
+            )
         )
         if options.dry_run or not options.ingest or skip_reasons:
             report.sources_skipped.append(
@@ -159,6 +167,9 @@ def import_sources(
         "run_id": run_id,
         "manifest_path": str(options.manifest_path),
         "group": options.group,
+        "all_sources": options.all_sources,
+        "force": options.force,
+        "verify_ssl": options.verify_ssl,
         "dry_run": options.dry_run,
         "ingest": options.ingest,
         "allow_license_pending": options.allow_license_pending,
@@ -217,7 +228,7 @@ class RobotsCache:
             return None
         parser = RobotFileParser()
         parser.set_url(f"{base}/robots.txt")
-        parser.parse(response.text.splitlines())
+        parser.parse(_response_text(response).splitlines())
         return parser
 
 
@@ -296,7 +307,8 @@ def _import_source(
             )
             continue
 
-        page = html_to_markdown(response.text, canonical_url=normalized_url)
+        response_text = _response_text(response)
+        page = html_to_markdown(response_text, canonical_url=normalized_url)
         metadata = metadata_for_source(source, canonical_url=normalized_url, content=page["markdown"])
         target = source_dir / _filename_for_url(normalized_url)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -319,7 +331,7 @@ def _import_source(
 
         if source.normalized_ingestion_method != "controlled_website":
             continue
-        for link in _candidate_links(response.text, base_url=normalized_url):
+        for link in _candidate_links(response_text, base_url=normalized_url):
             allowed, reason = _url_allowed(source, link["url"], seed=source.public_url, text=link["text"])
             if allowed and link["url"] not in seen:
                 queue.append(link["url"])
@@ -368,6 +380,25 @@ def html_to_markdown(html: str, *, canonical_url: str) -> dict[str, str]:
     return {"title": title, "markdown": markdown + "\n"}
 
 
+def _response_text(response: requests.Response) -> str:
+    """Decode HTTP response bytes defensively for documentation pages."""
+
+    content = getattr(response, "content", b"")
+    if not content:
+        return response.text
+
+    content_type = response.headers.get("content-type", "")
+    encoding = response.encoding
+    if not encoding or (
+        encoding.lower() == "iso-8859-1" and "charset=" not in content_type.lower()
+    ):
+        encoding = response.apparent_encoding or "utf-8"
+    try:
+        return content.decode(encoding, errors="replace")
+    except LookupError:
+        return content.decode("utf-8", errors="replace")
+
+
 def _pandoc_html_to_markdown(html: str) -> str:
     if shutil.which("pandoc") is None:
         return ""
@@ -392,6 +423,8 @@ def _strip_raw_html_wrappers(markdown: str) -> str:
             if stripped.endswith("/>") or stripped.endswith(">"):
                 skip_img_continuation = False
             continue
+        if _looks_like_image_markup_remainder(stripped):
+            continue
         if re.fullmatch(r"</?(?:div|span|section|article|main|figure)(?:\s[^>]*)?>", stripped):
             continue
         if stripped.startswith("<img "):
@@ -399,6 +432,22 @@ def _strip_raw_html_wrappers(markdown: str) -> str:
             continue
         lines.append(line)
     return _clean_markdown("\n".join(lines)).strip()
+
+
+def _looks_like_image_markup_remainder(stripped: str) -> bool:
+    if not stripped:
+        return False
+    if "data:image/svg+xml;base64" in stripped:
+        return True
+    if stripped.startswith("<img "):
+        return True
+    return bool(
+        re.fullmatch(
+            r"(?:src|srcset|sizes|loading|width|height|alt|class|data-[\w-]+)="
+            r"[\"'][^\"']*[\"']\s*(?:/?>|/></a>)?",
+            stripped,
+        )
+    )
 
 
 def _node_to_markdown(node: Any) -> str:

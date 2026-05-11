@@ -12,8 +12,19 @@ from src.rag.source_importer import ImportOptions, import_sources
 class FakeResponse:
     """Small requests-like response fixture."""
 
-    def __init__(self, text: str, *, status_code: int = 200, url: str = "https://example.edu/") -> None:
+    def __init__(
+        self,
+        text: str,
+        *,
+        status_code: int = 200,
+        url: str = "https://example.edu/",
+        content: bytes | None = None,
+        encoding: str | None = "utf-8",
+    ) -> None:
         self.text = text
+        self.content = content if content is not None else text.encode("utf-8")
+        self.encoding = encoding
+        self.apparent_encoding = "utf-8"
         self.status_code = status_code
         self.url = url
         self.headers = {"content-type": "text/html"}
@@ -86,6 +97,87 @@ def test_controlled_import_restricts_domain_rules_robots_and_page_caps(tmp_path:
     assert "exclude_rule" in skipped_reasons
     assert report.cluster_specific_pages
     assert list((tmp_path / "out").rglob("*.md"))
+
+
+def test_all_sources_force_imports_manual_review_sources(tmp_path: Path) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["sources"].append(
+        {
+            **payload["sources"][0],
+            "source_id": "manual_source",
+            "title": "Manual Source",
+            "public_url": "https://example.edu/manual",
+            "decision": "review_manually_or_link_only",
+            "normalized_ingestion_method": "manual_review",
+            "license_review_required": True,
+        }
+    )
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    routes = {
+        "https://example.edu/robots.txt": FakeResponse(""),
+        "https://example.edu/start": FakeResponse("<main><h1>Start</h1></main>"),
+        "https://example.edu/manual": FakeResponse("<main><h1>Manual</h1></main>"),
+    }
+
+    report = import_sources(
+        ImportOptions(
+            manifest_path=manifest_path,
+            output_dir=tmp_path / "out",
+            report_dir=tmp_path / "reports",
+            ingest=True,
+            dry_run=False,
+            all_sources=True,
+            force=True,
+            run_id="all",
+        ),
+        session=FakeSession(routes),
+    )
+
+    assert report.summary["all_sources"] is True
+    assert report.summary["force"] is True
+    assert report.summary["source_count"] == 2
+    assert {record["source_id"] for record in report.sources_imported} == {
+        "example_source",
+        "manual_source",
+    }
+
+
+def test_import_decodes_utf8_bytes_and_drops_image_remainders(tmp_path: Path) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    html = (
+        "<main><h1>Unicode</h1><img\n"
+        "src=\"data:image/svg+xml;base64,AAAA\" />"
+        "<p>virtual environments — don’t break</p></main>"
+    )
+    routes = {
+        "https://example.edu/robots.txt": FakeResponse(""),
+        "https://example.edu/start": FakeResponse(
+            "",
+            content=html.encode("utf-8"),
+            encoding="iso-8859-1",
+            url="https://example.edu/start",
+        ),
+    }
+
+    import_sources(
+        ImportOptions(
+            manifest_path=manifest_path,
+            group="first",
+            output_dir=tmp_path / "out",
+            report_dir=tmp_path / "reports",
+            ingest=True,
+            dry_run=False,
+            allow_license_pending=True,
+            run_id="unicode",
+        ),
+        session=FakeSession(routes),
+    )
+
+    imported = next((tmp_path / "out").rglob("*.md")).read_text(encoding="utf-8")
+    assert "—" in imported
+    assert "don’t" in imported
+    assert "data:image/svg+xml;base64" not in imported
 
 
 def _write_manifest(tmp_path: Path) -> Path:
