@@ -60,6 +60,10 @@ def test_phase_3_plan_file_exists_and_is_unignored() -> None:
     assert "Title: OpenWebUI RAG Gateway Integration" in plan
     assert "Status: Draft" in plan
     assert "flowchart LR" in plan
+    assert "rsync -az" in plan
+    assert "--exclude 'vector_index/'" in plan
+    assert "/scratch/$USER/oarc-ai-assistant/vector_index/faiss_amarel" in plan
+    assert "do not rebuild it first" in plan
     assert "!/.plans/2026-04-27-openwebui-rag-gateway-integration.md" in gitignore
 
 

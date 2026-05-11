@@ -339,6 +339,12 @@ flowchart LR
 
 Verification checklist:
 
+- [ ] Sync code to HPC with `rsync -az` and no `--delete`, excluding `.git/`, `.venv/`, caches,
+  `logs/`, `runtime/`, and `vector_index/` so an existing HPC FAISS index is not removed.
+- [ ] On HPC, confirm `/scratch/$USER/oarc-ai-assistant/vector_index/faiss_amarel` exists before
+  submitting Phase 3.
+- [ ] Rebuild or refresh the FAISS index only if retrieval fails, sources are stale, or corpus docs
+  intentionally changed.
 - [ ] Start vLLM and confirm the raw model endpoint is healthy.
 - [ ] Start the RAG gateway with `uvicorn src.rag.api:app --host 0.0.0.0 --port <port>`.
 - [ ] Confirm `GET /health` returns `status: ok`.

@@ -71,6 +71,37 @@ flowchart LR
 
 # Verification Strategy
 
+HPC sync and index preflight:
+
+Use `rsync` without `--delete` when the HPC checkout already has generated assets such as a FAISS
+index. This updates code, scripts, configs, and project docs while leaving the cluster index in
+place:
+
+```bash
+rsync -az \
+  --exclude '.git/' \
+  --exclude '.venv/' \
+  --exclude '__pycache__/' \
+  --exclude '.pytest_cache/' \
+  --exclude 'logs/' \
+  --exclude 'runtime/' \
+  --exclude 'vector_index/' \
+  /Users/exequielpunzalan/Library/CloudStorage/OneDrive-RutgersUniversity/OARC/projects/oarc-ai-assistant/ \
+  <hpc-login>:/scratch/$USER/oarc-ai-assistant/
+```
+
+Before rebuilding a FAISS index, inspect available repo scripts and confirm the existing target:
+
+```bash
+cd /scratch/$USER/oarc-ai-assistant
+find scripts -iname '*faiss*' -o -iname '*index*' -o -iname '*ingest*'
+ls -lh vector_index/faiss_amarel
+```
+
+The expected HPC target is `/scratch/$USER/oarc-ai-assistant/vector_index/faiss_amarel`. If that
+index is present and Phase 3 only needs verification, do not rebuild it first. Rebuild or refresh the
+index only when retrieval fails, sources are stale, or the corpus docs intentionally changed.
+
 Manual verification:
 - Start vLLM and confirm its raw OpenAI-compatible endpoint is healthy.
 - Start the RAG gateway with `uvicorn src.rag.api:app --host 0.0.0.0 --port <port>`.
