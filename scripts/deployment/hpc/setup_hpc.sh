@@ -32,6 +32,6 @@ uv sync --python "${PYTHON_VERSION}" --extra dev --extra vllm
 source "${PROJECT_ROOT}/scripts/common/activate_project_env.sh"
 
 echo "Installing fallback HPC-pinned packages where needed..."
-uv pip install -r requirements_hpc.txt -c constraints_hpc.txt --upgrade-strategy only-if-needed
+uv pip install -r requirements_hpc.txt -c constraints_hpc.txt
 
 echo "Setup complete. The repo-local virtual environment is ready."
