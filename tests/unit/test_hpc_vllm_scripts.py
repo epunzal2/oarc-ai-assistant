@@ -21,6 +21,17 @@ def test_submit_vllm_serve_supports_endpoint_dir() -> None:
     assert "--endpoint-dir <path>" in content
     assert 'export VLLM_ENDPOINT_DIR="${ENDPOINT_DIR}"' in content
     assert "Generated VLLM_API_KEY" in content
+    assert "openssl rand" not in content
+
+
+def test_phase3_verification_does_not_require_openssl_for_api_key() -> None:
+    content = (HPC_SCRIPT_DIR / "run_phase3_openwebui_verification.sbatch").read_text(
+        encoding="utf-8"
+    )
+
+    assert "generate_api_key" in content
+    assert "secrets.token_hex" in content
+    assert "openssl rand" not in content
 
 
 def test_remote_chat_launcher_does_not_require_llama_cpp_model() -> None:

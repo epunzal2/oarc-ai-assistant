@@ -46,6 +46,23 @@ require_port() {
     fi
 }
 
+generate_api_key() {
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import secrets; print(secrets.token_hex(32))'
+        return
+    fi
+    if command -v python >/dev/null 2>&1; then
+        python -c 'import secrets; print(secrets.token_hex(32))'
+        return
+    fi
+    if [[ -r /dev/urandom ]] && command -v od >/dev/null 2>&1 && command -v tr >/dev/null 2>&1; then
+        od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
+        return
+    fi
+    echo "Error: cannot generate VLLM_API_KEY; provide --api-key or set VLLM_API_KEY." >&2
+    exit 1
+}
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SBATCH_SCRIPT="${SCRIPT_DIR}/vllm_serve.sbatch"
 
@@ -127,7 +144,7 @@ export VLLM_PORT="${PORT}"
 export VLLM_MAX_MODEL_LEN="${MAX_MODEL_LEN}"
 
 if [[ -z "${API_KEY}" ]]; then
-    API_KEY="$(openssl rand -hex 32)"
+    API_KEY="$(generate_api_key)"
     echo "Generated VLLM_API_KEY (no key supplied): ${API_KEY}"
 fi
 export VLLM_API_KEY="${API_KEY}"

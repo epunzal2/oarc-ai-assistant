@@ -49,8 +49,25 @@ FAISS_INDEX_PATH="${FAISS_INDEX_PATH:-${PROJECT_ROOT}/vector_index/faiss_amarel}
 PHASE3_VERIFY_QUESTION="${PHASE3_VERIFY_QUESTION:-How do I submit a Slurm batch job?}"
 PHASE3_KEEPALIVE="${PHASE3_KEEPALIVE:-true}"
 
+generate_api_key() {
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import secrets; print(secrets.token_hex(32))'
+        return
+    fi
+    if command -v python >/dev/null 2>&1; then
+        python -c 'import secrets; print(secrets.token_hex(32))'
+        return
+    fi
+    if [[ -r /dev/urandom ]] && command -v od >/dev/null 2>&1 && command -v tr >/dev/null 2>&1; then
+        od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
+        return
+    fi
+    echo "Error: cannot generate VLLM_API_KEY; set VLLM_API_KEY before submitting." >&2
+    exit 1
+}
+
 if [[ -z "${VLLM_API_KEY}" ]]; then
-    VLLM_API_KEY="$(openssl rand -hex 32)"
+    VLLM_API_KEY="$(generate_api_key)"
 fi
 
 if command -v module &>/dev/null; then
