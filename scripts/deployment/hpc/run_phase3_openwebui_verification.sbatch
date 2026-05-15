@@ -72,7 +72,9 @@ fi
 
 if command -v module &>/dev/null; then
     echo "Loading module: ${CUDA_MODULE}"
-    module load "${CUDA_MODULE}"
+    if ! module load "${CUDA_MODULE}"; then
+        echo "Warning: failed to load module ${CUDA_MODULE}; continuing with existing environment." >&2
+    fi
 fi
 
 source "${PROJECT_ROOT}/scripts/common/activate_project_env.sh"
@@ -116,6 +118,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+http_status() {
+    local url="$1"
+    local code
+    if ! code="$(curl -s -o /dev/null -w "%{http_code}" "${url}" 2>/dev/null)"; then
+        echo "000"
+        return
+    fi
+    if [[ "${code}" =~ ^[0-9]{3}$ ]]; then
+        echo "${code}"
+    else
+        echo "000"
+    fi
+}
+
 wait_for_http() {
     local name="$1"
     local url="$2"
@@ -124,8 +140,8 @@ wait_for_http() {
     local http_code="000"
 
     while [[ ${SECONDS} -lt ${deadline} ]]; do
-        http_code="$(curl -s -o /dev/null -w "%{http_code}" "${url}" 2>/dev/null || echo "000")"
-        if [[ "${http_code}" != "000" ]] && [[ "${http_code}" -lt 400 ]]; then
+        http_code="$(http_status "${url}")"
+        if [[ "${http_code}" =~ ^[23][0-9]{2}$ ]]; then
             echo "${name} healthy: ${url} (${http_code})"
             return 0
         fi

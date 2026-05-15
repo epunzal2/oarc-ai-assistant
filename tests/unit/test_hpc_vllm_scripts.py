@@ -13,6 +13,8 @@ def test_vllm_serve_sbatch_writes_endpoint_metadata() -> None:
     assert '"health_url"' in content
     assert "vllm serve" in content
     assert "/health" in content
+    assert "http_status" in content
+    assert 'curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}" 2>/dev/null || echo "000"' not in content
 
 
 def test_submit_vllm_serve_supports_endpoint_dir() -> None:
@@ -32,6 +34,24 @@ def test_phase3_verification_does_not_require_openssl_for_api_key() -> None:
     assert "generate_api_key" in content
     assert "secrets.token_hex" in content
     assert "openssl rand" not in content
+
+
+def test_phase3_verification_rejects_curl_000_health_codes() -> None:
+    content = (HPC_SCRIPT_DIR / "run_phase3_openwebui_verification.sbatch").read_text(
+        encoding="utf-8"
+    )
+
+    assert "http_status" in content
+    assert '[[ "${http_code}" =~ ^[23][0-9]{2}$ ]]' in content
+    assert 'curl -s -o /dev/null -w "%{http_code}" "${url}" 2>/dev/null || echo "000"' not in content
+
+
+def test_check_vllm_status_rejects_curl_000_health_codes() -> None:
+    content = (HPC_SCRIPT_DIR / "check_vllm_status.sh").read_text(encoding="utf-8")
+
+    assert "http_status" in content
+    assert '[[ "${HTTP_CODE}" =~ ^[23][0-9]{2}$ ]]' in content
+    assert 'curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}" 2>/dev/null || echo "000"' not in content
 
 
 def test_remote_chat_launcher_does_not_require_llama_cpp_model() -> None:

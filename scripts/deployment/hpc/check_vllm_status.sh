@@ -31,6 +31,20 @@ resolve_python_bin() {
     exit 1
 }
 
+http_status() {
+    local url="$1"
+    local code
+    if ! code="$(curl -s -o /dev/null -w "%{http_code}" "${url}" 2>/dev/null)"; then
+        echo "000"
+        return
+    fi
+    if [[ "${code}" =~ ^[0-9]{3}$ ]]; then
+        echo "${code}"
+    else
+        echo "000"
+    fi
+}
+
 ENDPOINT_DIR="${VLLM_ENDPOINT_DIR:-}"
 
 while (($# > 0)); do
@@ -103,9 +117,9 @@ if [[ -n "${SLURM_JOB_ID}" ]]; then
     fi
 fi
 
-HTTP_CODE="$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}" 2>/dev/null || echo "000")"
+HTTP_CODE="$(http_status "${HEALTH_URL}")"
 HEALTHY="false"
-if [[ "${HTTP_CODE}" != "000" ]] && [[ "${HTTP_CODE}" -lt 400 ]]; then
+if [[ "${HTTP_CODE}" =~ ^[23][0-9]{2}$ ]]; then
     HEALTHY="true"
 fi
 

@@ -35,7 +35,9 @@ export PYTHONUNBUFFERED=1
 
 if command -v module &>/dev/null; then
     echo "Loading module: ${CUDA_MODULE}"
-    module load "${CUDA_MODULE}"
+    if ! module load "${CUDA_MODULE}"; then
+        echo "Warning: failed to load module ${CUDA_MODULE}; continuing with existing environment." >&2
+    fi
 fi
 
 source "${PROJECT_ROOT}/scripts/common/activate_project_env.sh"
@@ -79,6 +81,20 @@ echo ""
 "${VLLM_CMD[@]}" &
 VLLM_PID=$!
 
+http_status() {
+    local url="$1"
+    local code
+    if ! code="$(curl -s -o /dev/null -w "%{http_code}" "${url}" 2>/dev/null)"; then
+        echo "000"
+        return
+    fi
+    if [[ "${code}" =~ ^[0-9]{3}$ ]]; then
+        echo "${code}"
+    else
+        echo "000"
+    fi
+}
+
 echo "Waiting for vLLM to become healthy (timeout: ${VLLM_HEALTH_TIMEOUT}s)..."
 DEADLINE=$((SECONDS + VLLM_HEALTH_TIMEOUT))
 HEALTHY=false
@@ -90,8 +106,8 @@ while [[ ${SECONDS} -lt ${DEADLINE} ]]; do
         exit 1
     fi
 
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}" 2>/dev/null || echo "000")
-    if [[ "${HTTP_CODE}" != "000" ]] && [[ "${HTTP_CODE}" -lt 400 ]]; then
+    HTTP_CODE="$(http_status "${HEALTH_URL}")"
+    if [[ "${HTTP_CODE}" =~ ^[23][0-9]{2}$ ]]; then
         HEALTHY=true
         break
     fi
