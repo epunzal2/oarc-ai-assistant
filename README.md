@@ -50,7 +50,10 @@ graph TD
 
 ### HPC Installation Notes
 
-If you encounter OS-related errors during the installation of `llama-cpp-python` (such as GLIBC incompatibility), you may need to install it from source. The [`env_check/build_llama_cpp.sbatch`](env_check/build_llama_cpp.sbatch) script provides an example of how to do this.
+If you opt into local `llama_cpp` inference and encounter OS-related errors during the installation
+of `llama-cpp-python` (such as GLIBC incompatibility), you may need to install it from source. The
+[`env_check/build_llama_cpp.sbatch`](env_check/build_llama_cpp.sbatch) script provides an example of
+how to do this.
 
 The specific package requirements for the HPC environment are defined in [`requirements_hpc.txt`](requirements_hpc.txt) and [`constraints_hpc.txt`](constraints_hpc.txt). A complete list of the exact environment libraries can be found in [`env_check/oarc-ai-rag-test.sanitized.yml`](env_check/oarc-ai-rag-test.sanitized.yml).
 
@@ -233,7 +236,8 @@ All provider invocations hash prompts in logs and persist sanitized startup argu
 
 With the new `pyproject.toml` you can install extras directly:
 
-- `pip install -e .` – base dependencies (llama.cpp + Hugging Face).
+- `pip install -e .` – base RAG, gateway, vector-store, and Hugging Face dependencies.
+- `pip install -e .[llama_cpp]` – adds the local llama.cpp runtime.
 - `pip install -e .[vllm]` – adds the `vllm` GPU runtime.
 - `pip install -e .[sglang]` – adds the SGLang runtime.
 - `pip install -e .[dev]` – linting and pytest tooling.
@@ -341,6 +345,13 @@ For HPC runs that need the hosted vLLM stack:
 
 ```bash
 uv sync --extra dev --extra vllm
+source .venv/bin/activate
+```
+
+For local llama.cpp experiments, install the separate runtime extra:
+
+```bash
+uv sync --extra llama_cpp
 source .venv/bin/activate
 ```
 

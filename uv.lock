@@ -3457,7 +3457,6 @@ dependencies = [
     { name = "langchain-huggingface", version = "0.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "langchain-huggingface", version = "1.2.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "libmagic" },
-    { name = "llama-cpp-python" },
     { name = "presidio-analyzer" },
     { name = "presidio-anonymizer" },
     { name = "pypdf" },
@@ -3480,6 +3479,9 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
+llama-cpp = [
+    { name = "llama-cpp-python" },
+]
 sglang = [
     { name = "sglang" },
 ]
@@ -3499,7 +3501,7 @@ requires-dist = [
     { name = "langchain-community", specifier = ">=0.3.0" },
     { name = "langchain-huggingface", specifier = ">=0.3.0" },
     { name = "libmagic", specifier = ">=1.0" },
-    { name = "llama-cpp-python", specifier = ">=0.2.90" },
+    { name = "llama-cpp-python", marker = "extra == 'llama-cpp'", specifier = ">=0.2.90" },
     { name = "presidio-analyzer", specifier = ">=2.2.0" },
     { name = "presidio-anonymizer", specifier = ">=2.2.0" },
     { name = "pypdf", specifier = ">=6.0.0" },
@@ -3518,7 +3520,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.30.0" },
     { name = "vllm", marker = "extra == 'vllm'", specifier = ">=0.4.0" },
 ]
-provides-extras = ["dev", "vllm", "sglang"]
+provides-extras = ["llama-cpp", "dev", "vllm", "sglang"]
 
 [[package]]
 name = "olefile"

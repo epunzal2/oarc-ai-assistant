@@ -268,6 +268,13 @@ runs:
 uvicorn src.rag.api:app --host "$HOST" --port "$PORT"
 ```
 
+### Dependency Profiles
+
+The base package installs the RAG pipeline, gateway, vector-store, and Hugging Face dependencies.
+Production and HPC vLLM deployments should use `uv sync --extra dev --extra vllm`; this path does
+not compile `llama-cpp-python`. Local GGUF/llama.cpp experiments are opt-in through
+`uv sync --extra llama_cpp`.
+
 ### Hosted vLLM on HPC
 
 1. Prepare the HPC environment:

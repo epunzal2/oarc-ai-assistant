@@ -10,7 +10,6 @@ unstructured[md]
 python-dotenv
 presidio-analyzer
 presidio-anonymizer
-llama-cpp-python
 flask
 faiss-cpu
 tiktoken
