@@ -32,10 +32,10 @@ unstructured[md]==0.18.14
 pypdf==6.0.0
 
 # Data interchange
-pyarrow==20.0.0
+pyarrow==17.0.0
 
 # HTTP client
-requests==2.32.3
+requests==2.32.5
 
 # system dep
 python-magic
@@ -48,5 +48,5 @@ mlflow==2.17.2
 psutil==5.9.8
 pynvml==11.5.0
 
-# GPU LLM serving backend (CUDA 11.8 wheels)
+# GPU LLM serving backend
 vllm==0.10.2

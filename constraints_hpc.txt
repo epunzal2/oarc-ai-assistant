@@ -2,10 +2,10 @@
 
 llama-cpp-python==0.3.16
 
-# Torch family (present in the env; these pins prevent pip from changing them)
-torch==2.5.1
-torchvision==0.20.1
-torchaudio==2.5.1
+# Torch family required by vllm==0.10.2.
+torch==2.8.0
+torchvision==0.23.0
+torchaudio==2.8.0
 
 # Transformers stack
 transformers==4.56.1
@@ -13,16 +13,16 @@ tokenizers==0.22.0
 # Optional tokenizer lib — include if present
 sentencepiece==0.2.0
 
-# Data libs commonly pulled by deps — align with your current env
+# Data libs commonly pulled by deps — keep pyarrow below MLflow's upper bound.
 numpy==2.2.6
 # Only constrain pandas if you actually use it; otherwise omit to avoid pulling it in.
 # pandas==2.3.2
-pyarrow==20.0.0
+pyarrow==17.0.0
 
 pillow==11.0.0
 networkx==3.3
-sympy==1.13.1
+sympy==1.14.0
 typing-extensions==4.15.0
 
-# GPU serving backend (wheel ships with CUDA 11.8 runtime)
+# GPU serving backend.
 vllm==0.10.2
