@@ -50,5 +50,3 @@ pynvml==11.5.0
 
 # GPU LLM serving backend (CUDA 11.8 wheels)
 vllm==0.10.2
-
-mlflow==2.14.1
