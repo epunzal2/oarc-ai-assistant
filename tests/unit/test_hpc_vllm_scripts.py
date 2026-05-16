@@ -1,9 +1,11 @@
 """Contract tests for hosted vLLM HPC launcher scripts."""
 
+import re
 from pathlib import Path
 
 
 HPC_SCRIPT_DIR = Path("scripts/deployment/hpc")
+GPU_SCRIPT_DIRS = (Path("scripts/deployment/hpc"), Path("scripts/evaluation"))
 
 
 def test_vllm_serve_sbatch_writes_endpoint_metadata() -> None:
@@ -71,3 +73,20 @@ def test_hpc_vllm_scripts_use_repo_local_venv() -> None:
         content = (HPC_SCRIPT_DIR / script_name).read_text(encoding="utf-8")
         assert "scripts/common/activate_project_env.sh" in content
         assert "conda activate" not in content
+
+
+def test_gpu_slurm_scripts_default_to_redhat_partition() -> None:
+    """GPU jobs need RHEL9 nodes for current PyTorch/vLLM wheels."""
+
+    offenders = []
+    for script_dir in GPU_SCRIPT_DIRS:
+        for path in script_dir.glob("*.sbatch"):
+            content = path.read_text(encoding="utf-8")
+            if re.search(r"#SBATCH\s+--partition=gpu(?:\s|$)", content):
+                offenders.append(str(path))
+    submit_wrapper = HPC_SCRIPT_DIR / "submit_vllm_serve.sh"
+    wrapper_content = submit_wrapper.read_text(encoding="utf-8")
+    if 'SLURM_PARTITION:-gpu}' in wrapper_content:
+        offenders.append(str(submit_wrapper))
+
+    assert offenders == []

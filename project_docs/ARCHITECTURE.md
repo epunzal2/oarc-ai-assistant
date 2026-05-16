@@ -277,6 +277,10 @@ not compile `llama-cpp-python`. Local GGUF/llama.cpp experiments are opt-in thro
 
 ### Hosted vLLM on HPC
 
+GPU Slurm entrypoints default to the `gpu-redhat` partition. The current PyTorch/vLLM wheels require
+RHEL9-era system libraries such as GLIBC 2.28+, so the older `gpu` partition is not a supported
+default for vLLM or GPU evaluation jobs.
+
 1. Prepare the HPC environment:
 
    ```bash

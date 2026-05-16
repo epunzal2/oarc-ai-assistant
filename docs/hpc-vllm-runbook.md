@@ -21,6 +21,9 @@ The serve job publishes `vllm-endpoint.json` here after the endpoint becomes hea
 
 ## 2. Submit the vLLM serve job
 
+The default GPU partition is `gpu-redhat`; current PyTorch/vLLM wheels require RHEL9-era system
+libraries such as GLIBC 2.28+.
+
 ```bash
 scripts/deployment/hpc/submit_vllm_serve.sh \
   --model meta-llama/Llama-3-8B-Instruct \

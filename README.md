@@ -250,6 +250,8 @@ include the shared `requests` dependency used by the HTTP providers.
 The repo can now manage a shared vLLM server lifecycle for HPC use without changing the existing
 RAG provider code. The app still talks to vLLM through
 `POST {resolved_base_url}/v1/chat/completions`; the new pieces only manage and discover the server.
+GPU Slurm entrypoints default to `gpu-redhat` because the current PyTorch/vLLM wheels require
+RHEL9-era system libraries.
 
 1. Start the vLLM serve job:
 

@@ -11,7 +11,7 @@
 #SBATCH --job-name=rag_chat_hpc                 # Job name
 #SBATCH --output=logs/%x_%N_%j.out       # Standard output log (%x=jobname, %N=nodename, %j=jobid)
 #SBATCH --error=logs/%x_%N_%j.err        # Standard error log (%x=jobname, %N=nodename, %j=jobid)
-#SBATCH --partition=gpu                         # Partition (queue) name
+#SBATCH --partition=gpu-redhat                  # Partition (queue) name
 #SBATCH --gres=gpu:1                            # Request one GPU
 #SBATCH --constraint='volta|adalovelace|ampere' # V100, L40S, A100
 #SBATCH --cpus-per-task=8                       # Request 8 CPUs per task

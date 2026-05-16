@@ -17,7 +17,7 @@ Options:
   --gpus <count>              GPU count and tensor parallel size (default: env
                                VLLM_TENSOR_PARALLEL or 1)
   --partition <name>          SLURM partition (default: env SLURM_PARTITION or
-                               gpu)
+                               gpu-redhat)
   --time <HH:MM:SS>           SLURM walltime override
   --port <port>               Service port (default: env VLLM_PORT or 8000)
   --api-key <key>             API key passed to vLLM
@@ -68,7 +68,7 @@ SBATCH_SCRIPT="${SCRIPT_DIR}/vllm_serve.sbatch"
 
 MODEL="${VLLM_MODEL:-meta-llama/Llama-3-8B-Instruct}"
 GPUS="${VLLM_TENSOR_PARALLEL:-1}"
-PARTITION="${SLURM_PARTITION:-gpu}"
+PARTITION="${SLURM_PARTITION:-gpu-redhat}"
 TIME_OVERRIDE=""
 PORT="${VLLM_PORT:-8000}"
 API_KEY="${VLLM_API_KEY:-}"

@@ -14,7 +14,7 @@
 #SBATCH --job-name=phase3_openwebui
 #SBATCH --output=logs/%x_%N_%j.out
 #SBATCH --error=logs/%x_%N_%j.err
-#SBATCH --partition=gpu
+#SBATCH --partition=gpu-redhat
 #SBATCH --gres=gpu:1
 #SBATCH --constraint='volta|adalovelace|ampere'
 #SBATCH --cpus-per-task=8
