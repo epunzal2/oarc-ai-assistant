@@ -1,5 +1,5 @@
 Title: OpenWebUI RAG Gateway Integration
-Status: Draft
+Status: Done
 Owner: agent-llm
 Reviewers: n/a
 Issues: n/a
@@ -8,16 +8,20 @@ Risk: low
 
 # Context & Problem
 
-Phase 3 of `project_docs/DESIGN.md` validates OpenWebUI as an optional demo UI for the
-OpenAI-compatible FastAPI RAG gateway. OpenWebUI must point at the RAG gateway, not directly at
-vLLM, so user questions continue to pass through retrieval, prompt assembly, source metadata, and
-the existing RAG telemetry path.
+Phase 3 of `project_docs/DESIGN.md` validates the OpenAI-compatible FastAPI RAG gateway endpoint
+that OpenWebUI or another UI client should call. OpenWebUI must point at the RAG gateway, not
+directly at vLLM, so user questions continue to pass through retrieval, prompt assembly, source
+metadata, and the existing RAG telemetry path.
+
+The scope was clarified after HPC testing: Phase 3 is complete for the backend/API contract.
+Installing or deploying the OpenWebUI UI client is tracked separately as Phase 3b.
 
 # Goals / Non-goals
 
 Goals:
 - Document how to configure OpenWebUI with the RAG gateway OpenAI-compatible base URL.
-- Verify OpenWebUI can list and call the `oarc-rag-v1` gateway model.
+- Verify a client can list and call the `oarc-rag-v1` gateway model through the laptop-to-HPC
+  tunnel.
 - Preserve a separate raw-vLLM path for smoke testing and debugging only.
 - Give operators a checklist for distinguishing RAG-backed answers from raw model answers.
 
@@ -25,6 +29,7 @@ Non-goals:
 - Do not add auth, SSO, production deployment scripts, or service hardening.
 - Do not replace vLLM, the RAG gateway, or the custom RAG pipeline.
 - Do not build the final React/Next.js UI.
+- Do not install or operate OpenWebUI in this backend/API verification scope.
 - Do not put planning docs under `docs/`.
 
 # Architecture Notes
@@ -55,18 +60,18 @@ flowchart LR
 
 # Implementation Plan
 
-- [ ] Document the expected gateway base URL as `http://<gateway-host>:<gateway-port>/v1`.
-- [ ] Document the raw vLLM URL as bypass-only and label it clearly as non-RAG.
-- [ ] Add an OpenWebUI setup checklist: configure OpenAI-compatible provider, set API base URL to
+- [x] Document the expected gateway base URL as `http://<gateway-host>:<gateway-port>/v1`.
+- [x] Document the raw vLLM URL as bypass-only and label it clearly as non-RAG.
+- [x] Add an OpenWebUI setup checklist: configure OpenAI-compatible provider, set API base URL to
   the RAG gateway, use the gateway API key field only if an operator has added one externally, and
   select `oarc-rag-v1`.
-- [ ] Add gateway smoke checks before OpenWebUI setup: `GET /health`, `GET /v1/models`, and a direct
-  `POST /v1/chat/completions` request.
-- [ ] Add OpenWebUI verification steps using one known corpus-backed question.
-- [ ] Add operator checks for RAG-backed behavior: model alias is `oarc-rag-v1`, answers are grounded
-  in the corpus, gateway logs show the request, and source metadata is present in API responses even
-  if OpenWebUI does not render it.
-- [ ] Keep raw-vLLM smoke testing as a separate debug workflow with an explicit warning that it
+- [x] Add gateway smoke checks before OpenWebUI setup: `GET /health`, `GET /v1/models`, and a
+  direct `POST /v1/chat/completions` request.
+- [x] Add OpenWebUI verification steps using one known corpus-backed question.
+- [x] Add operator checks for RAG-backed behavior: model alias is `oarc-rag-v1`, answers are
+  grounded in the corpus, gateway logs show the request, and source metadata is present in API
+  responses even if OpenWebUI does not render it.
+- [x] Keep raw-vLLM smoke testing as a separate debug workflow with an explicit warning that it
   bypasses retrieval and sources.
 
 # Verification Strategy
@@ -99,18 +104,17 @@ ls -lh vector_index/faiss_amarel
 ```
 
 The expected HPC target is `/scratch/$USER/oarc-ai-assistant/vector_index/faiss_amarel`. If that
-index is present and Phase 3 only needs verification, do not rebuild it first. Rebuild or refresh the
-index only when retrieval fails, sources are stale, or the corpus docs intentionally changed.
+index is present and Phase 3 only needs verification, do not rebuild it first. Rebuild or refresh
+the index only when retrieval fails, sources are stale, or the corpus docs intentionally changed.
 
-Manual verification:
-- Start vLLM and confirm its raw OpenAI-compatible endpoint is healthy.
-- Start the RAG gateway with `uvicorn src.rag.api:app --host 0.0.0.0 --port <port>`.
-- Confirm `GET /health` returns `status: ok`.
-- Confirm `GET /v1/models` returns `oarc-rag-v1`.
-- Configure OpenWebUI's OpenAI-compatible provider base URL to the gateway `/v1` URL.
-- Ask a known OARC or Slurm corpus-backed question.
-- Confirm the request is handled by the gateway and not by direct vLLM.
-- Confirm the raw-vLLM path remains available only for bypass/debug comparison.
+Manual verification completed for the backend/API path:
+- vLLM started on `gpu-redhat` with local HF-format Llama 3.1 8B Instruct weights.
+- The RAG gateway loaded the FAISS index and exposed `oarc-rag-v1`.
+- `GET /health`, `GET /v1/models`, and `POST /v1/chat/completions` passed.
+- Laptop SSH tunneling reached the live gateway at `http://127.0.0.1:8088`.
+- Direct API responses included `rag_sources`.
+
+Manual OpenWebUI UI verification is deferred to Phase 3b.
 
 Static validation:
 - Add tests that assert `project_docs/DESIGN.md` links this plan and includes the OpenWebUI diagram.
@@ -137,8 +141,17 @@ telemetry fields.
 Revert the Phase 3 documentation and plan file. OpenWebUI can be disconnected without affecting the
 RAG gateway, vector stores, or vLLM server.
 
+# Outcome
+
+Phase 3 backend/API verification completed on HPC on 2026-05-15. The successful job was
+`54243573` on `gpu022.amarel.rutgers.edu`. See
+`project_docs/phase3_hpc_openwebui_report.md` for commands, results, warnings, and next-session
+handoff notes.
+
 # Decision Log
 
 - 2026-04-27: Use OpenWebUI as an optional demo UI, not the owner of RAG logic.
 - 2026-04-27: Configure OpenWebUI against the RAG gateway `/v1` base URL.
 - 2026-04-27: Keep raw vLLM access only as a bypass/debug smoke-test path.
+- 2026-05-15: Marked Phase 3 backend/API verification done after HPC pass and split actual
+  OpenWebUI UI installation/configuration into Phase 3b.

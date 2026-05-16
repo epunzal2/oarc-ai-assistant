@@ -302,14 +302,19 @@ Phase 2 is complete. See `.plans/2026-04-27-rag-streaming-source-metadata.md`, `
 
 ### Phase 3: OpenWebUI Integration
 
-- [ ] Document how to point OpenWebUI at the RAG gateway base URL.
-- [ ] Verify OpenWebUI can call the RAG gateway as an OpenAI-compatible provider.
-- [ ] Keep a separate path for raw vLLM smoke testing when retrieval should be bypassed.
-- [ ] Add an operator checklist for distinguishing raw model answers from RAG-backed answers.
+- [x] Document how to point OpenWebUI at the RAG gateway base URL.
+- [x] Verify the RAG gateway can be reached as an OpenAI-compatible provider from a laptop tunnel.
+- [x] Keep a separate path for raw vLLM smoke testing when retrieval should be bypassed.
+- [x] Add an operator checklist for distinguishing raw model answers from RAG-backed answers.
 
 Detailed plan: `.plans/2026-04-27-openwebui-rag-gateway-integration.md`.
 
-OpenWebUI is a demo UI client for the RAG gateway, not the owner of RAG logic. Operators should
+Phase 3 backend/API verification is complete. The successful HPC proof of concept ran vLLM and the
+RAG gateway on `gpu-redhat`, loaded the FAISS index, served `oarc-rag-v1`, returned `rag_sources`,
+and was reachable from a laptop through an SSH tunnel. See
+`project_docs/phase3_hpc_openwebui_report.md`.
+
+OpenWebUI remains a demo UI client for the RAG gateway, not the owner of RAG logic. Operators should
 configure OpenWebUI's OpenAI-compatible provider base URL to the FastAPI gateway `/v1` URL, for
 example `http://<gateway-host>:<gateway-port>/v1`. OpenWebUI should list and use the gateway model
 alias `oarc-rag-v1`.
@@ -339,22 +344,30 @@ flowchart LR
 
 Verification checklist:
 
-- [ ] Sync code to HPC with `rsync -az` and no `--delete`, excluding `.git/`, `.venv/`, caches,
+- [x] Sync code to HPC with `rsync -az` and no `--delete`, excluding `.git/`, `.venv/`, caches,
   `logs/`, `runtime/`, and `vector_index/` so an existing HPC FAISS index is not removed.
-- [ ] On HPC, confirm `/scratch/$USER/oarc-ai-assistant/vector_index/faiss_amarel` exists before
+- [x] On HPC, confirm `/scratch/$USER/oarc-ai-assistant/vector_index/faiss_amarel` exists before
   submitting Phase 3.
-- [ ] Rebuild or refresh the FAISS index only if retrieval fails, sources are stale, or corpus docs
+- [x] Rebuild or refresh the FAISS index only if retrieval fails, sources are stale, or corpus docs
   intentionally changed.
-- [ ] Start vLLM and confirm the raw model endpoint is healthy.
-- [ ] Start the RAG gateway with `uvicorn src.rag.api:app --host 0.0.0.0 --port <port>`.
-- [ ] Confirm `GET /health` returns `status: ok`.
-- [ ] Confirm `GET /v1/models` returns `oarc-rag-v1`.
+- [x] Start vLLM and confirm the raw model endpoint is healthy.
+- [x] Start the RAG gateway with `uvicorn src.rag.api:app --host 0.0.0.0 --port <port>`.
+- [x] Confirm `GET /health` returns `status: ok`.
+- [x] Confirm `GET /v1/models` returns `oarc-rag-v1`.
+- [x] Confirm source metadata is visible in direct API responses, even if OpenWebUI does not render
+  custom `rag_sources` fields.
+- [x] Run a separate raw-vLLM smoke test only when retrieval should intentionally be bypassed.
+
+### Phase 3b: Demo UI Client Setup
+
+- [ ] Install or deploy OpenWebUI as a separate UI process.
 - [ ] Configure OpenWebUI's OpenAI-compatible provider base URL to the RAG gateway `/v1` URL.
 - [ ] Ask a known corpus-backed OARC or Slurm question in OpenWebUI.
 - [ ] Confirm gateway logs show the request and the raw-vLLM bypass path was not used.
-- [ ] Confirm source metadata is visible in direct API responses, even if OpenWebUI does not render
-  custom `rag_sources` fields.
-- [ ] Run a separate raw-vLLM smoke test only when retrieval should intentionally be bypassed.
+- [ ] Save the working UI connection settings for repeat demos.
+
+Phase 3b is intentionally separate from the HPC backend/API verification. OpenWebUI does not need a
+GPU and should not run inside the vLLM GPU Slurm job for the proof of concept.
 
 ### Phase 4: Service Hardening
 
@@ -427,11 +440,9 @@ Implementation notes:
 
 Detailed plan: `.plans/2026-04-28-phase-5-quality-ops-readiness.md`.
 
-Phase 5 planning can begin after local Phase 3 verification because the gateway/OpenWebUI contract
-is proven locally. HPC-derived settings remain provisional until
-`scripts/deployment/hpc/run_phase3_openwebui_verification.sbatch` passes on the cluster. Do not
-finalize GPU sizing, exact tunnel behavior, timeout policy, model/index choice, or operating limits
-from local-only evidence.
+Phase 5 planning can begin because the gateway/client API contract is proven on HPC. The backend
+path has passed through `scripts/deployment/hpc/run_phase3_openwebui_verification.sbatch`; remaining
+UI-client setup should not block retrieval-quality and operations planning.
 
 This phase keeps project documentation under `project_docs/` and plans under `.plans/`; `docs/`
 remains reserved for corpus-related RAG content.
