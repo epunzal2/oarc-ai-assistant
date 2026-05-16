@@ -7,7 +7,7 @@
 #SBATCH --time=8:00:00
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
-#SBATCH -p gpu
+#SBATCH -p gpu-redhat
 
 echo "Running on host: $(hostname)"
 

@@ -14,7 +14,7 @@ from src.rag.source_metadata import (
 
 def test_cluster_specific_detector_finds_expected_field_categories() -> None:
     text = """
-    Use /scratch/project for temporary files. Submit with #SBATCH --partition=gpu
+    Use /scratch/project for temporary files. Submit with #SBATCH --partition=gpu-redhat
     and module load cuda/12.1. Connect to login.example.edu, then email hpc@example.edu
     for quota, purge, MFA, VPN, and sensitive data policy questions.
     """
