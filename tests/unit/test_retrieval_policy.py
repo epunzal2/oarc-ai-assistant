@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.rag.retrieval_policy import prioritize_documents
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+
+from src.rag.retrieval_policy import SourcePriorityRetriever, prioritize_documents
 
 
 class FakeDoc:
@@ -62,3 +64,25 @@ def test_official_docs_outrank_external_hpc_for_general_tool_behavior() -> None:
     docs = prioritize_documents([external, official], "How do pip constraints files work?")
 
     assert docs == [official, external]
+
+
+def test_source_priority_retriever_can_be_used_as_langchain_callable() -> None:
+    """LangChain hashes runnable callables while resolving config specs."""
+
+    docs = [FakeDoc({"source_id": "slurm_documentation", "source_group": "reference"})]
+    docs[0].page_content = "Submit batch jobs with sbatch."
+    retriever = SourcePriorityRetriever(RunnableLambda(lambda _: docs))
+    chain = (
+        {
+            "context": retriever,
+            "question": RunnablePassthrough(),
+        }
+        | RunnablePassthrough.assign(
+            answer=RunnableLambda(lambda _: "Use sbatch.")
+        )
+    )
+
+    result = chain.invoke("How do I submit a Slurm batch job?")
+
+    assert result["answer"] == "Use sbatch."
+    assert result["context"] == docs

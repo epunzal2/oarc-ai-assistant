@@ -96,7 +96,7 @@ def _authority_score(metadata: dict[str, Any], *, local_query: bool, slurm_query
     return score
 
 
-@dataclass
+@dataclass(eq=False)
 class SourcePriorityRetriever:
     """Retriever wrapper that applies authority policy after base retrieval."""
 
