@@ -142,6 +142,7 @@ TODO.md
 !/project_docs/DESIGN.md
 !/project_docs/ARCHITECTURE.md
 !/project_docs/phase3_hpc_openwebui_report.md
+!/project_docs/hpc_rag_openwebui_architecture.md
 /vector_index/
 /runtime/
 /results/
