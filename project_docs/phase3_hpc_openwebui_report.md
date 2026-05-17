@@ -10,8 +10,9 @@ Phase 3 backend/API verification is complete. Automated checks passed on the `gp
 partition on 2026-05-15, and a laptop-to-HPC SSH tunnel successfully reached the live RAG
 gateway.
 
-The remaining work is UI integration: run or deploy an OpenWebUI client and point it at the
-verified gateway API. That is a client/UI task, not a vLLM or RAG gateway blocker.
+The remaining work is UI integration: provide an easy operator path that runs or deploys an
+OpenWebUI client and points it at the verified gateway API. That is a client/UI task, not a vLLM or
+RAG gateway blocker.
 
 Validated runtime path:
 
@@ -160,27 +161,33 @@ deployment mechanics.
 ## Recommended Next Steps
 
 1. Hand off to a new Codex session using the checklist in the next section.
-2. Run or deploy an OpenWebUI client and configure it against the verified gateway:
-   - Base URL: `http://127.0.0.1:8088/v1` for a native local OpenWebUI process.
-   - Base URL: `http://host.docker.internal:8088/v1` for Docker Desktop on the laptop.
-   - Model ID: `oarc-rag-v1`.
-3. Capture a few representative prompts from the UI and confirm the gateway logs show
+2. Build a small Phase 3b operator launcher for the demo UI path:
+   - Proposed script: `scripts/deployment/macos/run_openwebui_for_hpc.sh`.
+   - Inputs: HPC login host, gateway compute host, gateway port, local UI port, and Docker/native
+     mode.
+   - Behavior: validate the gateway tunnel, start or print the OpenWebUI command, and print the
+     exact provider settings.
+   - Provider settings: base URL `http://127.0.0.1:8088/v1` for native local OpenWebUI, or
+     `http://host.docker.internal:8088/v1` for Docker Desktop; model ID `oarc-rag-v1`.
+3. Run or deploy OpenWebUI through that launcher/workflow and configure it against the verified
+   gateway.
+4. Capture a few representative prompts from the UI and confirm the gateway logs show
    `rag_sources`.
-4. Improve retrieval ranking for common Slurm questions:
+5. Improve retrieval ranking for common Slurm questions:
    - Prefer `sbatch`, `srun`, `salloc`, and local guide pages over broad or testimonial pages.
    - Consider excluding low-utility Slurm pages such as testimonials from the FAISS corpus.
    - Add regression questions for job submission, GPU allocation, partitions, modules, quotas, and
      scratch/project storage.
-5. Decide the model staging strategy for repeat POC and production runs:
+6. Decide the model staging strategy for repeat POC and production runs:
    - Direct absolute path to `/scratch/ep523/deid-local/...` for immediate POC.
    - Symlink or documented shared model location for repeatability.
    - Avoid GGUF paths for vLLM jobs.
-6. Harden the production deployment path:
+7. Harden the production deployment path:
    - Stable secret/API-key handling instead of ad hoc generated keys.
    - Explicit endpoint metadata for OpenWebUI and gateway discovery.
    - Cleaner Slurm log separation for vLLM, gateway, and verification probes.
    - Optional `GIT_PYTHON_REFRESH=quiet` or Git module load for MLflow.
-7. Keep the FAISS rebuild step tied to corpus changes. Do not rebuild for pure code-only reruns.
+8. Keep the FAISS rebuild step tied to corpus changes. Do not rebuild for pure code-only reruns.
 
 ## Next Codex Session Handoff
 
@@ -199,18 +206,19 @@ The docs commit that contains this report should be the next commit after those 
 
 - `.gitignore`: allows this report to be tracked under `project_docs/`.
 - `project_docs/phase3_hpc_openwebui_report.md`: Phase 3 outcome and next-session handoff.
-- `project_docs/DESIGN.md`: marks Phase 3 backend/API complete and splits Phase 3b UI setup.
+- `project_docs/DESIGN.md`: marks Phase 3 backend/API complete and splits Phase 3b UI setup with
+  an operator launcher as the first deliverable.
 - `.plans/2026-04-27-openwebui-rag-gateway-integration.md`: marks Phase 3 done and clarifies that
   OpenWebUI installation/configuration is a separate Phase 3b task.
 
 Do not redo the HPC environment work unless the cluster copy is stale. The backend/API path already
 passed with Slurm job `54243573`; the laptop tunnel also reached `/health` and `/v1/models`.
 
-If continuing UI work, treat it as a new UI-client task:
+If continuing UI work, treat it as a new UI-client automation task:
 
 ```text
-Install or run OpenWebUI separately -> configure it to use http://127.0.0.1:8088/v1
--> select oarc-rag-v1 -> ask corpus-backed questions.
+Create a small launcher -> validate/start the tunnel -> run or instruct OpenWebUI startup
+-> print provider settings -> select oarc-rag-v1 -> ask corpus-backed questions.
 ```
 
 If continuing backend work, prioritize retrieval quality. The deployment path works, but the first
@@ -240,7 +248,8 @@ fresh terminal/session.
 - [x] Laptop tunnel reaches the live gateway API.
 - [x] Phase 3 backend/API path complete.
 - [x] Phase 3 outcome and next-session handoff documented.
-- [ ] OpenWebUI UI client installed or deployed.
+- [ ] Phase 3b operator launcher/workflow implemented.
+- [ ] OpenWebUI UI client installed or deployed through that workflow.
 - [ ] OpenWebUI configured to use `oarc-rag-v1`.
 - [ ] Retrieval quality improved for Slurm operational questions.
 - [ ] Production hardening decisions documented.

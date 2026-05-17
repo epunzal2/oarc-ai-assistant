@@ -197,8 +197,9 @@ telemetry.
 
 Phase 3 is complete for the HPC backend/API path. The next work should be split into:
 
-- **Phase 3b: Demo UI Client Setup**: install or deploy OpenWebUI separately and point it at the
-  RAG gateway.
+- **Phase 3b: Demo UI Client Setup**: add a small operator launcher/workflow that starts or
+  validates the tunnel, runs or instructs OpenWebUI startup, and prints the provider settings for
+  the RAG gateway.
 - **Phase 5: Quality and Ops Readiness**: improve retrieval quality, add regression questions, and
   harden runtime operations.
 

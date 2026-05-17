@@ -360,14 +360,19 @@ Verification checklist:
 
 ### Phase 3b: Demo UI Client Setup
 
-- [ ] Install or deploy OpenWebUI as a separate UI process.
-- [ ] Configure OpenWebUI's OpenAI-compatible provider base URL to the RAG gateway `/v1` URL.
+- [ ] Add an operator launcher or documented one-command workflow for local OpenWebUI demos.
+- [ ] Have the workflow validate or start the SSH tunnel to the RAG gateway.
+- [ ] Have the workflow start OpenWebUI or print the exact Docker/native startup command.
+- [ ] Have the workflow print the OpenAI-compatible provider settings for OpenWebUI.
+- [ ] Configure OpenWebUI's provider base URL to the RAG gateway `/v1` URL.
 - [ ] Ask a known corpus-backed OARC or Slurm question in OpenWebUI.
 - [ ] Confirm gateway logs show the request and the raw-vLLM bypass path was not used.
 - [ ] Save the working UI connection settings for repeat demos.
 
 Phase 3b is intentionally separate from the HPC backend/API verification. OpenWebUI does not need a
-GPU and should not run inside the vLLM GPU Slurm job for the proof of concept.
+GPU and should not run inside the vLLM GPU Slurm job for the proof of concept. The professional
+goal is to hide the tunnel and provider-setting details behind a small operator workflow rather than
+requiring manual reconstruction every time.
 
 ### Phase 4: Service Hardening
 
