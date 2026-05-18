@@ -173,6 +173,37 @@ http://<gpu-node>:8000/v1
 Calling raw vLLM bypasses FAISS retrieval, RAG prompt construction, source metadata, and gateway
 telemetry.
 
+## Phase 3b Local UI Workflow
+
+Operators can use `scripts/deployment/macos/run_openwebui_for_hpc.sh` from the laptop after the HPC
+RAG gateway is already running. The script is intentionally a local UI-client helper: it validates
+or starts the SSH tunnel, checks the gateway through the tunnel, and runs OpenWebUI in Docker mode
+or prints native/Docker startup commands.
+
+Example:
+
+```bash
+scripts/deployment/macos/run_openwebui_for_hpc.sh \
+  --login-host ep523@amarel-new \
+  --gateway-compute-host gpu022.amarel.rutgers.edu \
+  --gateway-port 8088 \
+  --local-gateway-port 8088 \
+  --openwebui-port 3000 \
+  --mode docker
+```
+
+The OpenWebUI provider values remain:
+
+```text
+Native/local Base URL:    http://127.0.0.1:8088/v1
+Docker Desktop Base URL: http://host.docker.internal:8088/v1
+Model:                   oarc-rag-v1
+API key:                 dummy unless the gateway is later secured
+```
+
+This workflow does not belong inside the GPU Slurm job. The Slurm allocation should keep running
+vLLM and the RAG gateway; OpenWebUI should stay a separate CPU/web client.
+
 ## Why This Separation Matters
 
 - OpenWebUI does not need GPU resources.
@@ -189,6 +220,7 @@ telemetry.
 - General architecture guide: `project_docs/ARCHITECTURE.md`
 - Design roadmap: `project_docs/DESIGN.md`
 - vLLM runbook: `docs/hpc-vllm-runbook.md`
+- Local OpenWebUI helper: `scripts/deployment/macos/run_openwebui_for_hpc.sh`
 - Combined POC launcher: `scripts/deployment/hpc/run_phase3_openwebui_verification.sbatch`
 - Standalone vLLM launcher: `scripts/deployment/hpc/submit_vllm_serve.sh`
 - Gateway launcher: `scripts/deployment/hpc/run_rag_gateway.sbatch`
@@ -197,9 +229,9 @@ telemetry.
 
 Phase 3 is complete for the HPC backend/API path. The next work should be split into:
 
-- **Phase 3b: Demo UI Client Setup**: add a small operator launcher/workflow that starts or
-  validates the tunnel, runs or instructs OpenWebUI startup, and prints the provider settings for
-  the RAG gateway.
+- **Phase 3b: Demo UI Client Setup**: the local operator launcher now starts or validates the
+  tunnel, runs or instructs OpenWebUI startup, and prints the provider settings for the RAG gateway.
+  Live UI prompt validation remains pending the next active HPC gateway.
 - **Phase 5: Quality and Ops Readiness**: improve retrieval quality, add regression questions, and
   harden runtime operations.
 

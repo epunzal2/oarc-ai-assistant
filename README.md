@@ -283,6 +283,17 @@ scripts/deployment/hpc/stop_vllm_serve.sh --endpoint-dir "$VLLM_ENDPOINT_DIR"
 
 See [`docs/hpc-vllm-runbook.md`](docs/hpc-vllm-runbook.md) for the step-by-step HPC runbook.
 
+For a local OpenWebUI demo after the HPC RAG gateway is already running, use the macOS helper:
+
+```bash
+scripts/deployment/macos/run_openwebui_for_hpc.sh \
+  --login-host <user>@<hpc-login-host> \
+  --gateway-compute-host <gateway-compute-host> \
+  --mode docker
+```
+
+The helper points OpenWebUI at the RAG gateway model `oarc-rag-v1`, not raw vLLM.
+
 ## Observability & Telemetry
 
 The runtime and evaluation flows now stream sanitized metrics and artifacts to MLflow. By default,

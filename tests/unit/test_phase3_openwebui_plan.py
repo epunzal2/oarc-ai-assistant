@@ -46,11 +46,13 @@ def test_phase_3_design_links_plan_and_diagram() -> None:
     phase_3 = _phase_text("### Phase 3: OpenWebUI Integration", "### Phase 4:")
 
     assert ".plans/2026-04-27-openwebui-rag-gateway-integration.md" in phase_3
+    assert "scripts/deployment/macos/run_openwebui_for_hpc.sh" in phase_3
     assert "flowchart LR" in phase_3
     assert "OpenWebUI demo UI" in phase_3
     assert "FastAPI RAG Gateway" in phase_3
     assert "Raw vLLM smoke-test path" in phase_3
     assert "OpenAI-compatible provider base URL" in phase_3
+    assert "http://host.docker.internal:<local-gateway-port>/v1" in phase_3
 
 
 def test_phase_3_plan_file_exists_and_is_unignored() -> None:
@@ -58,7 +60,7 @@ def test_phase_3_plan_file_exists_and_is_unignored() -> None:
     gitignore = GITIGNORE.read_text(encoding="utf-8")
 
     assert "Title: OpenWebUI RAG Gateway Integration" in plan
-    assert "Status: Draft" in plan
+    assert "Status: Done" in plan
     assert "flowchart LR" in plan
     assert "rsync -az" in plan
     assert "--exclude 'vector_index/'" in plan

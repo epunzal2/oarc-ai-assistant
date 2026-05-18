@@ -365,6 +365,7 @@ Scripts are thin operational wrappers around `src/` code or external services.
 | `scripts/rag/servicenow/clean.py` | Clean and anonymize ServiceNow export. | `--input-path`, `--output-path`. | Writes cleaned JSON and dated log file. |
 | `scripts/rag/servicenow/prepare.py` | Convert cleaned ServiceNow data to JSONL. | `--input-path`, `--output-path`. | Writes prepared JSONL for embedding. |
 | `scripts/deployment/macos/run_rag_gateway.sh` | Local FastAPI gateway. | Gateway/provider/vector env vars. | Starts `uvicorn`; binds configured host/port. |
+| `scripts/deployment/macos/run_openwebui_for_hpc.sh` | Local OpenWebUI client for an HPC RAG gateway. | HPC login host, gateway compute host, tunnel/UI ports, Docker/native mode. | Validates or starts an SSH tunnel, checks `/health` and `/v1/models`, then runs or prints OpenWebUI startup. |
 | `scripts/deployment/hpc/run_rag_gateway.sbatch` | HPC FastAPI gateway. | `PROJECT_ROOT`, gateway/provider/vector env vars. | Starts Slurm job and prints tunnel instructions. |
 | `scripts/deployment/hpc/submit_vllm_serve.sh` | Submit hosted vLLM job. | Model, GPU, port, endpoint-dir, API key options. | Submits Slurm job; may generate an API key. |
 | `scripts/deployment/hpc/vllm_serve.sbatch` | Run vLLM server. | vLLM model/port/GPU/env settings. | Starts vLLM and writes endpoint metadata JSON. |

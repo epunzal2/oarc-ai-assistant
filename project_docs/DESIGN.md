@@ -360,19 +360,31 @@ Verification checklist:
 
 ### Phase 3b: Demo UI Client Setup
 
-- [ ] Add an operator launcher or documented one-command workflow for local OpenWebUI demos.
-- [ ] Have the workflow validate or start the SSH tunnel to the RAG gateway.
-- [ ] Have the workflow start OpenWebUI or print the exact Docker/native startup command.
-- [ ] Have the workflow print the OpenAI-compatible provider settings for OpenWebUI.
-- [ ] Configure OpenWebUI's provider base URL to the RAG gateway `/v1` URL.
+- [x] Add an operator launcher or documented one-command workflow for local OpenWebUI demos.
+- [x] Have the workflow validate or start the SSH tunnel to the RAG gateway.
+- [x] Have the workflow start OpenWebUI or print the exact Docker/native startup command.
+- [x] Have the workflow print the OpenAI-compatible provider settings for OpenWebUI.
+- [x] Configure OpenWebUI's provider base URL to the RAG gateway `/v1` URL.
 - [ ] Ask a known corpus-backed OARC or Slurm question in OpenWebUI.
 - [ ] Confirm gateway logs show the request and the raw-vLLM bypass path was not used.
 - [ ] Save the working UI connection settings for repeat demos.
+
+The repeatable local workflow is
+`scripts/deployment/macos/run_openwebui_for_hpc.sh`. It accepts the HPC login host, gateway compute
+host, gateway port, local tunnel port, OpenWebUI port, and Docker/native mode; then it validates or
+starts the SSH tunnel, checks `/health` and `/v1/models`, and prints the provider settings for
+`oarc-rag-v1`. In Docker mode it runs OpenWebUI with `OPENAI_API_BASE_URL` set to
+`http://host.docker.internal:<local-gateway-port>/v1`. In native mode it prints the corresponding
+`python -m open_webui serve` command with base URL
+`http://127.0.0.1:<local-gateway-port>/v1`.
 
 Phase 3b is intentionally separate from the HPC backend/API verification. OpenWebUI does not need a
 GPU and should not run inside the vLLM GPU Slurm job for the proof of concept. The professional
 goal is to hide the tunnel and provider-setting details behind a small operator workflow rather than
 requiring manual reconstruction every time.
+
+Live UI validation is still pending the next time the HPC RAG gateway is running and reachable from
+a laptop tunnel.
 
 ### Phase 4: Service Hardening
 
