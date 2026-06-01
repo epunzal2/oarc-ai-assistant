@@ -26,6 +26,10 @@ general documentation.
   - `rendered/`: SSI-expanded browseable HTML, not the Markdown ingestion tree.
 - `docs/corpus/`: authority-tiered future corpus layout.
   - `authoritative/`: Rutgers OARC and Amarel-specific materials.
+  - `authoritative/rutgers/research-data-finder.md`: Rutgers Research Data Storage and Compute
+    Environment Finder content, including filter-to-service mappings.
+  - `authoritative/rutgers/oarc-website/`: sitemap capture of the Rutgers OARC website, converted
+    to Markdown for RAG ingestion.
   - `reference/`: upstream software documentation such as Slurm.
   - `external/`: non-Rutgers examples and supplementary references.
   - `staging/`: temporary generated corpus builds.
@@ -47,6 +51,9 @@ and add an audit note here instead of deleting or moving it.
 - Slurm web docs only: `docs/slurm-23.02.7/markdown/html`
 - Slurm manpages only: `docs/slurm-23.02.7/markdown/man`
 - Slurm PDF companions only: `docs/slurm-23.02.7/markdown/pdf`
+- Rutgers Research Data Finder only:
+  `docs/corpus/authoritative/rutgers/research-data-finder.md`
+- Rutgers OARC website only: `docs/corpus/authoritative/rutgers/oarc-website`
 - Reviewed Research Pro first-pass imports:
   `docs/corpus/staging/hpc_additional_docs_first_pass`
 

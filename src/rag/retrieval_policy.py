@@ -101,10 +101,22 @@ class SourcePriorityRetriever:
     """Retriever wrapper that applies authority policy after base retrieval."""
 
     retriever: Any
+    last_retrieval_diagnostics: dict[str, Any] | None = None
 
     def invoke(self, query: str) -> list[Any]:
         docs = _invoke_retriever(self.retriever, query)
-        return prioritize_documents(docs, query)
+        final_docs = prioritize_documents(docs, query)
+        diagnostics = getattr(self.retriever, "last_retrieval_diagnostics", None)
+        self.last_retrieval_diagnostics = (
+            dict(diagnostics) if isinstance(diagnostics, dict) else {}
+        )
+        self.last_retrieval_diagnostics.update(
+            {
+                "final_count": len(final_docs),
+                "final_source_ids": [_source_id_for_doc(doc) for doc in final_docs],
+            }
+        )
+        return final_docs
 
     def get_relevant_documents(self, query: str) -> list[Any]:
         return self.invoke(query)
@@ -121,6 +133,8 @@ def maybe_wrap_retriever(retriever: Any) -> Any:
         return retriever
     if isinstance(retriever, SourcePriorityRetriever):
         return retriever
+    if getattr(retriever, "applies_source_policy", False):
+        return retriever
     return SourcePriorityRetriever(retriever)
 
 
@@ -130,6 +144,16 @@ def _invoke_retriever(retriever: Any, query: str) -> list[Any]:
     if hasattr(retriever, "get_relevant_documents"):
         return list(retriever.get_relevant_documents(query))
     return list(retriever(query))
+
+
+def _source_id_for_doc(doc: Any) -> str:
+    metadata = getattr(doc, "metadata", {}) or {}
+    for key in ("chunk_id", "id", "document_id", "source", "content_hash"):
+        value = metadata.get(key)
+        if value:
+            return str(value)
+    page_content = getattr(doc, "page_content", "") or ""
+    return str(page_content)[:80]
 
 
 __all__ = [

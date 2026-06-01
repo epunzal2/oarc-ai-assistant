@@ -283,7 +283,9 @@ scripts/deployment/hpc/stop_vllm_serve.sh --endpoint-dir "$VLLM_ENDPOINT_DIR"
 
 See [`docs/hpc-vllm-runbook.md`](docs/hpc-vllm-runbook.md) for the step-by-step HPC runbook.
 
-For a local OpenWebUI demo after the HPC RAG gateway is already running, use the macOS helper:
+The first-party chat UI is served by the RAG gateway itself at `/ui`. After the HPC gateway tunnel
+is open, use `http://127.0.0.1:<local-gateway-port>/ui` in a browser. OpenWebUI remains available
+as an optional comparison client after the HPC RAG gateway is already running:
 
 ```bash
 scripts/deployment/macos/run_openwebui_for_hpc.sh \
@@ -293,6 +295,110 @@ scripts/deployment/macos/run_openwebui_for_hpc.sh \
 ```
 
 The helper points OpenWebUI at the RAG gateway model `oarc-rag-v1`, not raw vLLM.
+
+File attachments are disabled by default in the gateway. For private HPC tunnel testing with
+non-sensitive files, explicitly launch the gateway with `RAG_UI_ATTACHMENTS_ENABLED=true`. Leave the
+flag disabled for broader HPC users until auth/session boundaries are in place and gateway, vLLM,
+Slurm stdout, and Slurm stderr are checked to confirm they do not log raw request bodies or prompts.
+
+### Mac mini Docker Compose workflow
+
+For rapid LAN-local iteration without Slurm, the repo can deploy the FastAPI RAG gateway to the Mac
+mini with Docker Compose while using native Ollama on macOS as the OpenAI-compatible LLM server.
+The first-pass model is `llama3.2:1b`, and the gateway binds only to Mac mini loopback.
+
+From the laptop:
+
+```bash
+scripts/deployment/macmini/preflight.sh
+scripts/deployment/macmini/deploy.sh
+scripts/deployment/macmini/index.sh
+scripts/deployment/macmini/smoke.sh
+scripts/deployment/macmini/ui.sh
+```
+
+`scripts/deployment/macmini/ui.sh` opens the laptop tunnel and prints the browser URL, defaulting to
+`http://127.0.0.1:18088/ui`. The UI is served by the same gateway container and calls the same
+OpenAI-compatible `/v1/chat/completions` endpoint used by smoke tests.
+
+The gateway-hosted UI can attach small `.txt`, `.md`, `.markdown`, and `.pdf` files for a single
+chat turn. Attachments are extracted in memory through the gateway, sent with the next chat request,
+and then cleared from the browser state; they are not added to FAISS or persisted server-side. The
+Mac mini Compose workflow sets `RAG_UI_ATTACHMENTS_ENABLED=true` by default for UX iteration.
+
+The deployment preserves the Mac mini server-only `.env` and generated `runtime/`, `vector_index/`,
+and log directories across rsync deploys. Raw ServiceNow task JSON is excluded; the indexer uses
+only the prepared `docs/servicenow/task_prepared.jsonl` file when present. See
+[`project_docs/ARCHITECTURE.md`](project_docs/ARCHITECTURE.md) for operational details.
+
+### Mac mini v1 acceptance evaluation
+
+After the tunnel is open and the gateway is healthy, run the v1 acceptance harness from the laptop:
+
+```bash
+scripts/deployment/macmini/health.sh
+.venv/bin/python scripts/evaluation/run_v1_acceptance.py --max-questions 3
+.venv/bin/python scripts/evaluation/run_v1_acceptance.py
+```
+
+The harness calls the gateway's OpenAI-compatible endpoint, defaulting to
+`http://127.0.0.1:18088/v1/chat/completions`, with curated Slurm, Amarel, support/policy, safety,
+and optional synthetic-attachment questions. It writes per-question evidence to
+`logs/rag_v1_acceptance/<timestamp>/results.jsonl` and a promotion summary to
+`logs/rag_v1_acceptance/<timestamp>/summary.json`. Each run also writes the human-review artifact
+`logs/rag_v1_acceptance/<timestamp>/report.md`; `logs/` is ignored and generated outputs should not
+be committed.
+
+The v1 runner uses reusable gateway-evaluation helpers in `src/evaluation/gateway_eval.py` and
+streams by default so it can record end-to-end latency, time to first token
+(`time_to_first_token_ms`), time to last token, chunk count, estimated tokens per second, source
+counts, source-count percentiles, and top source metadata. The automated promotion gates require:
+
+- the full acceptance set passes with `fail_count == 0`;
+- `p95_latency_ms` is at or below `--max-p95-latency-ms` (default `15000`);
+- `p95_time_to_first_token_ms` is at or below `--max-p95-ttft-ms` (default `10000`);
+- every positive RAG question that requires sources has `rag_sources_count > 0`.
+
+By default, generated answers are stored as excerpts only. Use `--include-full-answer` only for
+deliberate private review. The attachment case generates non-sensitive text in memory and is skipped
+unless `/health` reports `ui.attachments_enabled=true`; it does not read local private files or add
+anything to FAISS.
+
+Compare two runs, such as `llama3.2:1b` versus `llama3.2:3b` or vector versus hybrid retrieval:
+
+```bash
+.venv/bin/python scripts/evaluation/run_v1_acceptance.py \
+  --compare-runs logs/rag_v1_acceptance/<run-a> logs/rag_v1_acceptance/<run-b>
+```
+
+The newer run directory receives `comparison.md`, covering model/backend identity, pass/fail counts,
+p50/p95 latency, p50/p95 TTFT, source-count metrics, failed IDs, manual-review IDs, and gate status.
+The report's HPC promotion checklist is an operator checklist: the automated gates decide
+`promotion_ready`, while manual-review rows still need human review because small Mac mini models can
+produce inaccurate answers even when retrieval and latency are healthy.
+
+### V1.1 opt-in hybrid retrieval
+
+The v1 default remains vector retrieval from the configured gateway vector store. For comparison
+runs, set `RAG_RETRIEVAL_MODE=hybrid` on the gateway and redeploy. Hybrid mode retrieves vector
+candidates plus keyword candidates, merges and dedupes them, applies authority policy, optionally
+reranks, and sends the final top documents to the LLM.
+
+```bash
+RAG_RETRIEVAL_MODE=hybrid
+RAG_VECTOR_TOP_K=20
+RAG_KEYWORD_TOP_K=20
+RAG_RERANK_TOP_K=8
+RAG_FINAL_TOP_K=4
+RAG_RERANKER_ENABLED=false
+RAG_RERANKER_REQUIRED=false
+RAG_RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
+```
+
+Cross-encoder reranking is disabled by default for Mac mini latency. When present, gateway
+`rag_metadata.retrieval_diagnostics` and acceptance `results.jsonl` record candidate counts,
+merged/final counts, retrieval/rerank latency, and final source IDs for vector, keyword, or hybrid
+comparison.
 
 ## Observability & Telemetry
 
@@ -480,6 +586,9 @@ Use one of the following launch paths:
 sbatch --export=ALL,PROJECT_ROOT=/scratch/$USER/oarc-ai-assistant \
   scripts/deployment/hpc/run_rag_gateway.sbatch
 ```
+
+After creating the tunnel printed by the Slurm job, open
+`http://127.0.0.1:<local-gateway-port>/ui` for the first-party chat UI.
 
 - Local `llama_cpp` on the allocated node:
 

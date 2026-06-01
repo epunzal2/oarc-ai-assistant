@@ -60,5 +60,8 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+rag = ["ui_static/*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]

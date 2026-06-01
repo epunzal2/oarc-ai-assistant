@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-
 from src.rag.retrieval_policy import SourcePriorityRetriever, prioritize_documents
 
 
@@ -66,23 +64,13 @@ def test_official_docs_outrank_external_hpc_for_general_tool_behavior() -> None:
     assert docs == [official, external]
 
 
-def test_source_priority_retriever_can_be_used_as_langchain_callable() -> None:
-    """LangChain hashes runnable callables while resolving config specs."""
+def test_source_priority_retriever_can_wrap_plain_callables() -> None:
+    """The policy wrapper supports callable retrievers used by lightweight tests."""
 
     docs = [FakeDoc({"source_id": "slurm_documentation", "source_group": "reference"})]
     docs[0].page_content = "Submit batch jobs with sbatch."
-    retriever = SourcePriorityRetriever(RunnableLambda(lambda _: docs))
-    chain = (
-        {
-            "context": retriever,
-            "question": RunnablePassthrough(),
-        }
-        | RunnablePassthrough.assign(
-            answer=RunnableLambda(lambda _: "Use sbatch.")
-        )
-    )
+    retriever = SourcePriorityRetriever(lambda _: docs)
 
-    result = chain.invoke("How do I submit a Slurm batch job?")
+    result = retriever("How do I submit a Slurm batch job?")
 
-    assert result["answer"] == "Use sbatch."
-    assert result["context"] == docs
+    assert result == docs

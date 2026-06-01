@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 
 from src.rag import config, mlflow_tracker
 from src.rag.logger import get_logger
+from src.rag.safety import safety_refusal_for_question
 
 logger = get_logger(__name__)
 
@@ -68,7 +69,27 @@ class RAGService:
 
         request_id = self.new_request_id()
         started_at = time.perf_counter()
-        result = self._get_chain().invoke(question)
+        refusal = safety_refusal_for_question(question)
+        if refusal is not None:
+            sources: list[dict[str, Any]] = []
+            metadata = self._metadata(
+                question=question,
+                request_id=request_id,
+                sources=sources,
+                started_at=started_at,
+            )
+            metadata["safety_refusal"] = True
+            metadata["completion_hash"] = mlflow_tracker.hash_text(refusal)
+            self.log_request(metadata)
+            return RAGServiceResult(
+                request_id=request_id,
+                answer=refusal,
+                sources=sources,
+                metadata=metadata,
+            )
+
+        chain = self._get_chain()
+        result = chain.invoke(question)
         answer = normalize_rag_answer(result)
         sources = extract_rag_sources(result)
         metadata = self._metadata(
@@ -77,6 +98,7 @@ class RAGService:
             sources=sources,
             started_at=started_at,
         )
+        metadata.update(_chain_metadata(chain))
         self.log_request(metadata)
         return RAGServiceResult(
             request_id=request_id,
@@ -90,6 +112,24 @@ class RAGService:
 
         request_id = self.new_request_id()
         started_at = time.perf_counter()
+        refusal = safety_refusal_for_question(question)
+        if refusal is not None:
+            return RAGServiceStream(
+                request_id=request_id,
+                chunks=[refusal],
+                sources=[],
+                metadata={
+                    **self._base_metadata(
+                        question=question,
+                        request_id=request_id,
+                        sources=[],
+                    ),
+                    "safety_refusal": True,
+                },
+                started_at=started_at,
+                question=question,
+            )
+
         chain = self._get_chain()
         stream_answer = getattr(chain, "stream_answer", None)
 
@@ -106,21 +146,30 @@ class RAGService:
                 else stream_result
             )
             sources = extract_rag_sources({"context": context})
+            stream_metadata = (
+                stream_result.get("metadata")
+                if isinstance(stream_result, dict)
+                and isinstance(stream_result.get("metadata"), dict)
+                else {}
+            )
         else:
             result = chain.invoke(question)
             answer = normalize_rag_answer(result)
             chunks = [answer] if answer else []
             sources = extract_rag_sources(result)
+            stream_metadata = _chain_metadata(chain)
 
+        metadata = self._base_metadata(
+            question=question,
+            request_id=request_id,
+            sources=sources,
+        )
+        metadata.update(stream_metadata)
         return RAGServiceStream(
             request_id=request_id,
             chunks=chunks,
             sources=sources,
-            metadata=self._base_metadata(
-                question=question,
-                request_id=request_id,
-                sources=sources,
-            ),
+            metadata=metadata,
             started_at=started_at,
             question=question,
         )
@@ -169,6 +218,20 @@ class RAGService:
             "backing_base_url": provider_kwargs.get("base_url"),
             "backing_health_url": config.provider_health_url(self.provider_name),
             "vector_store_type": self.vector_store_type,
+            "embedding_model": config.EMBEDDING_MODEL,
+            "faiss_index_path": config.FAISS_INDEX_PATH,
+            "retrieval_mode": config.RAG_RETRIEVAL_MODE,
+            "max_context_tokens": provider_kwargs.get("max_context_tokens"),
+            "max_context_chars": _env_int("RAG_MAX_CONTEXT_CHARS", 12000),
+            "retrieval_settings": {
+                "vector_top_k": config.RAG_VECTOR_TOP_K,
+                "keyword_top_k": config.RAG_KEYWORD_TOP_K,
+                "rerank_top_k": config.RAG_RERANK_TOP_K,
+                "final_top_k": config.RAG_FINAL_TOP_K,
+                "reranker_enabled": config.RAG_RERANKER_ENABLED,
+                "reranker_required": config.RAG_RERANKER_REQUIRED,
+                "reranker_model": config.RAG_RERANKER_MODEL,
+            },
             "timeout": provider_kwargs.get("timeout"),
             "max_retries": provider_kwargs.get("max_retries"),
         }
@@ -227,6 +290,11 @@ class RAGService:
             "latency_ms": metadata.get("latency_ms"),
             "retrieval_count": metadata.get("retrieval_count"),
         }
+        diagnostics = metadata.get("retrieval_diagnostics")
+        if isinstance(diagnostics, dict):
+            for key, value in diagnostics.items():
+                if isinstance(value, (int, float)):
+                    metrics[f"retrieval_{key}"] = value
         record = {
             "query_id": metadata.get("request_id"),
             "question": metadata.get("_question", ""),
@@ -411,8 +479,30 @@ def _retrieved_doc_ids(sources: list[dict[str, Any]]) -> list[str]:
     return ids
 
 
+def _chain_metadata(chain: Any) -> dict[str, Any]:
+    retrieval_metadata = getattr(chain, "retrieval_metadata", None)
+    if not callable(retrieval_metadata):
+        return {}
+    try:
+        metadata = retrieval_metadata()
+    except Exception:
+        logger.debug("Failed to collect retrieval diagnostics from RAG chain.")
+        return {}
+    return metadata if isinstance(metadata, dict) else {}
+
+
 def _elapsed_ms(started_at: float) -> float:
     return round((time.perf_counter() - started_at) * 1000.0, 2)
+
+
+def _env_int(name: str, default: int) -> int:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        return int(raw_value)
+    except ValueError:
+        return default
 
 
 def _gateway_health_timeout() -> float:

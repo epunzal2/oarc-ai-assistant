@@ -13,13 +13,13 @@ main layers:
   FAISS/Qdrant/keyword retrieval.
 - **RAG application layer:** LangChain RAG chain construction, prompt formatting, provider
   invocation, source extraction, request metadata, MLflow logging, and host/GPU telemetry.
-- **Serving layer:** FastAPI OpenAI-compatible gateway, legacy Flask chat harnesses, Streamlit local
-  UI, and HPC launch scripts.
+- **Serving layer:** FastAPI OpenAI-compatible gateway with a first-party static chat UI, legacy
+  Flask chat harnesses, Streamlit local UI, and HPC launch scripts.
 - **Evaluation layer:** Embedding bakeoff runner, model registry helpers, LLM judge, retrieval
   metrics, sanitized outputs, and MLflow artifacts.
 
-The FastAPI gateway is the preferred API boundary. Direct Streamlit/Flask entrypoints remain useful
-for local and HPC smoke testing.
+The FastAPI gateway is the preferred API and UI boundary. Direct Streamlit/Flask entrypoints remain
+useful for local and HPC smoke testing.
 
 ## Directory Map
 
@@ -27,8 +27,12 @@ for local and HPC smoke testing.
 src/
   rag/
     api.py                 OpenAI-compatible FastAPI gateway.
+    ui_static/             Gateway-hosted no-build chat UI assets.
     service.py             Gateway orchestration, request IDs, source metadata, MLflow logging.
     rag_pipeline.py        LangChain retriever + prompt + LLM runnable with instrumentation.
+    hybrid_retriever.py    Opt-in vector+keyword merge, reranking, and retrieval diagnostics.
+    prompting.py           Small-model RAG prompt template and Slurm command reference hints.
+    safety.py              Deterministic refusals for secrets, hidden prompts, and raw records.
     llm_provider.py        Provider abstraction for llama.cpp, Hugging Face, vLLM, and SGLang.
     vector_store.py        Embeddings, Qdrant, FAISS, and keyword retriever factories.
     data_loader.py         Markdown and prepared ServiceNow loading plus chunking.
@@ -43,6 +47,9 @@ src/
     slurm_docs.py          Imports official Slurm source docs into a local Markdown corpus.
     main.py                Streamlit developer UI.
   evaluation/
+    acceptance.py          Gateway acceptance harness for Mac mini/HPC promotion gates.
+    acceptance_report.py   Markdown reports and run comparison for acceptance evidence.
+    gateway_eval.py        Reusable gateway HTTP, streaming metrics, and gate summaries.
     batch_runner.py        Embedding sweep runner and retrieval/generation metrics.
     model_provider.py      Local model registry helpers for embeddings and GGUF LLMs.
     llm_judge.py           LLM-as-judge scoring helper.
@@ -67,15 +74,19 @@ tests/
 
 ```mermaid
 flowchart LR
-    Client["Client or UI<br/>OpenWebUI, curl, Streamlit, Flask"]
+    Browser["Browser /ui<br/>laptop tunnel"]
+    Client["API client<br/>curl, OpenWebUI, scripts"]
     API["src/rag/api.py<br/>FastAPI OpenAI-compatible gateway"]
+    UI["src/rag/ui_static<br/>static chat UI"]
     Service["src/rag/service.py<br/>RAGService"]
     Chain["src/rag/rag_pipeline.py<br/>InstrumentedRAGChain"]
     Store["Vector store<br/>FAISS, Qdrant, keyword"]
     Provider["LLM provider<br/>llama.cpp, HF, vLLM, SGLang"]
     MLflow["MLflow + telemetry<br/>sanitized artifacts"]
 
+    Browser --> API
     Client --> API
+    API --> UI
     API --> Service
     Service --> Chain
     Chain --> Store
@@ -88,6 +99,12 @@ flowchart LR
 
 `src/rag/api.py` exposes:
 
+- `GET /`: redirects browser users to the gateway-hosted chat UI.
+- `GET /ui` and `/ui-static/*`: serve the first-party no-build chat UI. The UI calls only
+  same-origin gateway endpoints and does not persist transcripts server-side.
+- `POST /ui/attachments/extract`: when `RAG_UI_ATTACHMENTS_ENABLED=true`, extracts text from small
+  request-scoped `.txt`, `.md`, and `.pdf` UI attachments in memory without initializing the RAG
+  chain or persisting file bytes.
 - `GET /health`: returns gateway status, active model alias, backend metadata, and provider health
   without initializing the full RAG chain.
 - `GET /v1/models`: returns OpenAI-style model metadata for the RAG system alias
@@ -101,12 +118,37 @@ assistant role, content chunks follow, and the final chunk carries sources and r
 Midstream failures emit an `error` SSE event and then `[DONE]` without leaking backend exception
 details.
 
+### Gateway-Hosted Chat UI
+
+The first-party chat UI is served by the FastAPI gateway so Mac mini and HPC deployments share the
+same browser surface. The UI is static HTML/CSS/JavaScript under `src/rag/ui_static/`; it uses
+`fetch` streaming against same-origin `POST /v1/chat/completions` with `stream: true`, because the
+OpenAI-compatible chat endpoint is a POST server-sent-events stream. It also reads `/health` and
+`/v1/models` to display provider health, model ID, backing provider, base URL, and vector-store
+type.
+
+The UI renders streamed answer text as it arrives, then fills in `rag_request_id`, `rag_sources`,
+and public `rag_metadata` from the final stream chunk. It keeps chat state only in browser memory.
+It does not call Ollama, vLLM, FAISS, or Qdrant directly, and it does not change the public
+OpenAI-compatible API contract.
+
+The chat UI supports ephemeral `.txt`, `.md`, `.markdown`, and `.pdf` attachments for testing and
+one-off questions. The browser sends selected files to `POST /ui/attachments/extract`, receives
+bounded extracted text, and includes that text in the next `POST /v1/chat/completions` request under
+the optional `rag_attachments` extension field. Attachment contents are not written into FAISS,
+Qdrant, logs, or server-side transcript storage; persistent corpus ingestion remains a separate
+prepare/reindex workflow. Attachments fail closed unless `RAG_UI_ATTACHMENTS_ENABLED=true`;
+`/health` exposes the UI attachment capability so the browser disables the attach control on
+locked-down deployments.
+
 ### RAG Service
 
 `src/rag/service.py` keeps HTTP concerns out of the RAG pipeline. It owns:
 
 - lazy chain creation through a configurable `chain_factory`;
 - per-request IDs;
+- deterministic refusals for requests seeking passwords, secrets, hidden prompts, or raw ticket
+  data before invoking the LLM;
 - answer normalization across string and dict-like RAG results;
 - source metadata extraction and deduplication;
 - backing provider metadata and health checks;
@@ -121,9 +163,10 @@ can override these with `RAG_GATEWAY_LLM_PROVIDER` and `RAG_GATEWAY_VECTOR_STORE
 
 1. retrieves context with an injected retriever or a configured vector store;
 2. formats retrieved documents into a bounded context string;
-3. renders the project prompt template;
-4. invokes the configured LLM provider;
-5. returns both `answer` and `context` so callers can show sources.
+3. adds compact Slurm command reference hints for common command-oriented support questions;
+4. renders the project prompt template;
+5. invokes the configured LLM provider;
+6. returns both `answer` and `context` so callers can show sources.
 
 `InstrumentedRAGChain` wraps that runnable and samples runtime telemetry. It hashes prompt,
 retriever, corpus, and index descriptors for reproducibility, logs sanitized prompt records, caps
@@ -136,6 +179,14 @@ Context limits are controlled by:
 
 Evaluation jobs set `RAG_MAX_CONTEXT_TOKENS` dynamically to avoid overflowing local `llama.cpp`
 context windows.
+
+The prompt template lives in `src/rag/prompting.py`. It keeps a compact Slurm command reference
+near the question for common support intents such as submit, cancel, queue status, GPU requests, and
+failed-job debugging. This improves command accuracy on the Mac mini `llama3.2:1b` deployment
+without changing the FAISS index. It also includes an evidence guard for named local guide or
+partition requests: when the retrieved context does not contain the distinctive named entity, the
+pipeline returns a limitation/helpdesk response instead of letting a small model synthesize a local
+partition command.
 
 ### LLM Providers
 
@@ -163,7 +214,8 @@ authority metadata when no front matter is present.
 
 - `qdrant`: connects to `QDRANT_HOST`, `QDRANT_PORT`, and `QDRANT_COLLECTION_NAME`.
 - `faiss`: builds or loads local FAISS indexes, usually under `FAISS_INDEX_PATH`.
-- `keyword`: lightweight fallback retriever over Markdown files from `KEYWORD_CORPUS_PATHS`.
+- `keyword`: in-process BM25-style fallback retriever over Markdown files from
+  `KEYWORD_CORPUS_PATHS`.
 
 The keyword retriever intentionally skips ServiceNow task JSON files; ServiceNow data should enter
 runtime through the prepared JSONL path, not as raw task exports.
@@ -179,6 +231,29 @@ unless an explicit override is provided.
 guidance wins for local operational facts, Slurm docs win for scheduler syntax/behavior, official
 upstream/vendor docs win for general tool behavior, and `external_hpc` docs are suppressed for local
 operational questions unless the user explicitly asks for external examples.
+
+`src/rag/hybrid_retriever.py` is the v1.1 opt-in retrieval path. With
+`RAG_RETRIEVAL_MODE=hybrid`, the runtime retrieves vector candidates and keyword candidates, merges
+and dedupes them by chunk/source/hash/content identity, applies the same authority policy, optionally
+cross-encoder reranks, and passes the final top K documents to the LLM. The default remains
+`RAG_RETRIEVAL_MODE=vector`. For distinctive named local guide questions, hybrid mode filters keyword
+candidates that do not contain those distinctive terms before merging, reducing the chance that
+generic Slurm/application chunks overpower a missing-document safety case.
+
+Hybrid and keyword/vector sizes are controlled by:
+
+- `RAG_VECTOR_TOP_K` (default `20`)
+- `RAG_KEYWORD_TOP_K` (default `20`)
+- `RAG_RERANK_TOP_K` (default `8`)
+- `RAG_FINAL_TOP_K` (default `4`)
+- `RAG_RERANKER_ENABLED` (default `false`)
+- `RAG_RERANKER_REQUIRED` (default `false`)
+- `RAG_RERANKER_MODEL` (default `cross-encoder/ms-marco-MiniLM-L-6-v2`)
+
+When exposed through the gateway, public `rag_metadata.retrieval_diagnostics` can include vector
+candidate count, keyword candidate count, merged count, reranked count, final count, retrieval
+latency, rerank latency, and final source IDs. These diagnostics are safe metadata only; attachment
+contents and raw prompts are not persisted into retrieval indexes.
 
 ### Configuration
 
@@ -196,7 +271,10 @@ Important groups:
 - SGLang: `SGLANG_BASE_URL`, `SGLANG_MODEL`, `SGLANG_API_KEY`, `SGLANG_HEALTH_PORT`, and matching
   timeout/retry/generation overrides.
 - Gateway: `RAG_GATEWAY_LLM_PROVIDER`, `RAG_GATEWAY_VECTOR_STORE`,
-  `RAG_GATEWAY_PROVIDER_HEALTH_TIMEOUT`.
+  `RAG_GATEWAY_PROVIDER_HEALTH_TIMEOUT`, `RAG_UI_ATTACHMENTS_ENABLED`.
+- Retrieval mode: `RAG_RETRIEVAL_MODE`, `RAG_VECTOR_TOP_K`, `RAG_KEYWORD_TOP_K`,
+  `RAG_RERANK_TOP_K`, `RAG_FINAL_TOP_K`, `RAG_RERANKER_ENABLED`, `RAG_RERANKER_REQUIRED`,
+  `RAG_RERANKER_MODEL`.
 - MLflow: `MLFLOW_ENABLED`, `MLFLOW_TRACKING_URI`, `MLFLOW_EXPERIMENT_NAME`,
   `MLFLOW_RUNTIME_SAMPLE_P`, `MLFLOW_ARTIFACT_TOP_K`, `MLFLOW_ARTIFACT_MAX_BYTES`.
 - Telemetry: `TELEMETRY_ENABLED`, `TELEMETRY_INTERVAL_S`, `TELEMETRY_WINDOW`,
@@ -275,6 +353,47 @@ Production and HPC vLLM deployments should use `uv sync --extra dev --extra vllm
 not compile `llama-cpp-python`. Local GGUF/llama.cpp experiments are opt-in through
 `uv sync --extra llama_cpp`.
 
+### Mac Mini Docker Compose Deployment
+
+The Mac mini deployment path is optimized for automated laptop-to-LAN iteration. The FastAPI RAG
+gateway runs in Docker Compose on the Mac mini, while the LLM runs natively on macOS through
+Ollama's OpenAI-compatible API at `http://127.0.0.1:11434`. Containers reach that host service at
+`http://host.docker.internal:11434`.
+
+Primary commands from the laptop:
+
+```bash
+scripts/deployment/macmini/preflight.sh
+scripts/deployment/macmini/deploy.sh
+scripts/deployment/macmini/index.sh
+scripts/deployment/macmini/smoke.sh
+scripts/deployment/macmini/ui.sh
+```
+
+The Compose stack uses `compose.macmini.yaml`. It binds the gateway to Mac mini loopback
+`127.0.0.1:8088`, defaults to `RAG_GATEWAY_VECTOR_STORE=faiss`, writes the target index under
+`vector_index/faiss_macmini`, enables `RAG_UI_ATTACHMENTS_ENABLED=true` for private UX iteration,
+and defaults to Ollama model `llama3.2:1b`. The one-shot `indexer` profile rebuilds FAISS with the
+same `DATA_PATH`, `SERVICE_NOW_DATA_PATH`, and `EMBEDDING_MODEL` settings used by the gateway.
+
+After the gateway is healthy, `scripts/deployment/macmini/ui.sh` opens a laptop tunnel from
+`http://127.0.0.1:18088/ui` to the Mac mini loopback-bound gateway. The same `/ui` route is used on
+HPC through the tunnel printed by the Slurm gateway job.
+
+Privacy and state rules:
+
+- The Mac mini `.env` is server-only and protected from rsync deletion.
+- `runtime/`, `vector_index/`, `logs/`, and `mlruns/` are generated on the Mac mini and protected
+  from `rsync --delete`.
+- Raw ServiceNow task JSON (`docs/servicenow/task*.json`) is excluded from Docker build context and
+  rsync deploys. Only `docs/servicenow/task_prepared.jsonl` is allowed in this path.
+- Attachments are disabled by default outside explicit opt-in deployments. HPC may set
+  `RAG_UI_ATTACHMENTS_ENABLED=true` only for private tunnel testing with non-sensitive files.
+  Broader HPC users require auth/session boundaries and verification that gateway, vLLM, Slurm
+  stdout, and Slurm stderr do not log raw request bodies or prompts.
+- The gateway image installs base repo dependencies only; vLLM, SGLang, and llama.cpp extras are
+  intentionally excluded from the image.
+
 ### Hosted vLLM on HPC
 
 GPU Slurm entrypoints default to the `gpu-redhat` partition. The current PyTorch/vLLM wheels require
@@ -351,6 +470,65 @@ sbatch scripts/evaluation/run_evaluation.sbatch \
 Outputs live under `results/embedding_bakeoff*`, including `summary_metrics.json`,
 `per_run_metrics.jsonl`, `doc_id_map.json`, and `runs/<run_id>/`.
 
+### Mac Mini RAG V1 Acceptance Evaluation
+
+`src/evaluation/acceptance.py` tests the deployed gateway rather than rebuilding indexes or running
+embedding sweeps. It loads curated JSONL questions from
+`data/evaluation/acceptance/rag_v1_questions.jsonl`, calls the OpenAI-compatible chat endpoint, and
+writes ignored evidence under `logs/rag_v1_acceptance/<timestamp>/`. Shared gateway evaluation
+logic lives in `src/evaluation/gateway_eval.py` so future acceptance suites can reuse URL
+normalization, streaming response parsing, latency/TTFT/source metrics, and automated gate
+summaries. `src/evaluation/acceptance_report.py` renders the human-review `report.md` and
+`comparison.md` artifacts from the machine-readable JSON/JSONL evidence.
+
+Typical laptop-side gate after the Mac mini tunnel is active:
+
+```bash
+scripts/deployment/macmini/health.sh
+.venv/bin/python scripts/evaluation/run_v1_acceptance.py --max-questions 3
+.venv/bin/python scripts/evaluation/run_v1_acceptance.py
+.venv/bin/python scripts/evaluation/run_v1_acceptance.py \
+  --compare-runs logs/rag_v1_acceptance/<run-a> logs/rag_v1_acceptance/<run-b>
+```
+
+The runner streams by default to record end-to-end latency, time to first token, time to last token,
+stream chunk count, estimated answer tokens, estimated tokens per second, source counts, top source
+metadata, and source-count percentiles. The summary reports total, pass/fail, p50/p95 latency,
+p50/p95 TTFT, failures by category, zero-source questions, manual-review questions, skipped
+questions, attachment capability from `/health`, `/v1/models` status, backend model, vector store,
+embedding model, FAISS path, retrieval mode, context limits when discoverable, and promotion
+checklist fields.
+
+Each run writes:
+
+- `results.jsonl`: per-question evidence, excerpts by default, source metadata, timing metrics, and
+  retrieval diagnostics when the gateway returns them.
+- `summary.json`: stable machine-readable aggregate metrics, automated gates, run metadata, and the
+  `report_path`.
+- `report.md`: canonical human-readable review artifact with run metadata, gateway health, model
+  and retrieval configuration, latency/TTFT/source metrics, gate status, HPC promotion checklist,
+  zero-source/manual-review queues, and compact per-question evidence.
+
+Run comparison writes `comparison.md` in the newer run directory. It compares model/backend,
+retrieval mode, pass/fail counts, p50/p95 latency, p50/p95 TTFT, positive source-count metrics,
+failed IDs, manual-review IDs, and promotion status.
+
+The automated promotion gates require `fail_count == 0`, p95 latency at or below
+`--max-p95-latency-ms`, p95 TTFT at or below `--max-p95-ttft-ms`, and every positive RAG question
+with `requires_sources=true` to return `rag_sources_count > 0`. Positive questions require HTTP
+200, a non-empty answer, a request ID, and sources. Safety questions require refusal or limitation
+language and absence of configured forbidden terms. The optional attachment case uses synthetic
+in-memory text and is skipped unless `ui.attachments_enabled=true`.
+
+Default output stores answer excerpts only. Operators can pass `--include-full-answer` for
+deliberate private review, but generated outputs remain runtime artifacts and should not be
+committed.
+
+`report.md` is intentionally Markdown, not PDF. The JSON and JSONL files remain the evidence source
+of record for automation; the Markdown report is for operator promotion review. The checklist's
+manual-review item is not auto-passed because the Mac mini's small models can produce structurally
+valid but inaccurate answers.
+
 ## Scripts
 
 Scripts are thin operational wrappers around `src/` code or external services.
@@ -364,6 +542,7 @@ Scripts are thin operational wrappers around `src/` code or external services.
 | `scripts/rag/import_hpc_sources.py` | Dry-run or explicitly import Research Pro HPC sources. | `--manifest`, `--group`, `--dry-run`, `--ingest`, `--allow-license-pending`, `--max-pages-per-source`. | Writes optional staged Markdown and reports under `logs/rag_source_imports/<run-id>/`. |
 | `scripts/rag/servicenow/clean.py` | Clean and anonymize ServiceNow export. | `--input-path`, `--output-path`. | Writes cleaned JSON and dated log file. |
 | `scripts/rag/servicenow/prepare.py` | Convert cleaned ServiceNow data to JSONL. | `--input-path`, `--output-path`. | Writes prepared JSONL for embedding. |
+| `scripts/deployment/macmini/*.sh` | Mac mini Docker Compose deploy, preflight, index, health, logs, UI tunnel, and smoke checks. | SSH alias, server-only `.env`, Ollama on Mac mini, prepared ServiceNow JSONL. | Rsyncs repo files, builds/runs Compose services, writes protected remote runtime and FAISS artifacts, or opens a laptop UI tunnel. |
 | `scripts/deployment/macos/run_rag_gateway.sh` | Local FastAPI gateway. | Gateway/provider/vector env vars. | Starts `uvicorn`; binds configured host/port. |
 | `scripts/deployment/macos/run_openwebui_for_hpc.sh` | Local OpenWebUI client for an HPC RAG gateway. | HPC login host, gateway compute host, tunnel/UI ports, Docker/native mode. | Validates or starts an SSH tunnel, checks `/health` and `/v1/models`, then runs or prints OpenWebUI startup. |
 | `scripts/deployment/hpc/run_rag_gateway.sbatch` | HPC FastAPI gateway. | `PROJECT_ROOT`, gateway/provider/vector env vars. | Starts Slurm job and prints tunnel instructions. |
@@ -375,6 +554,7 @@ Scripts are thin operational wrappers around `src/` code or external services.
 | `scripts/deployment/hpc/chat_hpc.py` | Legacy Flask/CLI RAG chat harness. | Provider/vector/index env and CLI args. | Starts CLI or Flask chat server. |
 | `scripts/deployment/macos/chat_local.py` | Legacy local llama.cpp chat harness. | `LLAMA_CPP_MODEL_PATH`; `--web`. | Loads local model and starts CLI or Flask server. |
 | `scripts/evaluation/run_evaluation.py` | Run bakeoff config locally. | `--config`. | Writes configured evaluation results. |
+| `scripts/evaluation/run_v1_acceptance.py` | Run Mac mini/HPC gateway acceptance questions or compare existing runs. | Gateway URL, curated questions, model alias, timeout, answer capture mode, or `--compare-runs`. | Writes ignored `results.jsonl`, `summary.json`, `report.md`, and optional `comparison.md` under `logs/rag_v1_acceptance/<timestamp>/`. |
 | `scripts/evaluation/*.sbatch` | Run evaluation jobs on Slurm. | Config, project root, model availability. | Writes logs and results; may log to MLflow. |
 | `scripts/models/download_models.py` | Download registry models. | `configs/models.yml`; Hugging Face CLI/auth. | Mutates `models/`. |
 | `scripts/models/verify_models.py` | Verify local model files/directories. | `configs/models.yml`. | Prints verification results. |

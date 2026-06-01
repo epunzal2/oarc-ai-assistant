@@ -2,6 +2,7 @@
 
 import os
 import re
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,26 +24,30 @@ class KeywordDocument:
 
 
 class KeywordRetriever:
-    """Simple in-process retriever used when vector stores are unavailable."""
+    """Small in-process BM25-style retriever for keyword and hybrid modes."""
 
     def __init__(self, documents, *, k=4):
         self.documents = documents
         self.k = k
+        self._tokenized_docs = [_terms(_document_text(doc)) for doc in documents]
+        self._avgdl = (
+            sum(len(tokens) for tokens in self._tokenized_docs) / len(self._tokenized_docs)
+            if self._tokenized_docs
+            else 0.0
+        )
+        self._idf = self._build_idf(self._tokenized_docs)
 
     def invoke(self, query):
         query_terms = _terms(query)
         scored = []
-        for doc in self.documents:
-            text = doc.page_content.lower()
+        for doc, tokens in zip(self.documents, self._tokenized_docs):
+            score = self._bm25_score(query_terms, tokens)
             metadata_text = " ".join(str(value) for value in doc.metadata.values()).lower()
-            score = 0
-            for term in query_terms:
-                if term in text:
-                    score += 3
+            for term in set(query_terms):
                 if term in metadata_text:
-                    score += 2
-                if len(term) > 8 and term in text:
-                    score += 8
+                    score += 0.5
+                if len(term) > 8 and term in _document_text(doc).lower():
+                    score += 1.0
             if score:
                 scored.append((score, doc))
         scored.sort(key=lambda item: item[0], reverse=True)
@@ -53,6 +58,37 @@ class KeywordRetriever:
 
     def __call__(self, query):
         return self.invoke(query)
+
+    @staticmethod
+    def _build_idf(tokenized_docs):
+        total_docs = len(tokenized_docs)
+        document_frequency = {}
+        for tokens in tokenized_docs:
+            for token in set(tokens):
+                document_frequency[token] = document_frequency.get(token, 0) + 1
+        return {
+            token: math.log(1 + (total_docs - frequency + 0.5) / (frequency + 0.5))
+            for token, frequency in document_frequency.items()
+        }
+
+    def _bm25_score(self, query_terms, doc_terms) -> float:
+        if not query_terms or not doc_terms:
+            return 0.0
+        k1 = 1.5
+        b = 0.75
+        doc_len = len(doc_terms)
+        term_frequency = {}
+        for term in doc_terms:
+            term_frequency[term] = term_frequency.get(term, 0) + 1
+        score = 0.0
+        for term in set(query_terms):
+            tf = term_frequency.get(term, 0)
+            if tf == 0:
+                continue
+            idf = self._idf.get(term, 0.0)
+            denominator = tf + k1 * (1 - b + b * doc_len / max(self._avgdl, 1.0))
+            score += idf * (tf * (k1 + 1)) / denominator
+        return score
 
 def get_embedding_model():
     """Load the configured Hugging Face embedding model."""
@@ -77,9 +113,12 @@ def get_keyword_retriever(paths=None, *, k=4):
 
     raw_paths = paths or os.environ.get(
         "KEYWORD_CORPUS_PATHS",
-        "docs/google_sites_guide:docs/slurm-23.02.7/markdown",
+        os.environ.get("DATA_PATH", "docs/google_sites_guide:docs/slurm-23.02.7/markdown"),
     )
-    corpus_paths = [Path(item) for item in raw_paths.split(":") if item]
+    if isinstance(raw_paths, (list, tuple, set)):
+        corpus_paths = [Path(item) for item in raw_paths if item]
+    else:
+        corpus_paths = [Path(item) for item in str(raw_paths).split(":") if item]
     documents = []
     for corpus_path in corpus_paths:
         if not corpus_path.exists():
@@ -189,7 +228,7 @@ def get_vector_store(embeddings, vector_store_type="qdrant", documents=None):
         logger.info("Creating in-memory FAISS vector store.")
         return FAISS.from_documents(documents, embeddings)
 
-def load_faiss_index(persist_dir, embedding_model):
+def load_faiss_index(persist_dir, embedding_model, *, k=None):
     """Load a persisted FAISS index and expose it as a retriever."""
 
     from langchain_community.vectorstores import FAISS
@@ -197,7 +236,8 @@ def load_faiss_index(persist_dir, embedding_model):
     logger.info(f"Loading FAISS index from '{persist_dir}'...")
     vector_store = FAISS.load_local(persist_dir, embedding_model, allow_dangerous_deserialization=True)
     logger.info("FAISS index loaded successfully.")
-    return vector_store.as_retriever()
+    search_kwargs = {"k": k} if k else None
+    return vector_store.as_retriever(search_kwargs=search_kwargs) if search_kwargs else vector_store.as_retriever()
 
 def add_documents_to_store(vector_store, documents, vector_store_type="qdrant"):
     """Add documents to mutable vector-store backends."""
@@ -206,3 +246,8 @@ def add_documents_to_store(vector_store, documents, vector_store_type="qdrant"):
         logger.info(f"Adding {len(documents)} documents to the vector store.")
         vector_store.add_documents(documents)
         logger.info("Successfully added documents to the vector store.")
+
+
+def _document_text(doc):
+    metadata_text = " ".join(str(value) for value in getattr(doc, "metadata", {}).values())
+    return f"{getattr(doc, 'page_content', '')} {metadata_text}"

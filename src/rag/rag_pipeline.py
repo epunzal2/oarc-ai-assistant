@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover - optional dependency
     mlflow = None
 
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
 try:
@@ -36,6 +36,16 @@ from src.rag.logger import get_logger
 from src.rag import config
 from src.rag.telemetry import get_sampler
 from src.rag.retrieval_policy import maybe_wrap_retriever
+from src.rag.hybrid_retriever import (
+    HybridRetriever,
+    RetrievalSettings,
+    retrieval_diagnostics,
+)
+from src.rag.prompting import (
+    build_rag_prompt_inputs,
+    rag_prompt_template,
+    unsupported_named_context_response,
+)
 
 logger = get_logger(__name__)
 
@@ -56,9 +66,11 @@ class InstrumentedRAGChain:
         corpus_hash: str,
         provider_config_path: Optional[Path],
         stream_answer: Optional[Callable[[str], Dict[str, Any]]] = None,
+        retriever: Any = None,
     ) -> None:
         self._chain = chain
         self._stream_answer = stream_answer
+        self._retriever = retriever
         self.provider_name = provider_name
         self.model_name = model_name
         self.vector_store_type = vector_store_type
@@ -163,6 +175,12 @@ class InstrumentedRAGChain:
             raise NotImplementedError("This RAG chain does not expose streaming completions.")
         return self._stream_answer(prompt)
 
+    def retrieval_metadata(self) -> dict[str, Any]:
+        """Return safe diagnostics from the most recent retrieval when available."""
+
+        diagnostics = retrieval_diagnostics(self._retriever)
+        return {"retrieval_diagnostics": diagnostics} if diagnostics else {}
+
     def __getattr__(self, item):
         return getattr(self._chain, item)
 
@@ -206,18 +224,60 @@ def create_rag_chain(
     provider_config_path: Optional[Path] = None
     llm_provider = None
 
+    custom_retriever = retriever is not None
+    retrieval_mode = config.RAG_RETRIEVAL_MODE
+    if vector_store_type == "keyword" and retrieval_mode == "vector":
+        retrieval_mode = "keyword"
+    if retrieval_mode not in {"vector", "keyword", "hybrid"}:
+        logger.warning("Unknown RAG_RETRIEVAL_MODE=%s; falling back to vector.", retrieval_mode)
+        retrieval_mode = "vector"
+
     # Get the embedding model and vector store
     if retriever is None:
         logger.info("No retriever provided, creating a new one...")
-        if vector_store_type == "keyword":
-            retriever = get_keyword_retriever()
+        if retrieval_mode == "keyword" or vector_store_type == "keyword":
+            retriever = get_keyword_retriever(k=config.RAG_FINAL_TOP_K)
+        elif retrieval_mode == "hybrid":
+            embeddings = get_embedding_model()
+            if vector_store_type == "faiss":
+                vector_retriever = load_faiss_index(
+                    config.FAISS_INDEX_PATH,
+                    embeddings,
+                    k=config.RAG_VECTOR_TOP_K,
+                )
+            else:
+                vector_store = get_vector_store(embeddings, vector_store_type=vector_store_type)
+                vector_retriever = vector_store.as_retriever(
+                    search_kwargs={"k": config.RAG_VECTOR_TOP_K}
+                )
+            keyword_retriever = get_keyword_retriever(k=config.RAG_KEYWORD_TOP_K)
+            retriever = HybridRetriever(
+                vector_retriever=vector_retriever,
+                keyword_retriever=keyword_retriever,
+                settings=RetrievalSettings(
+                    retrieval_mode=retrieval_mode,
+                    vector_top_k=config.RAG_VECTOR_TOP_K,
+                    keyword_top_k=config.RAG_KEYWORD_TOP_K,
+                    rerank_top_k=config.RAG_RERANK_TOP_K,
+                    final_top_k=config.RAG_FINAL_TOP_K,
+                    reranker_enabled=config.RAG_RERANKER_ENABLED,
+                    reranker_required=config.RAG_RERANKER_REQUIRED,
+                    reranker_model=config.RAG_RERANKER_MODEL,
+                ),
+            )
         else:
             embeddings = get_embedding_model()
-        if vector_store_type == "faiss":
-            retriever = load_faiss_index(config.FAISS_INDEX_PATH, embeddings)
-        elif vector_store_type != "keyword":
-            vector_store = get_vector_store(embeddings, vector_store_type=vector_store_type)
-            retriever = vector_store.as_retriever()
+            if vector_store_type == "faiss":
+                retriever = load_faiss_index(
+                    config.FAISS_INDEX_PATH,
+                    embeddings,
+                    k=config.RAG_FINAL_TOP_K,
+                )
+            else:
+                vector_store = get_vector_store(embeddings, vector_store_type=vector_store_type)
+                retriever = vector_store.as_retriever(
+                    search_kwargs={"k": config.RAG_FINAL_TOP_K}
+                )
     else:
         logger.info("Using the provided retriever.")
 
@@ -246,20 +306,8 @@ def create_rag_chain(
             logger.debug("Failed to persist provider settings for %s", provider_name)
         llm = llm_provider.get_llm()
 
-    # Define the prompt template
-    template = """
-    Answer the following question based on the provided context.
-    If the context does not contain the answer, try your best to answer in a general manner and tell the user to refer to 
-    the user guide and contact helpdesk support.
-
-    Context:
-    {context}
-
-    Question:
-    {question}
-
-    Answer:
-    """
+    # Define the prompt template.
+    template = rag_prompt_template()
     prompt = PromptTemplate.from_template(template)
 
     # Create the RAG chain
@@ -317,13 +365,33 @@ def create_rag_chain(
         return retriever(question)
 
     def build_prompt_text(question: str, docs) -> str:
-        return prompt.format(context=format_docs(docs), question=question)
+        return prompt.format(
+            **build_rag_prompt_inputs(
+                question=question,
+                context=format_docs(docs),
+            )
+        )
+
+    def evidence_guard_response(question: str, docs) -> str | None:
+        return unsupported_named_context_response(
+            question=question,
+            context=format_docs(docs),
+        )
 
     def stream_answer(question: str) -> Dict[str, Any]:
         if llm_provider is None:
             raise NotImplementedError("Streaming requires a provider-backed RAG chain.")
 
         docs = retrieve_docs(question)
+        metadata = {"retrieval_diagnostics": retrieval_diagnostics(retriever)}
+        guard_response = evidence_guard_response(question, docs)
+        if guard_response is not None:
+            metadata["evidence_guard"] = "unsupported_named_local_reference"
+            return {
+                "context": docs,
+                "chunks": [guard_response],
+                "metadata": metadata,
+            }
         prompt_text = build_prompt_text(question, docs)
         if llm_provider.supports_streaming():
             response = llm_provider.generate(prompt_text, stream=True)
@@ -331,7 +399,28 @@ def create_rag_chain(
         else:
             response = llm_provider.generate(prompt_text, stream=False)
             chunks = [response.text or ""]
-        return {"context": docs, "chunks": chunks}
+        return {
+            "context": docs,
+            "chunks": chunks,
+            "metadata": metadata,
+        }
+
+    def answer_from_payload(payload: dict[str, Any]) -> str:
+        docs = payload["context"]
+        question = payload["question"]
+        guard_response = evidence_guard_response(question, docs)
+        if guard_response is not None:
+            return guard_response
+        return (
+            prompt
+            | llm
+            | StrOutputParser()
+        ).invoke(
+            build_rag_prompt_inputs(
+                question=question,
+                context=format_docs(docs),
+            )
+        )
 
     rag_chain = (
         {
@@ -339,14 +428,7 @@ def create_rag_chain(
             "question": RunnablePassthrough()
         }
         | RunnablePassthrough.assign(
-            answer=(
-                RunnablePassthrough.assign(
-                    context=(lambda x: format_docs(x["context"]))
-                )
-                | prompt
-                | llm
-                | StrOutputParser()
-            )
+            answer=RunnableLambda(answer_from_payload)
         )
     )
 
@@ -354,7 +436,17 @@ def create_rag_chain(
     retriever_descriptor: Dict[str, Any] = {
         "vector_store_type": vector_store_type,
         "embedding_model": config.EMBEDDING_MODEL,
-        "custom_retriever": retriever is not None,
+        "custom_retriever": custom_retriever,
+        "retrieval_mode": retrieval_mode,
+        "retrieval_settings": {
+            "vector_top_k": config.RAG_VECTOR_TOP_K,
+            "keyword_top_k": config.RAG_KEYWORD_TOP_K,
+            "rerank_top_k": config.RAG_RERANK_TOP_K,
+            "final_top_k": config.RAG_FINAL_TOP_K,
+            "reranker_enabled": config.RAG_RERANKER_ENABLED,
+            "reranker_required": config.RAG_RERANKER_REQUIRED,
+            "reranker_model": config.RAG_RERANKER_MODEL,
+        },
         "max_context_tokens": max_context_tokens,
         "max_context_chars": max_context_chars,
     }
@@ -397,6 +489,7 @@ def create_rag_chain(
         corpus_hash=corpus_hash,
         provider_config_path=provider_config_path,
         stream_answer=stream_answer if llm_provider is not None else None,
+        retriever=retriever,
     )
 
 def log_rag_chain_as_model():

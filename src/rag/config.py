@@ -231,6 +231,19 @@ FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "vector_index/faiss_amarel
 
 DEFAULT_LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "llama_cpp").lower()
 
+# Retrieval mode controls. Defaults preserve the v1 FAISS/Qdrant vector-only path.
+RAG_RETRIEVAL_MODE = os.environ.get("RAG_RETRIEVAL_MODE", "vector").strip().lower()
+RAG_VECTOR_TOP_K = _env_int("RAG_VECTOR_TOP_K", 20) or 20
+RAG_KEYWORD_TOP_K = _env_int("RAG_KEYWORD_TOP_K", 20) or 20
+RAG_RERANK_TOP_K = _env_int("RAG_RERANK_TOP_K", 8) or 8
+RAG_FINAL_TOP_K = _env_int("RAG_FINAL_TOP_K", 4) or 4
+RAG_RERANKER_ENABLED = _env_bool("RAG_RERANKER_ENABLED", False)
+RAG_RERANKER_REQUIRED = _env_bool("RAG_RERANKER_REQUIRED", False)
+RAG_RERANKER_MODEL = os.environ.get(
+    "RAG_RERANKER_MODEL",
+    "cross-encoder/ms-marco-MiniLM-L-6-v2",
+)
+
 # HTTP providers (OpenAI-compatible)
 VLLM_SETTINGS = _load_http_provider(
     "VLLM",

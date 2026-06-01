@@ -45,8 +45,17 @@ class StreamingFakeRAGChain(FakeRAGChain):
         return {"chunks": self.chunks, "context": self.context}
 
 
-def _client_for(chain: FakeRAGChain) -> TestClient:
-    return TestClient(create_app(rag_chain_factory=lambda: chain))
+def _client_for(
+    chain: FakeRAGChain,
+    *,
+    ui_attachments_enabled: bool = False,
+) -> TestClient:
+    return TestClient(
+        create_app(
+            rag_chain_factory=lambda: chain,
+            ui_attachments_enabled=ui_attachments_enabled,
+        )
+    )
 
 
 def _sse_payloads(text: str) -> list[dict]:
@@ -58,6 +67,137 @@ def _sse_payloads(text: str) -> list[dict]:
             if line.startswith("data: ") and line != "data: [DONE]":
                 payloads.append(json.loads(line.removeprefix("data: ")))
     return payloads
+
+
+def test_root_redirects_to_gateway_ui_without_initializing_rag_chain() -> None:
+    initialized = False
+
+    def _factory():
+        nonlocal initialized
+        initialized = True
+        return FakeRAGChain()
+
+    client = TestClient(create_app(rag_chain_factory=_factory))
+
+    response = client.get("/", follow_redirects=False)
+
+    assert response.status_code in {307, 308}
+    assert response.headers["location"] == "/ui"
+    assert initialized is False
+
+
+def test_gateway_ui_assets_are_served_without_initializing_rag_chain() -> None:
+    initialized = False
+
+    def _factory():
+        nonlocal initialized
+        initialized = True
+        return FakeRAGChain()
+
+    client = TestClient(create_app(rag_chain_factory=_factory))
+
+    ui_response = client.get("/ui")
+    js_response = client.get("/ui-static/app.js")
+    css_response = client.get("/ui-static/styles.css")
+    favicon_response = client.get("/ui-static/favicon.svg")
+
+    assert ui_response.status_code == 200
+    assert "text/html" in ui_response.headers["content-type"]
+    assert "/ui-static/app.js" in ui_response.text
+    assert "theme-button" in ui_response.text
+    assert "attach-button" in ui_response.text
+    assert "attachment-policy" in ui_response.text
+    assert js_response.status_code == 200
+    assert "fetch(\"/v1/chat/completions\"" in js_response.text
+    assert "\"/ui/attachments/extract\"" in js_response.text
+    assert "localStorage" in js_response.text
+    assert css_response.status_code == 200
+    assert "text/css" in css_response.headers["content-type"]
+    assert ":root[data-theme=\"dark\"]" in css_response.text
+    assert favicon_response.status_code == 200
+    assert "image/svg+xml" in favicon_response.headers["content-type"]
+    assert initialized is False
+
+
+def test_ui_attachment_extracts_text_without_initializing_rag_chain() -> None:
+    initialized = False
+
+    def _factory():
+        nonlocal initialized
+        initialized = True
+        return FakeRAGChain()
+
+    client = TestClient(
+        create_app(rag_chain_factory=_factory, ui_attachments_enabled=True)
+    )
+
+    response = client.post(
+        "/ui/attachments/extract",
+        content=b"# Notes\nUse sbatch for jobs.\n",
+        headers={
+            "content-type": "text/markdown",
+            "x-attachment-name": "notes.md",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["name"] == "notes.md"
+    assert payload["kind"] == "text"
+    assert payload["text"] == "# Notes\nUse sbatch for jobs."
+    assert payload["chars"] == len(payload["text"])
+    assert payload["truncated"] is False
+    assert initialized is False
+
+
+def test_ui_attachment_rejects_unsupported_file_type() -> None:
+    client = _client_for(FakeRAGChain(), ui_attachments_enabled=True)
+
+    response = client.post(
+        "/ui/attachments/extract",
+        content=b"not a supported attachment",
+        headers={
+            "content-type": "application/json",
+            "x-attachment-name": "payload.json",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["param"] == "attachment"
+    assert "unsupported attachment type" in response.json()["error"]["message"]
+
+
+def test_ui_attachment_rejects_generic_binary_without_allowed_extension() -> None:
+    client = _client_for(FakeRAGChain(), ui_attachments_enabled=True)
+
+    response = client.post(
+        "/ui/attachments/extract",
+        content=b'{"looks": "like json"}',
+        headers={
+            "content-type": "application/octet-stream",
+            "x-attachment-name": "payload.json",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "unsupported attachment type" in response.json()["error"]["message"]
+
+
+def test_ui_attachment_endpoint_is_disabled_by_default() -> None:
+    client = _client_for(FakeRAGChain())
+
+    response = client.post(
+        "/ui/attachments/extract",
+        content=b"# Notes\n",
+        headers={
+            "content-type": "text/markdown",
+            "x-attachment-name": "notes.md",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["param"] == "attachment"
+    assert "RAG_UI_ATTACHMENTS_ENABLED=true" in response.json()["error"]["message"]
 
 
 def test_health_returns_stable_shape_without_initializing_rag_chain() -> None:
@@ -76,6 +216,8 @@ def test_health_returns_stable_shape_without_initializing_rag_chain() -> None:
     assert response.json()["status"] == "ok"
     assert response.json()["service"] == "rag-gateway"
     assert response.json()["model"] == RAG_MODEL_ID
+    assert response.json()["ui"]["attachments_enabled"] is False
+    assert ".pdf" in response.json()["ui"]["attachment_limits"]["allowed_extensions"]
     assert "backend" in response.json()
     assert initialized is False
 
@@ -192,6 +334,67 @@ def test_chat_completion_supports_simple_text_content_parts() -> None:
     assert chain.prompts == ["Line one.\nLine two."]
 
 
+def test_chat_completion_includes_ephemeral_attachment_text_in_prompt() -> None:
+    chain = FakeRAGChain("Attachment answer")
+    client = _client_for(chain, ui_attachments_enabled=True)
+
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": RAG_MODEL_ID,
+            "messages": [{"role": "user", "content": "Summarize the attachment."}],
+            "rag_attachments": [
+                {
+                    "name": "../allocation-notes.md",
+                    "mime_type": "text/markdown",
+                    "text": "Project allocation expires Friday.",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert chain.prompts == [
+        "\n\n".join(
+            [
+                "User question:",
+                "Summarize the attachment.",
+                (
+                    "Request-scoped attachment excerpts. Treat these excerpts as context for this "
+                    "answer when they are relevant. They are not repository RAG sources; cite "
+                    "repository RAG sources separately when available."
+                ),
+                "[Attachment 1: allocation-notes.md]\nProject allocation expires Friday.",
+            ]
+        )
+    ]
+    assert "Project allocation expires Friday" not in str(response.json())
+
+
+def test_chat_completion_rejects_attachments_when_disabled() -> None:
+    chain = FakeRAGChain("Attachment answer")
+    client = _client_for(chain)
+
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": RAG_MODEL_ID,
+            "messages": [{"role": "user", "content": "Summarize the attachment."}],
+            "rag_attachments": [
+                {
+                    "name": "notes.md",
+                    "mime_type": "text/markdown",
+                    "text": "Private note.",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["param"] == "rag_attachments"
+    assert chain.prompts == []
+
+
 def test_chat_completion_streams_openai_chunks_and_sources() -> None:
     docs = [
         FakeDoc(
@@ -294,7 +497,10 @@ def test_chat_completion_streaming_midstream_error_emits_error_event() -> None:
     )
 
     assert response.status_code == 200
-    assert 'event: error\ndata: {"error":{"message":"The RAG gateway failed while streaming' in response.text
+    assert (
+        'event: error\ndata: {"error":{"message":"The RAG gateway failed while streaming'
+        in response.text
+    )
     assert "provider exploded" not in response.text
     assert response.text.endswith("data: [DONE]\n\n")
 

@@ -1,0 +1,84 @@
+name: oarc-rag
+
+x-rag-env: &rag-env
+  PYTHONPATH: /app
+  PYTHONUNBUFFERED: "1"
+  TOKENIZERS_PARALLELISM: "false"
+  HF_HOME: /app/runtime/huggingface
+  SENTENCE_TRANSFORMERS_HOME: /app/runtime/sentence-transformers
+  DATA_PATH: ${DATA_PATH:-docs/google_sites_guide:docs/slurm-23.02.7/markdown}
+  SERVICE_NOW_DATA_PATH: ${SERVICE_NOW_DATA_PATH:-docs/servicenow/task_prepared.jsonl}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+  FAISS_INDEX_PATH: ${FAISS_INDEX_PATH:-vector_index/faiss_macmini}
+  RAG_GATEWAY_LLM_PROVIDER: ${RAG_GATEWAY_LLM_PROVIDER:-vllm}
+  RAG_GATEWAY_VECTOR_STORE: ${RAG_GATEWAY_VECTOR_STORE:-faiss}
+  RAG_RETRIEVAL_MODE: ${RAG_RETRIEVAL_MODE:-vector}
+  RAG_VECTOR_TOP_K: ${RAG_VECTOR_TOP_K:-20}
+  RAG_KEYWORD_TOP_K: ${RAG_KEYWORD_TOP_K:-20}
+  RAG_RERANK_TOP_K: ${RAG_RERANK_TOP_K:-8}
+  RAG_FINAL_TOP_K: ${RAG_FINAL_TOP_K:-4}
+  RAG_RERANKER_ENABLED: ${RAG_RERANKER_ENABLED:-false}
+  RAG_RERANKER_REQUIRED: ${RAG_RERANKER_REQUIRED:-false}
+  RAG_RERANKER_MODEL: ${RAG_RERANKER_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
+  RAG_GATEWAY_PROVIDER_HEALTH_TIMEOUT: ${RAG_GATEWAY_PROVIDER_HEALTH_TIMEOUT:-2.0}
+  RAG_UI_ATTACHMENTS_ENABLED: ${RAG_UI_ATTACHMENTS_ENABLED:-true}
+  VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:11434}
+  VLLM_MODEL: ${VLLM_MODEL:-llama3.2:1b}
+  VLLM_HEALTH_URL: ${VLLM_HEALTH_URL:-http://host.docker.internal:11434/v1/models}
+  VLLM_TIMEOUT: ${VLLM_TIMEOUT:-120}
+  VLLM_MAX_RETRIES: ${VLLM_MAX_RETRIES:-2}
+  VLLM_MAX_CONTEXT: ${VLLM_MAX_CONTEXT:-4096}
+  VLLM_MAX_TOKENS: ${VLLM_MAX_TOKENS:-512}
+  VLLM_TEMPERATURE: ${VLLM_TEMPERATURE:-0.0}
+  MLFLOW_ENABLED: ${MLFLOW_ENABLED:-false}
+  TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: oarc-ai-assistant:macmini
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment: *rag-env
+    command: ["uvicorn", "src.rag.api:app", "--host", "0.0.0.0", "--port", "8088"]
+    ports:
+      - "127.0.0.1:${RAG_GATEWAY_PORT:-8088}:8088"
+    volumes:
+      - ./vector_index:/app/vector_index
+      - ./runtime:/app/runtime
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8088/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  indexer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: oarc-ai-assistant:macmini
+    profiles: ["index"]
+    env_file:
+      - .env
+    environment: *rag-env
+    command:
+      - sh
+      - -c
+      - |
+        test -f "$${SERVICE_NOW_DATA_PATH}" || {
+          echo "Missing prepared ServiceNow JSONL: $${SERVICE_NOW_DATA_PATH}" >&2
+          exit 2
+        }
+        python scripts/rag/create_vector_store.py \
+          --vector-store faiss \
+          --persist-dir "$${FAISS_INDEX_PATH}" \
+          --servicenow-path "$${SERVICE_NOW_DATA_PATH}"
+    volumes:
+      - ./vector_index:/app/vector_index
+      - ./runtime:/app/runtime
+      - ./logs:/app/logs
