@@ -1,0 +1,218 @@
+# Cloud GPU RAG Runbook
+
+This runbook covers short-lived Vast and RunPod staging runs for the OARC RAG gateway.
+
+Cloud GPU runs are for iteration and acceptance evidence. They do not replace the final HPC
+promotion gate. The default workflow builds a public-corpus FAISS index locally, transfers only an
+audited runtime bundle plus that index, starts vLLM and the RAG gateway on remote loopback, tunnels
+the gateway back to the laptop, runs the acceptance harness, and destroys provider-created compute.
+
+## What Is Automated
+
+- Provider selection defaults to RunPod with an RTX 4090 for 7B-class models and A100 for larger
+  models. Vast can search for a matching RTX 4090/A100 offer or use `--vast-offer-id`.
+- RunPod Pods use the official `runpod-torch-v280` template by default, expose `22/tcp` for SSH,
+  and set a three-hour `--terminate-after` safety window in addition to runner cleanup.
+- The public FAISS index can be built locally with `--build-index`; ServiceNow is forced to
+  `/dev/null` for this path.
+- The transfer bundle uses an allowlist plus a blocklist. `.env*`, `.git`, `.venv`, `logs/`,
+  `mlruns/`, `models/`, `results/`, `runtime/`, and `docs/servicenow` are blocked.
+- Created RunPod Pods are deleted with `runpodctl pod delete`; created Vast instances are destroyed
+  with `vastai destroy instance` unless `--keep-instance` is explicitly passed.
+- Manual review is narrowed to rows where hard checks pass but expected answer topics or expected
+  source hints are missing.
+
+## Not Automated
+
+- Installing `runpodctl` or `vastai`.
+- Creating or funding provider accounts.
+- Verifying provider CLI authentication, because that can expose account details in terminal output.
+- Judging whether newly drafted candidate questions are good enough to promote into the main gate.
+
+## Cost And Runtime Estimate
+
+As of July 30, 2026, public pricing pages list RunPod RTX 4090 rates around `$0.34` to `$0.69` per
+GPU-hour, RunPod A100 PCIe from about `$1.39` per GPU-hour, and Vast RTX 4090 marketplace offers
+from about `$0.13` per GPU-hour with a live median around `$0.36`. Check live prices before launch;
+storage, network volumes, bandwidth, and stopped-but-not-destroyed resources can add cost.
+
+Expected wall clock for the default `Qwen/Qwen2.5-7B-Instruct` path:
+
+| Run type | First run | Warm rerun | GPU cost ballpark |
+| --- | ---: | ---: | ---: |
+| 3-question smoke | 30-60 min | 10-25 min | `$0.10-$0.70` on 4090-class GPUs |
+| Full 18-question gate | 45-90 min | 20-45 min | `$0.20-$1.50` on 4090-class GPUs |
+| Candidate suite | 45-120 min | 25-60 min | depends on selected question count |
+
+First runs spend most time on image start, dependency install, model download, and local index build.
+A100-class runs are mainly for larger models; use them only when the model will not fit on a 24 GB
+4090.
+
+## Preflight
+
+Keep API keys outside this repo. The provider CLIs should read their own user config or environment;
+do not place keys in `.env` files that might be bundled.
+
+```bash
+runpodctl --help
+vastai --help
+```
+
+Provider setup commands, run outside the repo if needed:
+
+```bash
+runpodctl config --apiKey "$RUNPOD_API_KEY"
+runpodctl ssh add-key --key-file ~/.runpod/ssh/runpodctl-ssh-key.pub
+vastai set api-key "$VAST_API_KEY"
+vastai create ssh-key ~/.ssh/id_ed25519.pub
+```
+
+If RunPod does not currently list RTX 4090 capacity, use a 7B-class fallback such as:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --runpod-gpu "NVIDIA A40" \
+  --build-index \
+  --execute
+```
+
+## Dry-Run Plan
+
+Build the local public index and print the RunPod plan without launching paid compute:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --build-index \
+  --full-acceptance
+```
+
+Print a Vast plan. Without `--vast-offer-id`, the plan shows the search command that will be used at
+execution time.
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider vast \
+  --build-index \
+  --full-acceptance
+```
+
+Use an already-running SSH host without creating or deleting provider compute:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider existing \
+  --ssh-target root@example-host \
+  --ssh-port 22022 \
+  --full-acceptance
+```
+
+## Run The Cloud Loop
+
+Run a three-question RunPod smoke. The instance is deleted after the harness exits or fails:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --build-index \
+  --execute
+```
+
+Run the full active acceptance gate:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --build-index \
+  --execute \
+  --full-acceptance
+```
+
+Run the same path on Vast with an explicit offer:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider vast \
+  --vast-offer-id <offer-id> \
+  --build-index \
+  --execute \
+  --full-acceptance
+```
+
+Run the candidate question suite instead of the active gate:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --build-index \
+  --execute \
+  --questions data/evaluation/acceptance/rag_v1_candidate_questions.jsonl \
+  --full-acceptance
+```
+
+## Question Suites
+
+The active suite is `data/evaluation/acceptance/rag_v1_questions.jsonl` and currently covers Slurm,
+Amarel access, support policy, safety refusals, and synthetic attachments.
+
+The candidate suite is `data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`. It adds
+reviewed candidates for login-node policy, access rules, Open OnDemand, storage quotas, file
+transfer, interactive Slurm usage, community software support, owned resources, and Research Data
+Finder topics.
+
+Draft more candidates from approved Markdown roots:
+
+```bash
+.venv/bin/python scripts/evaluation/draft_acceptance_questions.py \
+  --max-questions 40 \
+  --output data/evaluation/acceptance/rag_v1_candidate_questions.generated.jsonl
+```
+
+The drafter is deterministic and offline. It skips `docs/servicenow` and writes source excerpts so
+the rows can be reviewed before promotion. Promote only rows with clear expected topics, a source
+hint that appears in returned source metadata, and a non-sensitive source excerpt.
+
+## Manual Review
+
+Manual review is needed for:
+
+- candidate questions before they become part of the main gate;
+- acceptance rows listed in `manual_review_question_ids`;
+- any safety row that passes automated string checks but sounds permissive or speculative;
+- any run where the retrieved sources are non-empty but visibly wrong.
+
+For stable promotion, compare at least two full runs:
+
+```bash
+.venv/bin/python scripts/evaluation/run_v1_acceptance.py \
+  --compare-runs logs/rag_v1_acceptance/<run-a> logs/rag_v1_acceptance/<run-b>
+```
+
+## Troubleshooting
+
+`runpodctl pod create` returning `graphql error: Unauthorized` means the CLI key can authenticate
+but is not allowed to create Pods for the account or role. Create or select a RunPod API key with
+Pod deployment permissions, configure it with `runpodctl config --apiKey`, then rerun the smoke.
+This failure happens before transfer, so no repository bundle or FAISS index is uploaded.
+
+If `ssh info` points at `~/.runpod/ssh/runpodctl-ssh-key` but SSH fails with
+`Permission denied (publickey,password)`, register that generated public key with:
+
+```bash
+runpodctl ssh add-key --key-file ~/.runpod/ssh/runpodctl-ssh-key.pub
+```
+
+The runner waits for RunPod SSH readiness, accepts new host keys non-interactively, pins
+`transformers>=4.48.2,<5` for the current vLLM 0.7.x path, and sends one direct warmup completion
+before measuring acceptance TTFT.
+
+## References
+
+- Vast CLI workflow: <https://docs.vast.ai/cli/hello-world>
+- Vast instance creation: <https://docs.vast.ai/cli/reference/create-instance>
+- Vast live pricing: <https://vast.ai/pricing>
+- RunPod Pod management: <https://docs.runpod.io/pods/manage-pods>
+- RunPod `runpodctl pod` reference: <https://docs.runpod.io/runpodctl/reference/runpodctl-pod>
+- RunPod GPU pricing: <https://www.runpod.io/pricing>
+- vLLM on RunPod: <https://docs.vllm.ai/en/latest/deployment/frameworks/runpod/>

@@ -10,6 +10,9 @@ general documentation.
 
 ## Architecture-Relevant Supporting Docs
 
+- `docs/cloud-gpu-rag-runbook.md`: operational runbook for short-lived Vast/RunPod RAG acceptance
+  loops. It documents safe transfer rules, local public-index creation, provider cleanup, cost
+  estimates, and candidate question handling.
 - `docs/hpc-vllm-runbook.md`: operational runbook for hosted vLLM on HPC. This supports the
   deployment flow documented in `project_docs/ARCHITECTURE.md`.
 

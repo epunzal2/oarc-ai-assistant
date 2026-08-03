@@ -12,6 +12,7 @@ import pytest
 
 from src.evaluation.acceptance import (
     DEFAULT_COMPLETIONS_URL,
+    _all_terms_present,
     build_health_url,
     load_questions,
     normalize_completions_url,
@@ -161,6 +162,11 @@ def test_cli_wrapper_runs_from_repo_root() -> None:
 
     assert result.returncode == 0
     assert "--base-url" in result.stdout
+
+
+def test_expected_topic_matching_normalizes_cli_placeholders() -> None:
+    assert _all_terms_present("Run scancel <job_id>.", ["scancel", "job id"])
+    assert _all_terms_present("Use job-id with scancel.", ["job_id"])
 
 
 def test_summarize_results_reports_latency_failures_and_review_lists() -> None:

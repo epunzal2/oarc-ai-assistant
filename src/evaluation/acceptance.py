@@ -844,13 +844,19 @@ def _answer_excerpt(answer: str, *, attachment_token: str | None) -> str:
 
 
 def _all_terms_present(text: str, terms: Sequence[str]) -> bool:
-    lowered = text.lower()
-    return all(term.lower() in lowered for term in terms)
+    normalized_text = _normalize_term_text(text)
+    return all(_normalize_term_text(term) in normalized_text for term in terms)
 
 
 def _any_terms_present(text: str, terms: Sequence[str]) -> bool:
-    lowered = text.lower()
-    return any(term.lower() in lowered for term in terms)
+    normalized_text = _normalize_term_text(text)
+    return any(_normalize_term_text(term) in normalized_text for term in terms)
+
+
+def _normalize_term_text(text: str) -> str:
+    """Normalize separators so acceptance terms match CLI/code spelling variants."""
+
+    return re.sub(r"[\s_-]+", " ", text.lower()).strip()
 
 
 def _optional_str(value: Any) -> str | None:

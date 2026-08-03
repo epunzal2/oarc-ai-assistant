@@ -377,6 +377,35 @@ The report's HPC promotion checklist is an operator checklist: the automated gat
 `promotion_ready`, while manual-review rows still need human review because small Mac mini models can
 produce inaccurate answers even when retrieval and latency are healthy.
 
+### Cloud GPU acceptance loop
+
+For short-lived Vast or RunPod staging runs, use the cloud acceptance wrapper. It builds a
+public-corpus FAISS index locally when requested, transfers only an audited runtime bundle plus that
+index, runs vLLM and the RAG gateway through SSH tunneling, executes the same acceptance harness,
+and deletes provider-created compute by default.
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --build-index \
+  --execute \
+  --full-acceptance
+```
+
+The active gate remains `data/evaluation/acceptance/rag_v1_questions.jsonl`. A reviewed candidate
+suite for expanding coverage lives at
+`data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`, and more candidates can be drafted
+offline from approved Markdown roots:
+
+```bash
+.venv/bin/python scripts/evaluation/draft_acceptance_questions.py \
+  --max-questions 40 \
+  --output data/evaluation/acceptance/rag_v1_candidate_questions.generated.jsonl
+```
+
+See [`docs/cloud-gpu-rag-runbook.md`](docs/cloud-gpu-rag-runbook.md) for provider setup, transfer
+safety rules, cleanup behavior, cost/runtime estimates, and candidate-promotion guidance.
+
 ### V1.1 opt-in hybrid retrieval
 
 The v1 default remains vector retrieval from the configured gateway vector store. For comparison

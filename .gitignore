@@ -143,6 +143,8 @@ TODO.md
 !/project_docs/ARCHITECTURE.md
 !/project_docs/phase3_hpc_openwebui_report.md
 !/project_docs/hpc_rag_openwebui_architecture.md
+!/project_docs/research_pro/
+!/project_docs/research_pro/**
 /vector_index/
 /runtime/
 /results/
@@ -158,6 +160,8 @@ TODO.md
 !/.plans/2026-05-28-macmini-compose-rag.md
 !/.plans/2026-05-28-rag-v1-acceptance-evaluation.md
 !/.plans/2026-05-31-v1-promotion-v11-hybrid-retrieval.md
+!/.plans/2026-07-17-cloud-gpu-rag-iteration.md
+!/.plans/2026-07-17-hpc-rag-chatbot-research-pro.md
 /tmp/
 /results/
 /.roo/
