@@ -243,6 +243,12 @@ guidance wins for local operational facts, Slurm docs win for scheduler syntax/b
 upstream/vendor docs win for general tool behavior, and `external_hpc` docs are suppressed for local
 operational questions unless the user explicitly asks for external examples.
 
+In vector mode, `src/rag/rag_pipeline.py` can add a focused local-guide fallback for selected
+local-policy questions. The fallback builds a keyword retriever from documents already present in
+the FAISS docstore when available, so cloud runs can keep transferring only the prebuilt public
+index. It is controlled by `RAG_LOCAL_GUIDE_FALLBACK_ENABLED` and
+`RAG_LOCAL_GUIDE_FALLBACK_TOP_K`; final context remains capped by `RAG_FINAL_TOP_K`.
+
 `src/rag/hybrid_retriever.py` is the v1.1 opt-in retrieval path. With
 `RAG_RETRIEVAL_MODE=hybrid`, the runtime retrieves vector candidates and keyword candidates, merges
 and dedupes them by chunk/source/hash/content identity, applies the same authority policy, optionally
@@ -257,6 +263,8 @@ Hybrid and keyword/vector sizes are controlled by:
 - `RAG_KEYWORD_TOP_K` (default `20`)
 - `RAG_RERANK_TOP_K` (default `8`)
 - `RAG_FINAL_TOP_K` (default `4`)
+- `RAG_LOCAL_GUIDE_FALLBACK_ENABLED` (default `true`)
+- `RAG_LOCAL_GUIDE_FALLBACK_TOP_K` (default `12`)
 - `RAG_RERANKER_ENABLED` (default `false`)
 - `RAG_RERANKER_REQUIRED` (default `false`)
 - `RAG_RERANKER_MODEL` (default `cross-encoder/ms-marco-MiniLM-L-6-v2`)
@@ -284,7 +292,8 @@ Important groups:
 - Gateway: `RAG_GATEWAY_LLM_PROVIDER`, `RAG_GATEWAY_VECTOR_STORE`,
   `RAG_GATEWAY_PROVIDER_HEALTH_TIMEOUT`, `RAG_UI_ATTACHMENTS_ENABLED`.
 - Retrieval mode: `RAG_RETRIEVAL_MODE`, `RAG_VECTOR_TOP_K`, `RAG_KEYWORD_TOP_K`,
-  `RAG_RERANK_TOP_K`, `RAG_FINAL_TOP_K`, `RAG_RERANKER_ENABLED`, `RAG_RERANKER_REQUIRED`,
+  `RAG_RERANK_TOP_K`, `RAG_FINAL_TOP_K`, `RAG_LOCAL_GUIDE_FALLBACK_ENABLED`,
+  `RAG_LOCAL_GUIDE_FALLBACK_TOP_K`, `RAG_RERANKER_ENABLED`, `RAG_RERANKER_REQUIRED`,
   `RAG_RERANKER_MODEL`.
 - MLflow: `MLFLOW_ENABLED`, `MLFLOW_TRACKING_URI`, `MLFLOW_EXPERIMENT_NAME`,
   `MLFLOW_RUNTIME_SAMPLE_P`, `MLFLOW_ARTIFACT_TOP_K`, `MLFLOW_ARTIFACT_MAX_BYTES`.

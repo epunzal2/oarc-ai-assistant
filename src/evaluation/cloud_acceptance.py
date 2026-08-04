@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tarfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from fnmatch import fnmatch
 from pathlib import Path, PurePosixPath
@@ -115,9 +115,12 @@ class SSHConnection:
     target: str
     port: int | None = None
     identity_file: str | None = None
+    known_hosts_file: str | None = None
 
     def ssh_base_args(self) -> list[str]:
         args = ["ssh", *_ssh_noninteractive_options()]
+        if self.known_hosts_file:
+            args.extend(["-o", f"UserKnownHostsFile={self.known_hosts_file}"])
         if self.port is not None:
             args.extend(["-p", str(self.port)])
         if self.identity_file:
@@ -127,6 +130,8 @@ class SSHConnection:
 
     def scp_base_args(self) -> list[str]:
         args = ["scp", *_ssh_noninteractive_options()]
+        if self.known_hosts_file:
+            args.extend(["-o", f"UserKnownHostsFile={self.known_hosts_file}"])
         if self.port is not None:
             args.extend(["-P", str(self.port)])
         if self.identity_file:
@@ -154,6 +159,7 @@ class CloudRunConfig:
     include_full_answer: bool = False
     max_p95_latency_ms: float = 30_000.0
     max_p95_ttft_ms: float = 15_000.0
+    retrieval_mode: str = "vector"
     ui_attachments_enabled: bool = False
     allow_public_corpus: bool = False
     build_index: bool = False
@@ -241,6 +247,7 @@ class CloudPlan:
     transfer_bytes: int
     question_ids: list[str]
     include_full_answer: bool
+    retrieval_mode: str
     ui_attachments_enabled: bool
     create_command: list[str] | None
     delete_command_template: list[str] | None
@@ -257,6 +264,7 @@ class CloudPlan:
             "transfer_bytes": self.transfer_bytes,
             "question_ids": self.question_ids,
             "include_full_answer": self.include_full_answer,
+            "retrieval_mode": self.retrieval_mode,
             "ui_attachments_enabled": self.ui_attachments_enabled,
             "create_command": self.create_command,
             "delete_command_template": self.delete_command_template,
@@ -320,6 +328,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--max-p95-latency-ms", type=float, default=30_000.0)
     parser.add_argument("--max-p95-ttft-ms", type=float, default=15_000.0)
+    parser.add_argument(
+        "--retrieval-mode",
+        choices=("vector", "keyword", "hybrid"),
+        default="vector",
+        help="Remote gateway RAG_RETRIEVAL_MODE for benchmark comparison runs.",
+    )
     parser.add_argument(
         "--enable-ui-attachments",
         action="store_true",
@@ -402,6 +416,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         include_full_answer=args.include_full_answer,
         max_p95_latency_ms=args.max_p95_latency_ms,
         max_p95_ttft_ms=args.max_p95_ttft_ms,
+        retrieval_mode=args.retrieval_mode,
         ui_attachments_enabled=args.enable_ui_attachments,
         allow_public_corpus=args.allow_public_corpus,
         build_index=args.build_index,
@@ -540,6 +555,7 @@ def build_cloud_plan(config: CloudRunConfig, manifest: TransferManifest) -> Clou
         transfer_bytes=transfer_bytes,
         question_ids=list(config.question_ids),
         include_full_answer=config.include_full_answer,
+        retrieval_mode=config.retrieval_mode,
         ui_attachments_enabled=config.ui_attachments_enabled,
         create_command=create_command,
         delete_command_template=delete_template,
@@ -780,6 +796,7 @@ def write_cloud_run_ledger(
         "questions_path": str(config.questions_path),
         "question_ids": list(config.question_ids),
         "include_full_answer": config.include_full_answer,
+        "retrieval_mode": config.retrieval_mode,
         "ui_attachments_enabled": config.ui_attachments_enabled,
         "acceptance": {
             "run_dir": _optional_summary_path(summary, "run_dir"),
@@ -919,6 +936,7 @@ def _cloud_run_ledger_markdown(payload: dict[str, Any]) -> str:
         f"- Start balance: `{money(start)}`\n"
         f"- End balance: `{money(end)}`\n"
         f"- Estimated cost: `{money(cost)}` ({cost_source})\n"
+        f"- Retrieval mode: `{payload.get('retrieval_mode')}`\n"
         f"- UI attachments enabled: `{payload.get('ui_attachments_enabled')}`\n"
         f"- Cleanup attempted: `{payload.get('cleanup_attempted')}`\n"
         f"- Cleanup error: `{payload.get('cleanup_error') or 'none'}`\n"
@@ -995,7 +1013,11 @@ def get_runpod_ssh_connection(
         result = run_checked(["runpodctl", "ssh", "info", pod_id], cwd=Path.cwd())
         last_output = result.stdout
         try:
-            return parse_ssh_command(result.stdout)
+            return _with_ephemeral_known_hosts(
+                parse_ssh_command(result.stdout),
+                provider="runpod",
+                resource_id=pod_id,
+            )
         except ValueError as exc:
             if not _runpod_ssh_info_not_ready(result.stdout):
                 raise exc
@@ -1088,7 +1110,11 @@ def get_vast_ssh_connection(instance_id: str) -> SSHConnection:
     """Read Vast SSH connection info and parse it into SSH arguments."""
 
     result = run_checked(["vastai", "ssh-url", instance_id], cwd=Path.cwd())
-    return parse_ssh_command(result.stdout)
+    return _with_ephemeral_known_hosts(
+        parse_ssh_command(result.stdout),
+        provider="vast",
+        resource_id=instance_id,
+    )
 
 
 def delete_vast_instance(instance_id: str) -> None:
@@ -1140,6 +1166,25 @@ def parse_ssh_command(output: str) -> SSHConnection:
     return SSHConnection(target=target, port=port, identity_file=identity_file)
 
 
+def _with_ephemeral_known_hosts(
+    ssh: SSHConnection,
+    *,
+    provider: str,
+    resource_id: str,
+) -> SSHConnection:
+    """Attach an isolated known-hosts file for a short-lived cloud resource."""
+
+    safe_resource_id = re.sub(r"[^a-zA-Z0-9_.-]+", "_", resource_id).strip("._-")
+    if not safe_resource_id:
+        safe_resource_id = "resource"
+    known_hosts_file = Path("runtime/cloud_acceptance/known_hosts") / (
+        f"{provider}-{safe_resource_id}.known_hosts"
+    )
+    known_hosts_file.parent.mkdir(parents=True, exist_ok=True)
+    known_hosts_file.touch(mode=0o600, exist_ok=True)
+    return replace(ssh, known_hosts_file=str(known_hosts_file))
+
+
 def _json_ssh_command(output: str) -> str | None:
     """Return a provider JSON `ssh_command` field when present."""
 
@@ -1176,6 +1221,7 @@ def remote_bootstrap_script(config: CloudRunConfig, bundle_name: str) -> str:
 
     rel_index = _rel_posix(config.repo_root, config.resolved_index_path)
     ui_attachments_enabled = "true" if config.ui_attachments_enabled else "false"
+    retrieval_mode = shlex.quote(config.retrieval_mode)
     return f"""\
 set -euo pipefail
 cd {shlex.quote(config.remote_dir)}
@@ -1205,7 +1251,7 @@ export SERVICE_NOW_DATA_PATH="/dev/null"
 export FAISS_INDEX_PATH={shlex.quote(rel_index)}
 export RAG_GATEWAY_LLM_PROVIDER="vllm"
 export RAG_GATEWAY_VECTOR_STORE="faiss"
-export RAG_RETRIEVAL_MODE="vector"
+export RAG_RETRIEVAL_MODE={retrieval_mode}
 export RAG_UI_ATTACHMENTS_ENABLED="{ui_attachments_enabled}"
 export VLLM_BASE_URL="http://127.0.0.1:{config.remote_vllm_port}"
 export VLLM_HEALTH_URL="http://127.0.0.1:{config.remote_vllm_port}/health"

@@ -14,11 +14,52 @@ def test_slurm_command_reference_covers_acceptance_smoke_intents() -> None:
     submit = build_slurm_command_reference("How do I submit a Slurm batch job on Amarel?")
     cancel = build_slurm_command_reference("How do I cancel a running Slurm job?")
     queue = build_slurm_command_reference("What command checks my queued or running jobs?")
+    support = build_slurm_command_reference("Where is the helpdesk?")
 
     assert "sbatch" in submit
     assert "scancel" in cancel
     assert "squeue" in queue
-    assert build_slurm_command_reference("Where is the helpdesk?") == "No command reference."
+    assert "help@oarc.rutgers.edu" in support
+
+
+def test_slurm_command_reference_covers_login_node_and_interactive_srun_intents() -> None:
+    login_node = build_slurm_command_reference(
+        "Can I run heavy computations on an Amarel login node?"
+    )
+    interactive = build_slurm_command_reference(
+        "How do I start a quick interactive command on a Slurm compute node?"
+    )
+
+    assert "Do not run heavy computations" in login_node
+    assert "compute nodes" in login_node
+    assert "`srun <command>`" in login_node
+    assert "`srun --partition=main --mem=2000 --time=30:00 --pty bash`" in interactive
+
+
+def test_command_reference_covers_candidate_local_policy_intents() -> None:
+    guest = build_slurm_command_reference(
+        "Can an external collaborator use Amarel resources owned by a Rutgers group?"
+    )
+    ondemand = build_slurm_command_reference(
+        "When should I use Open OnDemand on Amarel instead of a terminal?"
+    )
+    scratch = build_slurm_command_reference(
+        "What is /scratch on Amarel for, and should I treat it as backed-up storage?"
+    )
+    array = build_slurm_command_reference("When should I use a Slurm job array on Amarel?")
+    owner = build_slurm_command_reference(
+        "What is the difference between general-access and owned Amarel resources?"
+    )
+
+    assert "Rutgers Guest NetID" in guest
+    assert "owned resources" in guest
+    assert "owned Amarel compute and storage resources" in guest
+    assert "web browser based graphical Linux desktop" in ondemand
+    assert "`/scratch` is temporary" in scratch
+    assert "not backed up" in scratch
+    assert "array tasks" in array
+    assert "shared job queues" in owner
+    assert "Owned resources" in owner
 
 
 def test_prompt_inputs_include_command_reference_and_context() -> None:
@@ -28,7 +69,7 @@ def test_prompt_inputs_include_command_reference_and_context() -> None:
     )
     prompt_text = rag_prompt_template().format(**inputs)
 
-    assert inputs["slurm_command_reference"].startswith("Slurm command reference")
+    assert inputs["slurm_command_reference"].startswith("Command and support reference")
     assert "`sbatch <job_script.sh>`" in prompt_text
     assert "Answer with the exact command first" in prompt_text
     assert "This retrieved chunk mentions Slurm" in prompt_text

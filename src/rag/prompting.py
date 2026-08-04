@@ -10,6 +10,26 @@ _QUEUE_RE = re.compile(r"\b(queue|queued|running jobs?|status|check).*\b(job|job
 _GPU_RE = re.compile(r"\b(gpu|gres|cuda)\b", re.IGNORECASE)
 _DEBUG_RE = re.compile(r"\b(debug|failed|failure|error|stderr|stdout|sacct)\b", re.IGNORECASE)
 _TRANSFER_RE = re.compile(r"\b(transfer|copy|move|sync|scp|rsync|globus|rclone)\b", re.IGNORECASE)
+_LOGIN_OR_INTERACTIVE_RE = re.compile(
+    r"\b(login nodes?|compute nodes?|interactive jobs?|quick interactive|quick command|"
+    r"heavy computations?|research applications?|srun)\b",
+    re.IGNORECASE,
+)
+_EXTERNAL_GUEST_RE = re.compile(
+    r"\b(external collaborators?|external users?|guest netid|guest members?|owned resources?)\b",
+    re.IGNORECASE,
+)
+_OPEN_ONDEMAND_RE = re.compile(r"\b(open ondemand|ood|graphical|desktop|web browser)\b", re.IGNORECASE)
+_SCRATCH_RE = re.compile(
+    r"/scratch|\b(scratch storage|scratch directory|temporary storage)\b",
+    re.IGNORECASE,
+)
+_JOB_ARRAY_RE = re.compile(r"\b(job arrays?|array tasks?|many similar jobs)\b", re.IGNORECASE)
+_OWNER_RESOURCES_RE = re.compile(
+    r"\b(general-access|general access|owned resources?|owners?|private job partitions?|"
+    r"job queues?)\b",
+    re.IGNORECASE,
+)
 _AMAREL_ACCESS_RE = re.compile(
     r"\b(amarel|cluster).*\b(request|apply|access|account)\b|"
     r"\b(request|apply|access|account).*\b(amarel|cluster)\b",
@@ -136,6 +156,42 @@ def build_slurm_command_reference(question: str) -> str:
         hints.append(
             "- Debug completed or failed jobs with `sacct -j <job_id>` and check Slurm "
             "stdout/stderr files from the batch script."
+        )
+    if _LOGIN_OR_INTERACTIVE_RE.search(text):
+        hints.append(
+            "- Do not run heavy computations or research applications on Amarel login nodes; "
+            "use Slurm compute nodes. For a quick command, use `srun <command>`; for an "
+            "interactive shell, use `srun --partition=main --mem=2000 --time=30:00 --pty bash` "
+            "and verify local partition/account policy in the retrieved OARC guide."
+        )
+    if _EXTERNAL_GUEST_RE.search(text):
+        hints.append(
+            "- External users and non-Rutgers collaborators can use owned resources, including "
+            "owned Amarel compute and storage resources, through a Rutgers Guest NetID when "
+            "authorized by the owning Rutgers group; guest users usually do not receive centrally "
+            "funded general-access queues."
+        )
+    if _OPEN_ONDEMAND_RE.search(text):
+        hints.append(
+            "- Open OnDemand provides a web browser based graphical Linux desktop for GUI-based "
+            "applications and file workflows; terminal or batch workflows remain better for "
+            "ordinary non-graphical computation."
+        )
+    if _SCRATCH_RE.search(text):
+        hints.append(
+            "- `/scratch` is temporary job input/output storage for actively running jobs. It is "
+            "not backed up; move important results to backed-up `/home` or `/projects` storage."
+        )
+    if _JOB_ARRAY_RE.search(text):
+        hints.append(
+            "- Use a Slurm job array for many related independent tasks from one job script; "
+            "`#SBATCH --array=...` creates array tasks, and `%` can limit jobs in the queue."
+        )
+    if _OWNER_RESOURCES_RE.search(text):
+        hints.append(
+            "- General-access Amarel users use shared job queues with job count, duration, and "
+            "wait-time limits. Owned resources provide dedicated private job partitions/queues, "
+            "higher limits, and private backed-up `/projects` storage for the owner's group."
         )
     if _TRANSFER_RE.search(text):
         hints.append(

@@ -175,6 +175,23 @@ Run the candidate question suite instead of the active gate:
   --full-acceptance
 ```
 
+The default vector-mode gateway also enables the local-guide fallback from the FAISS docstore for
+selected local-policy questions. This keeps cloud transfers limited to the source bundle plus
+prebuilt public FAISS index while improving source recall for Amarel access, Open OnDemand,
+`/scratch`, job-array, owned-resource, login-node, and interactive `srun` questions. Disable it for
+an ablation with `RAG_LOCAL_GUIDE_FALLBACK_ENABLED=false` in the remote environment.
+
+Run a hybrid retrieval benchmark against the active gate:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --execute \
+  --retrieval-mode hybrid \
+  --full-acceptance \
+  --include-full-answer
+```
+
 Run the synthetic attachment row on RunPod. This starts the remote gateway with
 `RAG_UI_ATTACHMENTS_ENABLED=true`, uses only generated non-sensitive attachment text, and lets the
 browser UI's generated `sample-attachment.md` control be tested through the same private tunnel:
@@ -197,6 +214,13 @@ The candidate suite is `data/evaluation/acceptance/rag_v1_candidate_questions.js
 reviewed candidates for login-node policy, access rules, Open OnDemand, storage quotas, file
 transfer, interactive Slurm usage, community software support, owned resources, and Research Data
 Finder topics.
+
+## SSH Host Keys
+
+Cloud pods and instances are short-lived and provider IPs/ports can be recycled. The cloud runner
+uses per-resource known-hosts files under `runtime/cloud_acceptance/known_hosts/` instead of the
+user's global `~/.ssh/known_hosts`. This avoids recycled-host-key collisions while keeping
+`StrictHostKeyChecking=accept-new` for each individual resource.
 
 Draft more candidates from approved Markdown roots:
 

@@ -67,6 +67,7 @@ def test_transfer_bundle_contains_only_allowlisted_files_and_manifest(tmp_path: 
 
 
 def test_provider_command_defaults_and_parsers(tmp_path: Path) -> None:
+    _make_repo(tmp_path)
     config = cloud.CloudRunConfig(repo_root=tmp_path, model="Qwen/Qwen2.5-7B-Instruct")
 
     assert cloud.default_acceptance_output_dir("runpod") == Path(
@@ -130,6 +131,7 @@ def test_provider_command_defaults_and_parsers(tmp_path: Path) -> None:
         repo_root=tmp_path,
         question_ids=("amarel_data_transfer", "support_helpdesk"),
         include_full_answer=True,
+        retrieval_mode="hybrid",
         max_questions=None,
     )
     acceptance_command = cloud.acceptance_command(targeted_config)
@@ -137,12 +139,16 @@ def test_provider_command_defaults_and_parsers(tmp_path: Path) -> None:
     assert "--include-full-answer" in acceptance_command
     assert "amarel_data_transfer" in acceptance_command
     assert "support_helpdesk" in acceptance_command
+    plan = cloud.build_cloud_plan(targeted_config, cloud.build_transfer_manifest(targeted_config))
+    assert plan.as_dict()["retrieval_mode"] == "hybrid"
 
 
 def test_cli_defaults_to_provider_specific_output_dir() -> None:
     parser = cloud.build_parser()
 
     assert parser.parse_args([]).acceptance_output_dir is None
+    assert parser.parse_args([]).retrieval_mode == "vector"
+    assert parser.parse_args(["--retrieval-mode", "hybrid"]).retrieval_mode == "hybrid"
     assert parser.parse_args([]).enable_ui_attachments is False
     assert parser.parse_args(["--enable-ui-attachments"]).enable_ui_attachments is True
 
@@ -240,6 +246,7 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
         bundle_path=Path("bundle.tar.gz"),
         question_ids=("amarel_data_transfer", "support_helpdesk"),
         include_full_answer=True,
+        retrieval_mode="hybrid",
         ui_attachments_enabled=True,
     )
 
@@ -252,6 +259,7 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
     assert ledger["estimated_cost_source"] == "balance_delta"
     assert ledger["question_ids"] == ["amarel_data_transfer", "support_helpdesk"]
     assert ledger["include_full_answer"] is True
+    assert ledger["retrieval_mode"] == "hybrid"
     assert ledger["ui_attachments_enabled"] is True
     assert ledger["acceptance"]["promotion_ready"] is True
     assert (run_dir / "cloud_run_ledger.md").exists()
@@ -259,6 +267,7 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
 
 def test_get_runpod_ssh_connection_waits_until_ready(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     outputs = iter(
         [
@@ -278,6 +287,7 @@ def test_get_runpod_ssh_connection_waits_until_ready(
     )
     sleeps: list[int] = []
 
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(cloud, "run_checked", lambda *args, **kwargs: next(outputs))
     monkeypatch.setattr(cloud.time, "sleep", lambda seconds: sleeps.append(seconds))
 
@@ -285,7 +295,24 @@ def test_get_runpod_ssh_connection_waits_until_ready(
 
     assert ssh.target == "root@example.com"
     assert ssh.port == 22022
+    assert ssh.known_hosts_file == "runtime/cloud_acceptance/known_hosts/runpod-pod-123.known_hosts"
+    assert Path(ssh.known_hosts_file).exists()
     assert sleeps == [5]
+
+
+def test_ssh_connection_uses_isolated_known_hosts_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    ssh = cloud._with_ephemeral_known_hosts(
+        cloud.SSHConnection("root@example.com", port=22022, identity_file="id_ed25519"),
+        provider="runpod",
+        resource_id="pod:123",
+    )
+
+    assert ssh.known_hosts_file == "runtime/cloud_acceptance/known_hosts/runpod-pod_123.known_hosts"
+    assert Path(ssh.known_hosts_file).exists()
+    assert f"UserKnownHostsFile={ssh.known_hosts_file}" in ssh.ssh_base_args()
+    assert f"UserKnownHostsFile={ssh.known_hosts_file}" in ssh.scp_base_args()
 
 
 def test_remote_bootstrap_pins_vllm_transformers_compatibility(tmp_path: Path) -> None:
@@ -299,13 +326,19 @@ def test_remote_bootstrap_pins_vllm_transformers_compatibility(tmp_path: Path) -
     assert "uv run --no-sync vllm serve" in script
     assert "uv run --no-sync uvicorn" in script
     assert 'export RAG_UI_ATTACHMENTS_ENABLED="false"' in script
+    assert "export RAG_RETRIEVAL_MODE=vector" in script
 
     attachment_script = cloud.remote_bootstrap_script(
-        cloud.CloudRunConfig(repo_root=tmp_path, ui_attachments_enabled=True),
+        cloud.CloudRunConfig(
+            repo_root=tmp_path,
+            retrieval_mode="hybrid",
+            ui_attachments_enabled=True,
+        ),
         "bundle.tar.gz",
     )
 
     assert 'export RAG_UI_ATTACHMENTS_ENABLED="true"' in attachment_script
+    assert "export RAG_RETRIEVAL_MODE=hybrid" in attachment_script
 
 
 def test_cloud_acceptance_wrapper_help() -> None:

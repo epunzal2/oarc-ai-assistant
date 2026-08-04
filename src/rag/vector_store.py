@@ -132,6 +132,25 @@ def get_keyword_retriever(paths=None, *, k=4):
     return KeywordRetriever(documents, k=k)
 
 
+def get_docstore_keyword_retriever(retriever, *, k=4):
+    """Build a keyword retriever from documents already embedded in a vector store."""
+
+    vector_store = getattr(retriever, "vectorstore", None)
+    docstore = getattr(vector_store, "docstore", None)
+    doc_dict = getattr(docstore, "_dict", None)
+    if not isinstance(doc_dict, dict):
+        return None
+    documents = [
+        doc
+        for doc in doc_dict.values()
+        if hasattr(doc, "page_content") and hasattr(doc, "metadata")
+    ]
+    if not documents:
+        return None
+    logger.info("Loaded %s keyword fallback chunks from vector-store docstore.", len(documents))
+    return KeywordRetriever(documents, k=k)
+
+
 def _chunk_keyword_document(path, text, *, chunk_chars=1400, overlap=200):
     """Split one Markdown file into overlapping keyword-searchable chunks."""
 

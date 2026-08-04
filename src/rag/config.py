@@ -237,6 +237,15 @@ RAG_VECTOR_TOP_K = _env_int("RAG_VECTOR_TOP_K", 20) or 20
 RAG_KEYWORD_TOP_K = _env_int("RAG_KEYWORD_TOP_K", 20) or 20
 RAG_RERANK_TOP_K = _env_int("RAG_RERANK_TOP_K", 8) or 8
 RAG_FINAL_TOP_K = _env_int("RAG_FINAL_TOP_K", 4) or 4
+RAG_LOCAL_GUIDE_FALLBACK_ENABLED = _env_bool("RAG_LOCAL_GUIDE_FALLBACK_ENABLED", True)
+RAG_LOCAL_GUIDE_FALLBACK_TOP_K = _env_int("RAG_LOCAL_GUIDE_FALLBACK_TOP_K", 12) or 12
+RAG_LOCAL_GUIDE_FALLBACK_PATHS = tuple(
+    path
+    for path in os.environ.get("RAG_LOCAL_GUIDE_FALLBACK_PATHS", "docs/google_sites_guide").split(
+        os.pathsep
+    )
+    if path
+)
 RAG_RERANKER_ENABLED = _env_bool("RAG_RERANKER_ENABLED", False)
 RAG_RERANKER_REQUIRED = _env_bool("RAG_RERANKER_REQUIRED", False)
 RAG_RERANKER_MODEL = os.environ.get(

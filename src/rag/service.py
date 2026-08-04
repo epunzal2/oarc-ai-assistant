@@ -228,6 +228,8 @@ class RAGService:
                 "keyword_top_k": config.RAG_KEYWORD_TOP_K,
                 "rerank_top_k": config.RAG_RERANK_TOP_K,
                 "final_top_k": config.RAG_FINAL_TOP_K,
+                "local_guide_fallback_enabled": config.RAG_LOCAL_GUIDE_FALLBACK_ENABLED,
+                "local_guide_fallback_top_k": config.RAG_LOCAL_GUIDE_FALLBACK_TOP_K,
                 "reranker_enabled": config.RAG_RERANKER_ENABLED,
                 "reranker_required": config.RAG_RERANKER_REQUIRED,
                 "reranker_model": config.RAG_RERANKER_MODEL,

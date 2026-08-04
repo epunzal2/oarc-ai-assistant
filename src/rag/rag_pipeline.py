@@ -26,6 +26,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 from src.rag import mlflow_tracker
 from src.rag.vector_store import (
+    get_docstore_keyword_retriever,
     get_embedding_model,
     get_keyword_retriever,
     get_vector_store,
@@ -35,7 +36,7 @@ from src.rag.llm_provider import get_llm_provider
 from src.rag.logger import get_logger
 from src.rag import config
 from src.rag.telemetry import get_sampler
-from src.rag.retrieval_policy import maybe_wrap_retriever
+from src.rag.retrieval_policy import LocalGuideFallbackRetriever, maybe_wrap_retriever
 from src.rag.hybrid_retriever import (
     HybridRetriever,
     RetrievalSettings,
@@ -281,7 +282,25 @@ def create_rag_chain(
     else:
         logger.info("Using the provided retriever.")
 
-    retriever = maybe_wrap_retriever(retriever)
+    if (
+        not custom_retriever
+        and retrieval_mode == "vector"
+        and config.RAG_LOCAL_GUIDE_FALLBACK_ENABLED
+    ):
+        fallback_retriever = get_docstore_keyword_retriever(
+            retriever,
+            k=config.RAG_LOCAL_GUIDE_FALLBACK_TOP_K,
+        ) or get_keyword_retriever(
+            paths=config.RAG_LOCAL_GUIDE_FALLBACK_PATHS,
+            k=config.RAG_LOCAL_GUIDE_FALLBACK_TOP_K,
+        )
+        retriever = LocalGuideFallbackRetriever(
+            retriever=retriever,
+            fallback_retriever=fallback_retriever,
+            final_top_k=config.RAG_FINAL_TOP_K,
+        )
+    else:
+        retriever = maybe_wrap_retriever(retriever)
 
     # Get the LLM provider unless an explicit LLM instance was supplied
     if llm is None:
@@ -443,10 +462,15 @@ def create_rag_chain(
             "keyword_top_k": config.RAG_KEYWORD_TOP_K,
             "rerank_top_k": config.RAG_RERANK_TOP_K,
             "final_top_k": config.RAG_FINAL_TOP_K,
+            "local_guide_fallback_top_k": config.RAG_LOCAL_GUIDE_FALLBACK_TOP_K,
             "reranker_enabled": config.RAG_RERANKER_ENABLED,
             "reranker_required": config.RAG_RERANKER_REQUIRED,
             "reranker_model": config.RAG_RERANKER_MODEL,
         },
+        "local_guide_fallback_enabled": (
+            retrieval_mode == "vector" and config.RAG_LOCAL_GUIDE_FALLBACK_ENABLED
+        ),
+        "local_guide_fallback_paths": list(config.RAG_LOCAL_GUIDE_FALLBACK_PATHS),
         "max_context_tokens": max_context_tokens,
         "max_context_chars": max_context_chars,
     }
