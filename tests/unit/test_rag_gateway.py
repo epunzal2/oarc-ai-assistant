@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from src.rag.api import RAG_MODEL_ID, create_app
+from src.rag.prompting import build_slurm_command_reference
 
 
 class FakeDoc:
@@ -67,6 +68,19 @@ def _sse_payloads(text: str) -> list[dict]:
             if line.startswith("data: ") and line != "data: [DONE]":
                 payloads.append(json.loads(line.removeprefix("data: ")))
     return payloads
+
+
+def test_command_reference_includes_transfer_and_support_contacts() -> None:
+    transfer = build_slurm_command_reference("How can I transfer data between my laptop and Amarel?")
+    access = build_slurm_command_reference("How do new Rutgers users request access to Amarel?")
+    support = build_slurm_command_reference("Where should I go for help if I cannot solve an issue?")
+
+    assert "scp" in transfer
+    assert "rsync" in transfer
+    assert "login nodes" in transfer
+    assert "Amarel Cluster Access Request" in access
+    assert "account" in access
+    assert "help@oarc.rutgers.edu" in support
 
 
 def test_root_redirects_to_gateway_ui_without_initializing_rag_chain() -> None:

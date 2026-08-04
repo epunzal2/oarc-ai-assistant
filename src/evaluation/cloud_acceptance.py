@@ -46,6 +46,7 @@ DEFAULT_REMOTE_VLLM_PORT = 8000
 DEFAULT_FAISS_INDEX = "vector_index/faiss_public"
 DEFAULT_QUESTIONS_PATH = Path("data/evaluation/acceptance/rag_v1_questions.jsonl")
 DEFAULT_ACCEPTANCE_OUTPUT = "logs/rag_v1_acceptance"
+DEFAULT_CLOUD_ACCEPTANCE_OUTPUT = Path(DEFAULT_ACCEPTANCE_OUTPUT) / "cloud"
 DEFAULT_BUNDLE_PATH = Path("runtime/cloud_acceptance/oarc-rag-cloud-bundle.tar.gz")
 MANIFEST_NAME = "cloud_transfer_manifest.json"
 
@@ -147,8 +148,10 @@ class CloudRunConfig:
     remote_gateway_port: int = DEFAULT_REMOTE_GATEWAY_PORT
     remote_vllm_port: int = DEFAULT_REMOTE_VLLM_PORT
     questions_path: Path = DEFAULT_QUESTIONS_PATH
-    acceptance_output_dir: Path = Path(DEFAULT_ACCEPTANCE_OUTPUT)
+    acceptance_output_dir: Path | None = None
     max_questions: int | None = 3
+    question_ids: tuple[str, ...] = ()
+    include_full_answer: bool = False
     max_p95_latency_ms: float = 30_000.0
     max_p95_ttft_ms: float = 15_000.0
     allow_public_corpus: bool = False
@@ -167,6 +170,14 @@ class CloudRunConfig:
     vast_offer_query: str | None = None
     vast_disk_gb: int = 40
     vast_search_limit: int = 1
+
+    def __post_init__(self) -> None:
+        if self.acceptance_output_dir is None:
+            object.__setattr__(
+                self,
+                "acceptance_output_dir",
+                default_acceptance_output_dir(self.provider),
+            )
     dry_run_commands: bool = False
 
     @property
@@ -227,6 +238,8 @@ class CloudPlan:
     remote_dir: str
     transfer_file_count: int
     transfer_bytes: int
+    question_ids: list[str]
+    include_full_answer: bool
     create_command: list[str] | None
     delete_command_template: list[str] | None
     acceptance_command: list[str]
@@ -240,6 +253,8 @@ class CloudPlan:
             "remote_dir": self.remote_dir,
             "transfer_file_count": self.transfer_file_count,
             "transfer_bytes": self.transfer_bytes,
+            "question_ids": self.question_ids,
+            "include_full_answer": self.include_full_answer,
             "create_command": self.create_command,
             "delete_command_template": self.delete_command_template,
             "acceptance_command": self.acceptance_command,
@@ -264,9 +279,42 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--remote-gateway-port", type=int, default=DEFAULT_REMOTE_GATEWAY_PORT)
     parser.add_argument("--remote-vllm-port", type=int, default=DEFAULT_REMOTE_VLLM_PORT)
     parser.add_argument("--questions", type=Path, default=DEFAULT_QUESTIONS_PATH)
-    parser.add_argument("--acceptance-output-dir", type=Path, default=Path(DEFAULT_ACCEPTANCE_OUTPUT))
-    parser.add_argument("--max-questions", type=int, default=3)
+    parser.add_argument(
+        "--acceptance-output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for acceptance run artifacts. Defaults to "
+            "logs/rag_v1_acceptance/cloud/<provider> for cloud wrapper runs."
+        ),
+    )
+    parser.add_argument(
+        "--max-questions",
+        type=int,
+        default=None,
+        help=(
+            "Run only the first N questions. Defaults to 3 for untargeted smoke runs and "
+            "all requested IDs when --question-id is used."
+        ),
+    )
     parser.add_argument("--full-acceptance", action="store_true")
+    parser.add_argument(
+        "--question-id",
+        action="append",
+        default=[],
+        help=(
+            "Run only the specified acceptance question ID. May be repeated; selected "
+            "questions keep their JSONL order."
+        ),
+    )
+    parser.add_argument(
+        "--include-full-answer",
+        action="store_true",
+        help=(
+            "Store complete generated answers in acceptance JSONL evidence. Default "
+            "cloud posture stores answer excerpts only."
+        ),
+    )
     parser.add_argument("--max-p95-latency-ms", type=float, default=30_000.0)
     parser.add_argument("--max-p95-ttft-ms", type=float, default=15_000.0)
     parser.add_argument("--allow-public-corpus", action="store_true")
@@ -287,6 +335,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--vast-disk-gb", type=int, default=40)
     parser.add_argument("--vast-search-limit", type=int, default=1)
     return parser
+
+
+def default_acceptance_output_dir(provider: str) -> Path:
+    """Return the default cloud-wrapper output root for one provider."""
+
+    normalized = str(provider or DEFAULT_PROVIDER).strip().lower()
+    return DEFAULT_CLOUD_ACCEPTANCE_OUTPUT / normalized
+
+
+def _resolve_cli_max_questions(
+    *,
+    full_acceptance: bool,
+    max_questions: int | None,
+    question_ids: Sequence[str],
+) -> int | None:
+    if full_acceptance:
+        return None
+    if max_questions is not None:
+        return max_questions
+    if question_ids:
+        return None
+    return 3
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -310,8 +380,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         remote_gateway_port=args.remote_gateway_port,
         remote_vllm_port=args.remote_vllm_port,
         questions_path=args.questions,
-        acceptance_output_dir=args.acceptance_output_dir,
-        max_questions=None if args.full_acceptance else args.max_questions,
+        acceptance_output_dir=args.acceptance_output_dir
+        or default_acceptance_output_dir(args.provider),
+        max_questions=_resolve_cli_max_questions(
+            full_acceptance=args.full_acceptance,
+            max_questions=args.max_questions,
+            question_ids=args.question_id,
+        ),
+        question_ids=tuple(args.question_id),
+        include_full_answer=args.include_full_answer,
         max_p95_latency_ms=args.max_p95_latency_ms,
         max_p95_ttft_ms=args.max_p95_ttft_ms,
         allow_public_corpus=args.allow_public_corpus,
@@ -449,6 +526,8 @@ def build_cloud_plan(config: CloudRunConfig, manifest: TransferManifest) -> Clou
         remote_dir=config.remote_dir,
         transfer_file_count=len(manifest.included_paths),
         transfer_bytes=transfer_bytes,
+        question_ids=list(config.question_ids),
+        include_full_answer=config.include_full_answer,
         create_command=create_command,
         delete_command_template=delete_template,
         acceptance_command=acceptance_command(config),
@@ -458,18 +537,40 @@ def build_cloud_plan(config: CloudRunConfig, manifest: TransferManifest) -> Clou
 def run_cloud_acceptance(config: CloudRunConfig) -> int:
     """Execute the cloud acceptance workflow and always clean up created compute."""
 
-    if config.build_index:
-        build_local_faiss_index(config)
-    manifest = build_transfer_manifest(config)
-    bundle = create_transfer_bundle(config, manifest)
+    start_time = datetime.now(timezone.utc)
+    start_monotonic = time.monotonic()
+    start_account = provider_account_snapshot(config)
+    provider_resource_snapshot: dict[str, Any] | None = None
+    acceptance_result: Any | None = None
+    return_code = 1
+    error: str | None = None
+    cleanup_error: str | None = None
+    cleanup_raise: Exception | None = None
+    requested_gpu: str | None = None
+    manifest: TransferManifest | None = None
+    bundle: Path | None = None
     created_resource_id: str | None = None
     ssh = config.ssh
+    if config.build_index:
+        build_local_faiss_index(config)
     try:
+        manifest = build_transfer_manifest(config)
+        bundle = create_transfer_bundle(config, manifest)
         if config.provider == "runpod" and ssh is None:
+            requested_gpu = config.runpod_gpu or choose_runpod_gpu(config.model)
             created_resource_id = create_runpod_pod(config)
+            provider_resource_snapshot = provider_resource_snapshot_for(
+                config,
+                resource_id=created_resource_id,
+            )
             ssh = get_runpod_ssh_connection(created_resource_id)
         elif config.provider == "vast" and ssh is None:
+            requested_gpu = config.vast_offer_query or default_vast_offer_query(config.model)
             created_resource_id = create_vast_instance(config)
+            provider_resource_snapshot = provider_resource_snapshot_for(
+                config,
+                resource_id=created_resource_id,
+            )
             ssh = get_vast_ssh_connection(created_resource_id)
         if ssh is None:
             raise ValueError("--ssh-target is required for provider=existing")
@@ -480,19 +581,58 @@ def run_cloud_acceptance(config: CloudRunConfig) -> int:
         try:
             wait_for_local_gateway(config)
             prewarm_gateway_completion(config)
-            return run_acceptance_harness(config)
+            acceptance_result = run_acceptance_harness(config)
+            return_code = 0 if acceptance_result.summary.get("promotion_ready") else 1
         finally:
             tunnel.terminate()
             try:
                 tunnel.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 tunnel.kill()
+    except Exception as exc:
+        error = _sanitize_error(exc)
+        raise
     finally:
         if created_resource_id and not config.keep_instance:
-            if config.provider == "runpod":
-                delete_runpod_pod(created_resource_id)
-            elif config.provider == "vast":
-                delete_vast_instance(created_resource_id)
+            try:
+                if config.provider == "runpod":
+                    delete_runpod_pod(created_resource_id)
+                elif config.provider == "vast":
+                    delete_vast_instance(created_resource_id)
+            except Exception as exc:
+                cleanup_error = _sanitize_error(exc)
+                if error is None:
+                    cleanup_raise = exc
+        end_account = provider_account_snapshot(config)
+        try:
+            write_cloud_run_ledger(
+                config=config,
+                start_time=start_time,
+                end_time=datetime.now(timezone.utc),
+                runtime_seconds=round(time.monotonic() - start_monotonic, 3),
+                start_account=start_account,
+                end_account=end_account,
+                created_resource_id=created_resource_id,
+                requested_gpu=requested_gpu,
+                provider_resource_snapshot=provider_resource_snapshot,
+                cleanup_attempted=bool(created_resource_id and not config.keep_instance),
+                cleanup_error=cleanup_error,
+                manifest=manifest,
+                bundle=bundle,
+                acceptance_result=acceptance_result,
+                return_code=return_code,
+                error=error,
+            )
+        except Exception as exc:
+            if error is None and cleanup_raise is None:
+                raise
+            print(
+                f"warning: failed to write cloud run ledger: {_sanitize_error(exc)}",
+                file=sys.stderr,
+            )
+        if cleanup_raise is not None:
+            raise cleanup_raise
+    return return_code
 
 
 def build_local_faiss_index(config: CloudRunConfig) -> None:
@@ -516,6 +656,268 @@ def build_local_faiss_index(config: CloudRunConfig) -> None:
         "/dev/null",
     ]
     run_checked(cmd, cwd=config.repo_root, env=env)
+
+
+def provider_account_snapshot(config: CloudRunConfig) -> dict[str, Any]:
+    """Return a sanitized provider account snapshot for run ledgers."""
+
+    if config.provider == "runpod":
+        return _runpod_account_snapshot(config.repo_root)
+    if config.provider == "vast":
+        return _vast_account_snapshot(config.repo_root)
+    return {"provider": config.provider, "available": False}
+
+
+def provider_resource_snapshot_for(
+    config: CloudRunConfig,
+    *,
+    resource_id: str,
+) -> dict[str, Any] | None:
+    """Return provider-visible resource metadata without secrets, best effort."""
+
+    if config.provider != "runpod":
+        return None
+    try:
+        result = run_checked(["runpodctl", "pod", "list"], cwd=config.repo_root)
+    except Exception as exc:
+        return {"provider": "runpod", "available": False, "error": _sanitize_error(exc)}
+    pods = _parse_jsonish(result.stdout)
+    if not isinstance(pods, list):
+        return {"provider": "runpod", "available": False}
+    for pod in pods:
+        if isinstance(pod, dict) and pod.get("id") == resource_id:
+            return {"provider": "runpod", "available": True, "pod": _sanitize_provider_payload(pod)}
+    return {"provider": "runpod", "available": False, "resource_id": resource_id}
+
+
+def write_cloud_run_ledger(
+    *,
+    config: CloudRunConfig,
+    start_time: datetime,
+    end_time: datetime,
+    runtime_seconds: float,
+    start_account: dict[str, Any],
+    end_account: dict[str, Any],
+    created_resource_id: str | None,
+    requested_gpu: str | None,
+    provider_resource_snapshot: dict[str, Any] | None,
+    cleanup_attempted: bool,
+    cleanup_error: str | None,
+    manifest: TransferManifest | None,
+    bundle: Path | None,
+    acceptance_result: Any | None,
+    return_code: int,
+    error: str | None,
+) -> tuple[Path, Path]:
+    """Persist cloud-run cost/resource evidence next to acceptance artifacts."""
+
+    run_dir = _ledger_run_dir(config, acceptance_result)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    ledger_path = run_dir / "cloud_run_ledger.json"
+    journal_path = run_dir / "cloud_run_ledger.md"
+
+    start_balance = _provider_balance_usd(start_account)
+    end_balance = _provider_balance_usd(end_account)
+    balance_delta = (
+        round(start_balance - end_balance, 10)
+        if start_balance is not None and end_balance is not None
+        else None
+    )
+    provider_cost_per_hr = _provider_hourly_cost_usd(provider_resource_snapshot)
+    estimated_cost_source = None
+    if balance_delta is not None and balance_delta > 0:
+        estimated_cost = balance_delta
+        estimated_cost_source = "balance_delta"
+    elif provider_cost_per_hr is not None:
+        estimated_cost = round((runtime_seconds / 3600.0) * provider_cost_per_hr, 10)
+        estimated_cost_source = "runtime_x_rate"
+    elif balance_delta is not None:
+        estimated_cost = max(balance_delta, 0.0)
+        estimated_cost_source = "balance_delta"
+    else:
+        estimated_cost = None
+    summary = getattr(acceptance_result, "summary", None)
+    if not isinstance(summary, dict):
+        summary = {}
+    payload = {
+        "provider": config.provider,
+        "run_name": config.run_name,
+        "model": config.model,
+        "requested_gpu": requested_gpu,
+        "created_resource_id": created_resource_id,
+        "cleanup_attempted": cleanup_attempted,
+        "cleanup_error": cleanup_error,
+        "keep_instance": config.keep_instance,
+        "return_code": return_code,
+        "error": error,
+        "started_at": start_time.isoformat(),
+        "ended_at": end_time.isoformat(),
+        "runtime_seconds": runtime_seconds,
+        "start_account": start_account,
+        "end_account": end_account,
+        "balance_delta_usd": balance_delta,
+        "provider_cost_per_hr": provider_cost_per_hr,
+        "estimated_cost_usd": estimated_cost,
+        "estimated_cost_source": estimated_cost_source,
+        "provider_resource_snapshot": provider_resource_snapshot,
+        "bundle_path": str(bundle) if bundle else None,
+        "bundle_bytes": bundle.stat().st_size if bundle and bundle.exists() else None,
+        "transfer_file_count": len(manifest.included_paths) if manifest else None,
+        "faiss_index_path": str(config.resolved_index_path),
+        "questions_path": str(config.questions_path),
+        "question_ids": list(config.question_ids),
+        "include_full_answer": config.include_full_answer,
+        "acceptance": {
+            "run_dir": _optional_summary_path(summary, "run_dir"),
+            "results_path": _optional_summary_path(summary, "results_path"),
+            "summary_path": _optional_summary_path(summary, "summary_path"),
+            "report_path": _optional_summary_path(summary, "report_path"),
+            "executed_questions": summary.get("executed_questions"),
+            "skipped_questions": summary.get("skipped_questions"),
+            "pass_count": summary.get("pass_count"),
+            "fail_count": summary.get("fail_count"),
+            "promotion_ready": summary.get("promotion_ready"),
+            "manual_review_question_ids": summary.get("manual_review_question_ids"),
+        },
+        "ledger_path": str(ledger_path),
+        "journal_path": str(journal_path),
+    }
+    ledger_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    journal_path.write_text(_cloud_run_ledger_markdown(payload), encoding="utf-8")
+    return ledger_path, journal_path
+
+
+def _runpod_account_snapshot(repo_root: Path) -> dict[str, Any]:
+    try:
+        result = run_checked(["runpodctl", "user"], cwd=repo_root)
+        payload = _parse_jsonish(result.stdout)
+    except Exception as exc:
+        return {"provider": "runpod", "available": False, "error": _sanitize_error(exc)}
+    if not isinstance(payload, dict):
+        return {"provider": "runpod", "available": False}
+    sanitized = _sanitize_provider_payload(payload)
+    return {
+        "provider": "runpod",
+        "available": True,
+        "clientBalance": sanitized.get("clientBalance"),
+        "currentSpendPerHr": sanitized.get("currentSpendPerHr"),
+        "spendLimit": sanitized.get("spendLimit"),
+        "payload": sanitized,
+    }
+
+
+def _vast_account_snapshot(repo_root: Path) -> dict[str, Any]:
+    try:
+        result = run_checked(["vastai", "show", "user", "--raw"], cwd=repo_root)
+        payload = _parse_jsonish(result.stdout)
+    except Exception as exc:
+        return {"provider": "vast", "available": False, "error": _sanitize_error(exc)}
+    return {
+        "provider": "vast",
+        "available": True,
+        "payload": _sanitize_provider_payload(payload),
+    }
+
+
+def _sanitize_provider_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        sanitized: dict[str, Any] = {}
+        for key, item in value.items():
+            lowered = str(key).lower()
+            if any(token in lowered for token in ("email", "token", "key", "secret", "password")):
+                sanitized[key] = "[redacted]"
+            else:
+                sanitized[key] = _sanitize_provider_payload(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_sanitize_provider_payload(item) for item in value]
+    return value
+
+
+def _provider_balance_usd(snapshot: dict[str, Any]) -> float | None:
+    for key in ("clientBalance", "balance", "credits"):
+        value = snapshot.get(key)
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                continue
+    payload = snapshot.get("payload")
+    if isinstance(payload, dict):
+        return _provider_balance_usd(payload)
+    return None
+
+
+def _provider_hourly_cost_usd(snapshot: dict[str, Any] | None) -> float | None:
+    if not isinstance(snapshot, dict):
+        return None
+    records = [snapshot]
+    nested = snapshot.get("pod") or snapshot.get("instance") or snapshot.get("resource")
+    if isinstance(nested, dict):
+        records.insert(0, nested)
+    for record in records:
+        for key in ("costPerHr", "cost_per_hr", "dph", "price_per_hour", "currentSpendPerHr"):
+            value = record.get(key)
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, str):
+                try:
+                    return float(value)
+                except ValueError:
+                    continue
+    return None
+
+
+def _ledger_run_dir(config: CloudRunConfig, acceptance_result: Any | None) -> Path:
+    run_dir = getattr(acceptance_result, "run_dir", None)
+    if isinstance(run_dir, Path):
+        return run_dir if run_dir.is_absolute() else config.repo_root / run_dir
+    fallback = config.acceptance_output_dir
+    fallback = fallback if fallback.is_absolute() else config.repo_root / fallback
+    return fallback / "cloud_run_ledger" / config.run_name
+
+
+def _optional_summary_path(summary: dict[str, Any], key: str) -> str | None:
+    value = summary.get(key)
+    return str(value) if value else None
+
+
+def _cloud_run_ledger_markdown(payload: dict[str, Any]) -> str:
+    start = _provider_balance_usd(payload.get("start_account", {}))
+    end = _provider_balance_usd(payload.get("end_account", {}))
+    cost = payload.get("estimated_cost_usd")
+    cost_source = payload.get("estimated_cost_source") or "unknown"
+    acceptance = payload.get("acceptance") if isinstance(payload.get("acceptance"), dict) else {}
+
+    def money(value: float | None) -> str:
+        return "unknown" if value is None else f"${value:.10f}"
+
+    return (
+        "# Cloud Run Ledger\n\n"
+        f"- Provider: `{payload.get('provider')}`\n"
+        f"- Run name: `{payload.get('run_name')}`\n"
+        f"- Resource ID: `{payload.get('created_resource_id') or 'n/a'}`\n"
+        f"- Requested GPU/query: `{payload.get('requested_gpu') or 'n/a'}`\n"
+        f"- Model: `{payload.get('model')}`\n"
+        f"- Runtime seconds: `{payload.get('runtime_seconds')}`\n"
+        f"- Start balance: `{money(start)}`\n"
+        f"- End balance: `{money(end)}`\n"
+        f"- Estimated cost: `{money(cost)}` ({cost_source})\n"
+        f"- Cleanup attempted: `{payload.get('cleanup_attempted')}`\n"
+        f"- Cleanup error: `{payload.get('cleanup_error') or 'none'}`\n"
+        f"- Return code: `{payload.get('return_code')}`\n"
+        f"- Error: `{payload.get('error') or 'none'}`\n\n"
+        "## Acceptance Artifacts\n\n"
+        f"- Run directory: `{acceptance.get('run_dir')}`\n"
+        f"- Results: `{acceptance.get('results_path')}`\n"
+        f"- Summary: `{acceptance.get('summary_path')}`\n"
+        f"- Report: `{acceptance.get('report_path')}`\n"
+        f"- Pass / fail: `{acceptance.get('pass_count')}` / `{acceptance.get('fail_count')}`\n"
+        f"- Promotion ready: `{acceptance.get('promotion_ready')}`\n"
+        f"- Manual-review IDs: `{acceptance.get('manual_review_question_ids')}`\n"
+    )
 
 
 def runpod_create_command(config: CloudRunConfig, gpu: str | None = None) -> list[str]:
@@ -870,12 +1272,29 @@ def prewarm_gateway_completion(config: CloudRunConfig, *, timeout_s: int = 120) 
             raise RuntimeError(f"gateway prewarm failed with HTTP {response.status}")
 
 
-def run_acceptance_harness(config: CloudRunConfig) -> int:
-    """Run the existing local acceptance harness against the SSH tunnel."""
+def run_acceptance_harness(config: CloudRunConfig) -> Any:
+    """Run the local acceptance harness against the SSH tunnel and return artifacts."""
 
-    from src.evaluation.acceptance import main as acceptance_main
+    from src.evaluation.acceptance import print_summary, run_acceptance
+    from src.evaluation.gateway_eval import GatewayEvalThresholds
 
-    return acceptance_main(acceptance_command(config)[2:])
+    result = run_acceptance(
+        base_url=f"http://127.0.0.1:{config.local_tunnel_port}/v1",
+        questions_path=config.questions_path,
+        output_dir=config.acceptance_output_dir,
+        timeout=120.0,
+        model="oarc-rag-v1",
+        max_questions=config.max_questions,
+        question_ids=config.question_ids,
+        include_full_answer=config.include_full_answer,
+        stream=True,
+        thresholds=GatewayEvalThresholds(
+            max_p95_latency_ms=config.max_p95_latency_ms,
+            max_p95_ttft_ms=config.max_p95_ttft_ms,
+        ),
+    )
+    print_summary(result.summary)
+    return result
 
 
 def acceptance_command(config: CloudRunConfig) -> list[str]:
@@ -897,6 +1316,10 @@ def acceptance_command(config: CloudRunConfig) -> list[str]:
     ]
     if config.max_questions is not None:
         command.extend(["--max-questions", str(config.max_questions)])
+    for question_id in config.question_ids:
+        command.extend(["--question-id", question_id])
+    if config.include_full_answer:
+        command.append("--include-full-answer")
     return command
 
 
@@ -1049,8 +1472,16 @@ def _sanitize_process_text(text: str) -> str:
         r"\1=[redacted]",
         value,
     )
-    value = re.sub(r"(?i)\b(Bearer|token|api[_-]?key)\s+[A-Za-z0-9._~+/=-]{8,}", r"\1 [redacted]", value)
+    value = re.sub(
+        r"(?i)\b(Bearer|token|api[_-]?key)\s+[A-Za-z0-9._~+/=-]{8,}",
+        r"\1 [redacted]",
+        value,
+    )
     return value
+
+
+def _sanitize_error(exc: BaseException) -> str:
+    return _sanitize_process_text(str(exc))
 
 
 if __name__ == "__main__":

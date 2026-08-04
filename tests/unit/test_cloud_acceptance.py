@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -68,6 +69,16 @@ def test_transfer_bundle_contains_only_allowlisted_files_and_manifest(tmp_path: 
 def test_provider_command_defaults_and_parsers(tmp_path: Path) -> None:
     config = cloud.CloudRunConfig(repo_root=tmp_path, model="Qwen/Qwen2.5-7B-Instruct")
 
+    assert cloud.default_acceptance_output_dir("runpod") == Path(
+        "logs/rag_v1_acceptance/cloud/runpod"
+    )
+    assert cloud.default_acceptance_output_dir("vast") == Path(
+        "logs/rag_v1_acceptance/cloud/vast"
+    )
+    assert config.acceptance_output_dir == Path("logs/rag_v1_acceptance/cloud/runpod")
+    assert cloud.CloudRunConfig(repo_root=tmp_path, provider="vast").acceptance_output_dir == Path(
+        "logs/rag_v1_acceptance/cloud/vast"
+    )
     assert cloud.choose_runpod_gpu(config.model) == cloud.DEFAULT_RUNPOD_GPU_7B
     assert cloud.choose_runpod_gpu("Qwen/Qwen2.5-32B-Instruct") == cloud.DEFAULT_RUNPOD_GPU_LARGE
     assert "RTX_4090" in cloud.default_vast_offer_query(config.model)
@@ -115,10 +126,78 @@ def test_provider_command_defaults_and_parsers(tmp_path: Path) -> None:
     assert ssh_json.port == 22081
     assert ssh_json.identity_file == "/tmp/runpod-key"
 
+    targeted_config = cloud.CloudRunConfig(
+        repo_root=tmp_path,
+        question_ids=("amarel_data_transfer", "support_helpdesk"),
+        include_full_answer=True,
+        max_questions=None,
+    )
+    acceptance_command = cloud.acceptance_command(targeted_config)
+    assert acceptance_command.count("--question-id") == 2
+    assert "--include-full-answer" in acceptance_command
+    assert "amarel_data_transfer" in acceptance_command
+    assert "support_helpdesk" in acceptance_command
+
+
+def test_cli_defaults_to_provider_specific_output_dir() -> None:
+    parser = cloud.build_parser()
+
+    assert parser.parse_args([]).acceptance_output_dir is None
+
+
+def test_cli_max_question_resolution_targets_all_requested_ids() -> None:
+    assert (
+        cloud._resolve_cli_max_questions(
+            full_acceptance=False,
+            max_questions=None,
+            question_ids=("amarel_login", "support_helpdesk"),
+        )
+        is None
+    )
+    assert (
+        cloud._resolve_cli_max_questions(
+            full_acceptance=False,
+            max_questions=None,
+            question_ids=(),
+        )
+        == 3
+    )
+    assert (
+        cloud._resolve_cli_max_questions(
+            full_acceptance=False,
+            max_questions=2,
+            question_ids=("amarel_login", "support_helpdesk"),
+        )
+        == 2
+    )
+
 
 def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _make_repo(tmp_path)
     deleted: list[str] = []
+    account_snapshots = iter(
+        [
+            {"provider": "runpod", "available": True, "clientBalance": 10.0},
+            {"provider": "runpod", "available": True, "clientBalance": 9.875},
+        ]
+    )
+    run_dir = tmp_path / "outputs" / "20260601T120000Z"
+    run_dir.mkdir(parents=True)
+    acceptance_result = SimpleNamespace(
+        run_dir=run_dir,
+        summary={
+            "run_dir": str(run_dir),
+            "results_path": str(run_dir / "results.jsonl"),
+            "summary_path": str(run_dir / "summary.json"),
+            "report_path": str(run_dir / "report.md"),
+            "executed_questions": 2,
+            "skipped_questions": 0,
+            "pass_count": 2,
+            "fail_count": 0,
+            "promotion_ready": True,
+            "manual_review_question_ids": [],
+        },
+    )
 
     class FakeTunnel:
         def terminate(self) -> None:
@@ -141,13 +220,37 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(cloud, "open_tunnel", lambda ssh, config: FakeTunnel())
     monkeypatch.setattr(cloud, "wait_for_local_gateway", lambda config: None)
     monkeypatch.setattr(cloud, "prewarm_gateway_completion", lambda config: None)
-    monkeypatch.setattr(cloud, "run_acceptance_harness", lambda config: 0)
+    monkeypatch.setattr(cloud, "run_acceptance_harness", lambda config: acceptance_result)
     monkeypatch.setattr(cloud, "delete_runpod_pod", lambda pod_id: deleted.append(pod_id))
+    monkeypatch.setattr(cloud, "provider_account_snapshot", lambda config: next(account_snapshots))
+    monkeypatch.setattr(
+        cloud,
+        "provider_resource_snapshot_for",
+        lambda config, *, resource_id: {
+            "provider": "runpod",
+            "available": True,
+            "pod": {"id": resource_id, "gpu": "NVIDIA A40"},
+        },
+    )
 
-    config = cloud.CloudRunConfig(repo_root=tmp_path, bundle_path=Path("bundle.tar.gz"))
+    config = cloud.CloudRunConfig(
+        repo_root=tmp_path,
+        bundle_path=Path("bundle.tar.gz"),
+        question_ids=("amarel_data_transfer", "support_helpdesk"),
+        include_full_answer=True,
+    )
 
     assert cloud.run_cloud_acceptance(config) == 0
     assert deleted == ["pod-123"]
+    ledger = json.loads((run_dir / "cloud_run_ledger.json").read_text(encoding="utf-8"))
+    assert ledger["created_resource_id"] == "pod-123"
+    assert ledger["requested_gpu"] == cloud.DEFAULT_RUNPOD_GPU_7B
+    assert ledger["estimated_cost_usd"] == 0.125
+    assert ledger["estimated_cost_source"] == "balance_delta"
+    assert ledger["question_ids"] == ["amarel_data_transfer", "support_helpdesk"]
+    assert ledger["include_full_answer"] is True
+    assert ledger["acceptance"]["promotion_ready"] is True
+    assert (run_dir / "cloud_run_ledger.md").exists()
 
 
 def test_get_runpod_ssh_connection_waits_until_ready(

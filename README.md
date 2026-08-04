@@ -346,8 +346,9 @@ The harness calls the gateway's OpenAI-compatible endpoint, defaulting to
 and optional synthetic-attachment questions. It writes per-question evidence to
 `logs/rag_v1_acceptance/<timestamp>/results.jsonl` and a promotion summary to
 `logs/rag_v1_acceptance/<timestamp>/summary.json`. Each run also writes the human-review artifact
-`logs/rag_v1_acceptance/<timestamp>/report.md`; `logs/` is ignored and generated outputs should not
-be committed.
+`logs/rag_v1_acceptance/<timestamp>/report.md` plus associated SVG plots under
+`logs/rag_v1_acceptance/<timestamp>/plots/`; `logs/` is ignored and generated outputs should not be
+committed.
 
 The v1 runner uses reusable gateway-evaluation helpers in `src/evaluation/gateway_eval.py` and
 streams by default so it can record end-to-end latency, time to first token
@@ -363,6 +364,7 @@ By default, generated answers are stored as excerpts only. Use `--include-full-a
 deliberate private review. The attachment case generates non-sensitive text in memory and is skipped
 unless `/health` reports `ui.attachments_enabled=true`; it does not read local private files or add
 anything to FAISS.
+Use repeated `--question-id <id>` values for targeted reruns of specific acceptance rows.
 
 Compare two runs, such as `llama3.2:1b` versus `llama3.2:3b` or vector versus hybrid retrieval:
 
@@ -389,8 +391,18 @@ and deletes provider-created compute by default.
   --provider runpod \
   --build-index \
   --execute \
-  --full-acceptance
+  --full-acceptance \
+  --include-full-answer
 ```
+
+Executed cloud runs also write `cloud_run_ledger.json` and `cloud_run_ledger.md` next to the
+acceptance artifacts. The ledger records sanitized start/end balances, provider resource ID,
+requested GPU, runtime, estimated cost, cleanup status, question subset, answer-capture mode, and
+artifact paths.
+
+By default, cloud wrapper runs use provider-specific roots such as
+`logs/rag_v1_acceptance/cloud/runpod/<timestamp>/` so RunPod reports and ledgers do not mix with
+local laptop/HPC acceptance runs. Override with `--acceptance-output-dir` when needed.
 
 The active gate remains `data/evaluation/acceptance/rag_v1_questions.jsonl`. A reviewed candidate
 suite for expanding coverage lives at

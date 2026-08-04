@@ -9,6 +9,16 @@ _CANCEL_RE = re.compile(r"\b(cancel|terminate|kill|stop).*\b(job|slurm)\b|\bscan
 _QUEUE_RE = re.compile(r"\b(queue|queued|running jobs?|status|check).*\b(job|jobs|slurm)\b|\bsqueue\b", re.IGNORECASE)
 _GPU_RE = re.compile(r"\b(gpu|gres|cuda)\b", re.IGNORECASE)
 _DEBUG_RE = re.compile(r"\b(debug|failed|failure|error|stderr|stdout|sacct)\b", re.IGNORECASE)
+_TRANSFER_RE = re.compile(r"\b(transfer|copy|move|sync|scp|rsync|globus|rclone)\b", re.IGNORECASE)
+_AMAREL_ACCESS_RE = re.compile(
+    r"\b(amarel|cluster).*\b(request|apply|access|account)\b|"
+    r"\b(request|apply|access|account).*\b(amarel|cluster)\b",
+    re.IGNORECASE,
+)
+_SUPPORT_RE = re.compile(
+    r"\b(help|helpdesk|support|ticket|contact|cannot solve|can't solve|issue|problem)\b",
+    re.IGNORECASE,
+)
 _NAMED_LOCAL_GUIDE_RE = re.compile(
     r"\baccording to the\s+(?:oarc\s+)?(?P<name>[a-z0-9][a-z0-9 -]{2,80}?)\s+guide\b",
     re.IGNORECASE,
@@ -46,6 +56,10 @@ Answer the user's question using the retrieved context and the command reference
 
 Rules:
 - For direct Slurm how-to questions, Answer with the exact command first.
+- For file-transfer questions, include direct `scp` and `rsync` options when the context supports
+  them; mention Globus/rclone for larger or cloud-storage workflows.
+- For Amarel access questions, mention the access request/account path when the context supports it.
+- For help/support questions, give the concrete OARC contact path when available.
 - Prefer OARC/Amarel context for local paths, partitions, accounts, modules, quotas, and policy.
 - If context is weak but the command reference matches, use the command reference and say to verify
   local policy with OARC documentation or helpdesk.
@@ -123,10 +137,28 @@ def build_slurm_command_reference(question: str) -> str:
             "- Debug completed or failed jobs with `sacct -j <job_id>` and check Slurm "
             "stdout/stderr files from the batch script."
         )
+    if _TRANSFER_RE.search(text):
+        hints.append(
+            "- Transfer files directly with `scp <local-file> <NetID>@amarel.rutgers.edu:/home/<NetID>/` "
+            "or synchronize directories with `rsync -trlvpz <local-dir> <NetID>@amarel.rutgers.edu:/home/<NetID>/<dir>`; "
+            "use Amarel login nodes for long-running transfers."
+        )
+    if _AMAREL_ACCESS_RE.search(text):
+        hints.append(
+            "- For Amarel access requests, current Rutgers users should use the Amarel Cluster "
+            "Access Request form for account setup when available in context; guest or "
+            "group-owned-resource access may require PI or administrative point-of-contact "
+            "authorization."
+        )
+    if _SUPPORT_RE.search(text):
+        hints.append(
+            "- For OARC/Amarel help, direct users to `help@oarc.rutgers.edu`; the support team "
+            "can route questions and support tickets to the right staff."
+        )
 
     if not hints:
-        return "No command reference."
-    return "Slurm command reference:\n" + "\n".join(hints)
+        return "No command or support reference."
+    return "Command and support reference:\n" + "\n".join(hints)
 
 
 def _distinctive_named_terms(question: str) -> list[str]:

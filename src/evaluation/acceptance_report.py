@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from html import escape
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -16,8 +17,45 @@ def write_acceptance_report(
 
     report_path = run_dir / "report.md"
     summary["report_path"] = str(report_path)
+    summary["plot_paths"] = write_acceptance_plots(run_dir, records)
     report_path.write_text(render_acceptance_report(summary, records), encoding="utf-8")
     return report_path
+
+
+def write_acceptance_plots(
+    run_dir: Path,
+    records: Sequence[dict[str, Any]],
+) -> dict[str, str]:
+    """Write lightweight SVG plots associated with an acceptance report."""
+
+    plot_dir = run_dir / "plots"
+    plots: dict[str, str] = {}
+    plot_specs = (
+        ("latency_by_question", "latency-by-question.svg", "Latency by Question", "latency_ms", "ms"),
+        (
+            "ttft_by_question",
+            "ttft-by-question.svg",
+            "Time to First Token by Question",
+            "time_to_first_token_ms",
+            "ms",
+        ),
+        (
+            "source_counts_by_question",
+            "source-counts-by-question.svg",
+            "Source Counts by Question",
+            "rag_sources_count",
+            "sources",
+        ),
+    )
+    for key, filename, title, value_key, unit in plot_specs:
+        points = _plot_points(records, value_key)
+        if not points:
+            continue
+        plot_dir.mkdir(parents=True, exist_ok=True)
+        path = plot_dir / filename
+        path.write_text(_render_bar_svg(title, points, unit), encoding="utf-8")
+        plots[key] = str(path)
+    return plots
 
 
 def render_acceptance_report(
@@ -27,7 +65,7 @@ def render_acceptance_report(
     """Render a compact operator-facing Markdown acceptance report."""
 
     lines = [
-        "# Mac mini RAG v1 Acceptance Report",
+        "# RAG v1 Acceptance Report",
         "",
         "## Run Metadata",
         "",
@@ -62,6 +100,7 @@ def render_acceptance_report(
         ),
     ]
     lines.extend(_render_gate_lines(summary.get("automated_gates") or {}))
+    lines.extend(_render_plot_lines(summary.get("plot_paths") or {}))
     lines.extend(
         [
             "",
@@ -119,6 +158,89 @@ def render_acceptance_report(
         )
     lines.append("")
     return "\n".join(lines)
+
+
+def _plot_points(records: Sequence[dict[str, Any]], value_key: str) -> list[tuple[str, float, bool]]:
+    points: list[tuple[str, float, bool]] = []
+    for record in records:
+        if record.get("skipped"):
+            continue
+        value = record.get(value_key)
+        if not isinstance(value, (int, float)):
+            continue
+        points.append((str(record.get("id") or "unknown"), float(value), bool(record.get("passed"))))
+    return points
+
+
+def _render_bar_svg(title: str, points: Sequence[tuple[str, float, bool]], unit: str) -> str:
+    max_label_chars = 34
+    row_height = 24
+    top = 44
+    bottom = 28
+    left = 220
+    right = 94
+    width = 900
+    plot_width = width - left - right
+    height = top + bottom + row_height * len(points)
+    max_value = max((value for _, value, _ in points), default=1.0) or 1.0
+    rows = [
+        (
+            f'<text x="16" y="26" class="title">{escape(title)}</text>'
+            f'<text x="{left}" y="26" class="axis">max {max_value:g} {escape(unit)}</text>'
+        )
+    ]
+    for index, (label, value, passed) in enumerate(points):
+        y = top + index * row_height
+        bar_width = max(1.0, (value / max_value) * plot_width)
+        color = "#2563eb" if passed else "#dc2626"
+        label_text = _truncate_middle(label, max_label_chars)
+        rows.extend(
+            [
+                f'<text x="16" y="{y + 14}" class="label">{escape(label_text)}</text>',
+                f'<rect x="{left}" y="{y}" width="{bar_width:.2f}" height="14" rx="3" fill="{color}" />',
+                (
+                    f'<text x="{left + bar_width + 8:.2f}" y="{y + 12}" class="value">'
+                    f'{value:g} {escape(unit)}</text>'
+                ),
+            ]
+        )
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        'role="img" aria-label="'
+        f'{escape(title)}">'
+        "<style>"
+        "text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}"
+        ".title{font-size:18px;font-weight:700;fill:#111827;}"
+        ".axis,.value{font-size:12px;fill:#4b5563;}"
+        ".label{font-size:12px;fill:#111827;}"
+        "</style>"
+        f'<rect width="{width}" height="{height}" fill="#ffffff" />'
+        + "".join(rows)
+        + "</svg>\n"
+    )
+
+
+def _render_plot_lines(plot_paths: dict[str, Any]) -> list[str]:
+    if not plot_paths:
+        return []
+    plot_specs = (
+        ("latency_by_question", "Latency by question", "plots/latency-by-question.svg"),
+        ("ttft_by_question", "Time to first token by question", "plots/ttft-by-question.svg"),
+        ("source_counts_by_question", "Source counts by question", "plots/source-counts-by-question.svg"),
+    )
+    lines = ["", "## Plots", ""]
+    for key, title, relative_path in plot_specs:
+        if plot_paths.get(key):
+            lines.extend([f"![{title}]({relative_path})", ""])
+    return lines
+
+
+def _truncate_middle(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    keep = max(1, (limit - 3) // 2)
+    return f"{text[:keep]}...{text[-keep:]}"
 
 
 def compare_acceptance_runs(

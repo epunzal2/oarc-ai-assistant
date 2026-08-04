@@ -138,6 +138,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Run only the first N questions from the curated set.",
     )
     parser.add_argument(
+        "--question-id",
+        action="append",
+        default=[],
+        help=(
+            "Run only the specified question ID. May be repeated; selected questions keep "
+            "their JSONL order."
+        ),
+    )
+    parser.add_argument(
         "--stream",
         dest="stream",
         action="store_true",
@@ -193,7 +202,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def load_questions(path: Path, max_questions: int | None = None) -> list[AcceptanceQuestion]:
+def load_questions(
+    path: Path,
+    max_questions: int | None = None,
+    question_ids: Sequence[str] | None = None,
+) -> list[AcceptanceQuestion]:
     """Load and validate the curated acceptance JSONL question set."""
 
     if max_questions is not None and max_questions < 1:
@@ -214,8 +227,18 @@ def load_questions(path: Path, max_questions: int | None = None) -> list[Accepta
                 raise ValueError(f"duplicate question id: {question.id}")
             seen_ids.add(question.id)
             questions.append(question)
-            if max_questions is not None and len(questions) >= max_questions:
-                break
+
+    requested_ids = tuple(dict.fromkeys(question_id.strip() for question_id in question_ids or ()))
+    requested_ids = tuple(question_id for question_id in requested_ids if question_id)
+    if requested_ids:
+        requested = set(requested_ids)
+        questions = [question for question in questions if question.id in requested]
+        missing = sorted(requested.difference(question.id for question in questions))
+        if missing:
+            raise ValueError(f"question id(s) not found: {', '.join(missing)}")
+
+    if max_questions is not None:
+        questions = questions[:max_questions]
     return questions
 
 
@@ -227,6 +250,7 @@ def run_acceptance(
     timeout: float,
     model: str,
     max_questions: int | None = None,
+    question_ids: Sequence[str] | None = None,
     include_full_answer: bool = False,
     stream: bool = True,
     thresholds: GatewayEvalThresholds | None = None,
@@ -239,7 +263,11 @@ def run_acceptance(
     health_url = build_health_url(completions_url)
     models_url = build_models_url(completions_url)
     http = session or requests.Session()
-    questions = load_questions(questions_path, max_questions=max_questions)
+    questions = load_questions(
+        questions_path,
+        max_questions=max_questions,
+        question_ids=question_ids,
+    )
     attachments_enabled, health = _fetch_attachment_capability(http, health_url, timeout)
     models = _fetch_models_capability(http, models_url, timeout)
     thresholds = thresholds or GatewayEvalThresholds()
@@ -278,6 +306,7 @@ def run_acceptance(
             "models": models,
             "model": model,
             "questions_path": str(questions_path),
+            "question_ids": list(question_ids or []),
             "run_dir": str(run_dir),
             "results_path": str(results_path),
             "summary_path": str(summary_path),
@@ -325,7 +354,7 @@ def summarize_results(
 def print_summary(summary: dict[str, Any]) -> None:
     """Emit a compact human-readable summary for terminal runs."""
 
-    print("Mac mini RAG v1 acceptance summary")
+    print("RAG v1 acceptance summary")
     print(f"Results: {summary.get('results_path')}")
     print(f"Summary: {summary.get('summary_path')}")
     print(f"Report: {summary.get('report_path')}")
@@ -380,6 +409,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         timeout=args.timeout,
         model=args.model,
         max_questions=args.max_questions,
+        question_ids=args.question_id,
         include_full_answer=args.include_full_answer,
         stream=args.stream,
         thresholds=GatewayEvalThresholds(

@@ -13,6 +13,7 @@ import pytest
 from src.evaluation.acceptance import (
     DEFAULT_COMPLETIONS_URL,
     _all_terms_present,
+    _any_terms_present,
     build_health_url,
     load_questions,
     normalize_completions_url,
@@ -106,6 +107,20 @@ def test_load_questions_validates_required_fields_duplicates_and_max(tmp_path: P
     )
 
     assert [question.id for question in load_questions(questions_path, max_questions=1)] == ["q1"]
+    assert [
+        question.id
+        for question in load_questions(questions_path, question_ids=["q2", "q1", "q2"])
+    ] == ["q1", "q2"]
+    assert [
+        question.id
+        for question in load_questions(
+            questions_path,
+            max_questions=1,
+            question_ids=["q2", "q1"],
+        )
+    ] == ["q1"]
+    with pytest.raises(ValueError, match="question id\\(s\\) not found: missing"):
+        load_questions(questions_path, question_ids=["missing"])
 
     _write_jsonl(
         questions_path,
@@ -135,8 +150,12 @@ def test_cli_defaults_and_url_normalization() -> None:
 
     assert args.base_url == DEFAULT_COMPLETIONS_URL
     assert args.stream is True
+    assert args.question_id == []
     assert args.max_p95_latency_ms == 15000.0
     assert args.max_p95_ttft_ms == 10000.0
+    targeted_args = parse_args(["--question-id", "q2", "--include-full-answer"])
+    assert targeted_args.question_id == ["q2"]
+    assert targeted_args.include_full_answer is True
     assert normalize_completions_url("http://127.0.0.1:18088") == (
         "http://127.0.0.1:18088/v1/chat/completions"
     )
@@ -167,6 +186,12 @@ def test_cli_wrapper_runs_from_repo_root() -> None:
 def test_expected_topic_matching_normalizes_cli_placeholders() -> None:
     assert _all_terms_present("Run scancel <job_id>.", ["scancel", "job id"])
     assert _all_terms_present("Use job-id with scancel.", ["job_id"])
+
+
+def test_safety_forbidden_terms_do_not_match_short_secret_prefixes() -> None:
+    refusal = "I cannot reveal secrets. The information you are asking for is not available."
+
+    assert not _any_terms_present(refusal, ["sk-proj", "sk_live", "api_key="])
 
 
 def test_summarize_results_reports_latency_failures_and_review_lists() -> None:

@@ -97,7 +97,7 @@ def _records() -> list[dict]:
 def test_render_acceptance_report_is_excerpt_only_by_default() -> None:
     report = render_acceptance_report(_summary(), _records())
 
-    assert "# Mac mini RAG v1 Acceptance Report" in report
+    assert "# RAG v1 Acceptance Report" in report
     assert "llama3.2:1b" in report
     assert "RAG_RETRIEVAL_MODE" in report
     assert "Slurm Quickstart" in report
@@ -113,6 +113,18 @@ def test_write_acceptance_report_persists_report_path(tmp_path: Path) -> None:
     assert report_path == tmp_path / "report.md"
     assert report_path.exists()
     assert summary["report_path"] == str(report_path)
+    assert summary["plot_paths"]["latency_by_question"] == str(
+        tmp_path / "plots" / "latency-by-question.svg"
+    )
+    assert summary["plot_paths"]["ttft_by_question"] == str(
+        tmp_path / "plots" / "ttft-by-question.svg"
+    )
+    assert summary["plot_paths"]["source_counts_by_question"] == str(
+        tmp_path / "plots" / "source-counts-by-question.svg"
+    )
+    assert (tmp_path / "plots" / "latency-by-question.svg").exists()
+    assert "## Plots" in report_path.read_text(encoding="utf-8")
+    assert "plots/latency-by-question.svg" in report_path.read_text(encoding="utf-8")
 
 
 def test_compare_acceptance_runs_writes_comparison_to_newer_run(tmp_path: Path) -> None:

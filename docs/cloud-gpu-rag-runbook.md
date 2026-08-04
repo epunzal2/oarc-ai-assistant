@@ -17,8 +17,15 @@ the gateway back to the laptop, runs the acceptance harness, and destroys provid
   `/dev/null` for this path.
 - The transfer bundle uses an allowlist plus a blocklist. `.env*`, `.git`, `.venv`, `logs/`,
   `mlruns/`, `models/`, `results/`, `runtime/`, and `docs/servicenow` are blocked.
+- Targeted reruns can pass repeated `--question-id` values, and deliberate review runs can pass
+  `--include-full-answer` so `results.jsonl` stores complete generated answers instead of excerpts.
 - Created RunPod Pods are deleted with `runpodctl pod delete`; created Vast instances are destroyed
   with `vastai destroy instance` unless `--keep-instance` is explicitly passed.
+- Each executed cloud run writes `cloud_run_ledger.json` and `cloud_run_ledger.md` next to the
+  acceptance artifacts, including start/end balance, provider resource ID, requested GPU, runtime,
+  estimated cost, cleanup status, and artifact paths.
+- Cloud wrapper runs default to provider-specific output roots, for example
+  `logs/rag_v1_acceptance/cloud/runpod/<timestamp>/`.
 - Manual review is narrowed to rows where hard checks pass but expected answer topics or expected
   source hints are missing.
 
@@ -119,6 +126,22 @@ Run a three-question RunPod smoke. The instance is deleted after the harness exi
   --execute
 ```
 
+Run a targeted advisory subset and keep complete answer transcripts:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --execute \
+  --include-full-answer \
+  --question-id amarel_login \
+  --question-id amarel_storage \
+  --question-id amarel_modules \
+  --question-id amarel_data_transfer \
+  --question-id support_helpdesk \
+  --question-id support_allocations \
+  --question-id support_onboarding
+```
+
 Run the full active acceptance gate:
 
 ```bash
@@ -126,7 +149,8 @@ Run the full active acceptance gate:
   --provider runpod \
   --build-index \
   --execute \
-  --full-acceptance
+  --full-acceptance \
+  --include-full-answer
 ```
 
 Run the same path on Vast with an explicit offer:
@@ -172,6 +196,23 @@ Draft more candidates from approved Markdown roots:
 The drafter is deterministic and offline. It skips `docs/servicenow` and writes source excerpts so
 the rows can be reviewed before promotion. Promote only rows with clear expected topics, a source
 hint that appears in returned source metadata, and a non-sensitive source excerpt.
+
+Keep the active 18-question suite as the blocking promotion gate. Use the larger candidate suite for
+non-blocking regression and coverage work until candidates are repeatable enough to promote.
+
+## Run Artifacts
+
+Executed cloud runs write the usual acceptance files under provider-specific roots such as
+`logs/rag_v1_acceptance/cloud/runpod/<timestamp>/`:
+
+- `results.jsonl`: per-question evidence; includes full `answer` values only when
+  `--include-full-answer` is passed.
+- `summary.json`: machine-readable gate metrics and artifact paths.
+- `report.md`: human-review summary.
+- `plots/`: report-associated SVG charts for latency, time to first token, and source counts.
+- `cloud_run_ledger.json`: provider ledger with start/end balance, resource ID, requested GPU,
+  runtime, estimated cost, cleanup status, question IDs, and artifact paths.
+- `cloud_run_ledger.md`: compact ledger summary for quick review.
 
 ## Manual Review
 

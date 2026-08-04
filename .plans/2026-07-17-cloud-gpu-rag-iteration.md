@@ -84,6 +84,9 @@ short-lived testing and only after an auth/proxy decision is made.
 - [x] Confirm a FAISS index exists for plumbing smoke, and rebuild a fresh public-corpus FAISS index
   before treating results as benchmark evidence.
 - [x] Configure `runpodctl` outside the repo if RunPod is the selected provider.
+- [x] Add targeted `--question-id`, cloud `--include-full-answer`, provider-specific cloud output
+  roots, automatic report plots, and `cloud_run_ledger.{json,md}` artifacts for provider
+  cost/resource tracking.
 
 Progression gate: provider CLI auth works, SSH access is ready, and the public corpus/index decision
 is documented in the run notes.
@@ -136,7 +139,7 @@ Success metrics:
 - [x] Configure `runpodctl` after a RunPod API key is available.
 - [ ] Use a RunPod network volume for model and FAISS/index cache.
 - [x] Repeat the Milestone 1 smoke against RunPod.
-- [ ] Repeat the Milestone 2 full acceptance against RunPod.
+- [x] Repeat the Milestone 2 full acceptance against RunPod.
 - [ ] Compare Vast and RunPod run artifacts with `--compare-runs`.
 
 Progression gate: RunPod produces a full acceptance run that is comparable to the successful Vast
@@ -149,6 +152,10 @@ run, or the plan records a provider-specific blocker and keeps Vast as the activ
 - [ ] Compare selected 7B/8B-class models before attempting larger models.
 - [ ] Use run comparisons to track pass/fail, p95 latency, p95 TTFT, source counts, failed IDs,
   zero-source IDs, and manual-review IDs.
+- [ ] Expand non-blocking coverage with the candidate suite before promoting any rows beyond the
+  active 18-question gate.
+- [ ] Promote candidate rows only after two clean cloud runs show stable expected topics, sources,
+  and latency on the chosen model/retrieval configuration.
 
 Progression gate: at least one cloud full acceptance run passes, manual-review answers are
 acceptable, and the chosen model/retrieval/prompt configuration has an HPC-equivalent deployment
@@ -245,7 +252,12 @@ Comparison after two successful or informative runs:
 
 Cloud runs are operator-run staging jobs. Generated artifacts stay under ignored `logs/`. Each run
 must record provider, GPU type, model, retrieval mode, FAISS path, gateway URL shape, and known
-failure notes in `report.md` or a companion run note.
+failure notes in `report.md` or a companion run note. The cloud runner also writes
+`cloud_run_ledger.json` and `cloud_run_ledger.md` with sanitized start/end balances, provider
+resource ID, requested GPU or offer query, runtime, estimated cost, cleanup status, answer-capture
+mode, question subset, and artifact paths. Cloud wrapper runs default to provider-specific roots
+such as `logs/rag_v1_acceptance/cloud/runpod/<timestamp>/`; each report includes generated SVG
+plots under its `plots/` directory.
 
 Cloud acceptance results guide iteration; they do not replace final HPC validation. The HPC cluster
 remains the deployment target because production behavior depends on Slurm, cluster filesystem
@@ -315,6 +327,15 @@ by this plan.
   `logs/rag_v1_acceptance/20260803T185404Z` passed all automated smoke gates with
   `promotion_ready=true`, p95 latency `2419.3` ms, p95 TTFT `291.95` ms, and four sources per
   answer. Provider cleanup deleted the Pod; post-run `runpodctl pod list` returned `[]`.
+- 2026-08-04: Added full-answer forwarding, targeted question IDs, and automatic cloud run ledgers.
+  Fixed advisory/manual-review cues for Amarel access, data transfer, support, Slurm debugging, and
+  the prompt-injection safety sentinel. Final RunPod A40 full gate
+  `logs/rag_v1_acceptance/20260804T042809Z` passed with `17` executed, `1` skipped attachment row,
+  `0` failures, no manual-review IDs, p95 latency `14343.71` ms, p95 TTFT `347.87` ms, and
+  `promotion_ready=true`. The runner deleted Pod `v6ozhirn5q5uhl`; post-run
+  `runpodctl pod list` returned `[]`. The August 4 batch per-run ledgers summed to
+  `$0.1789119778` at write time; the latest settled RunPod balance check showed `$9.6490003223`,
+  or `$0.1810397445` spent from the `$9.8300400668` starting balance.
 
 # Provider References
 

@@ -481,7 +481,8 @@ writes ignored evidence under `logs/rag_v1_acceptance/<timestamp>/`. Shared gate
 logic lives in `src/evaluation/gateway_eval.py` so future acceptance suites can reuse URL
 normalization, streaming response parsing, latency/TTFT/source metrics, and automated gate
 summaries. `src/evaluation/acceptance_report.py` renders the human-review `report.md` and
-`comparison.md` artifacts from the machine-readable JSON/JSONL evidence.
+`comparison.md` artifacts from the machine-readable JSON/JSONL evidence, and writes lightweight SVG
+report plots under each run's `plots/` directory.
 
 Typical laptop-side gate after the Mac mini tunnel is active:
 
@@ -509,7 +510,8 @@ Each run writes:
   `report_path`.
 - `report.md`: canonical human-readable review artifact with run metadata, gateway health, model
   and retrieval configuration, latency/TTFT/source metrics, gate status, HPC promotion checklist,
-  zero-source/manual-review queues, and compact per-question evidence.
+  zero-source/manual-review queues, compact per-question evidence, and links to generated SVG
+  plots.
 
 Run comparison writes `comparison.md` in the newer run directory. It compares model/backend,
 retrieval mode, pass/fail counts, p50/p95 latency, p50/p95 TTFT, positive source-count metrics,
@@ -525,6 +527,8 @@ in-memory text and is skipped unless `ui.attachments_enabled=true`.
 Default output stores answer excerpts only. Operators can pass `--include-full-answer` for
 deliberate private review, but generated outputs remain runtime artifacts and should not be
 committed.
+Operators can pass repeated `--question-id` values to run a targeted subset while preserving the
+question file order.
 
 `report.md` is intentionally Markdown, not PDF. The JSON and JSONL files remain the evidence source
 of record for automation; the Markdown report is for operator promotion review. The checklist's
@@ -549,6 +553,14 @@ RunPod defaults to an RTX 4090 for 7B-class models and A100 for larger models. V
 `--vast-offer-id` or search for a matching offer before launch. Created RunPod Pods are terminated
 with `runpodctl pod delete`; created Vast instances are destroyed with `vastai destroy instance`
 unless the operator explicitly passes `--keep-instance`.
+
+Cloud runs forward the acceptance harness `--include-full-answer` and repeated `--question-id`
+options. By default, cloud wrapper artifacts are separated by provider under
+`logs/rag_v1_acceptance/cloud/<provider>/<timestamp>/`; `--acceptance-output-dir` can override this.
+When executed, the runner writes `cloud_run_ledger.json` and `cloud_run_ledger.md` next to the
+acceptance run artifacts, including sanitized start/end account snapshots, provider resource ID,
+requested GPU or offer query, runtime, estimated provider cost, cleanup status, question subset,
+answer-capture mode, and acceptance artifact paths.
 
 `src/evaluation/question_drafting.py` provides deterministic, offline candidate generation from
 approved Markdown roots. It skips `docs/servicenow`, writes JSONL candidates with expected topics,
@@ -584,8 +596,8 @@ Scripts are thin operational wrappers around `src/` code or external services.
 | `scripts/deployment/macos/chat_local.py` | Legacy local llama.cpp chat harness. | `LLAMA_CPP_MODEL_PATH`; `--web`. | Loads local model and starts CLI or Flask server. |
 | `scripts/evaluation/run_evaluation.py` | Run bakeoff config locally. | `--config`. | Writes configured evaluation results. |
 | `scripts/evaluation/draft_acceptance_questions.py` | Draft candidate acceptance questions from approved Markdown corpus roots. | Source roots, existing JSONL, max question count, output path. | Writes candidate JSONL; skips `docs/servicenow`. |
-| `scripts/evaluation/run_cloud_acceptance.py` | Run short-lived cloud GPU acceptance loop on RunPod, Vast, or an existing SSH host. | Provider, model, FAISS index, question suite, SSH/provider flags, thresholds. | Builds optional public FAISS index, writes transfer bundle under ignored `runtime/`, starts remote vLLM/gateway, runs acceptance, and deletes provider-created compute by default. |
-| `scripts/evaluation/run_v1_acceptance.py` | Run Mac mini/HPC gateway acceptance questions or compare existing runs. | Gateway URL, curated questions, model alias, timeout, answer capture mode, or `--compare-runs`. | Writes ignored `results.jsonl`, `summary.json`, `report.md`, and optional `comparison.md` under `logs/rag_v1_acceptance/<timestamp>/`. |
+| `scripts/evaluation/run_cloud_acceptance.py` | Run short-lived cloud GPU acceptance loop on RunPod, Vast, or an existing SSH host. | Provider, model, FAISS index, question suite/subset, answer capture mode, SSH/provider flags, thresholds. | Builds optional public FAISS index, writes transfer bundle under ignored `runtime/`, starts remote vLLM/gateway, runs acceptance under `logs/rag_v1_acceptance/cloud/<provider>/` by default, writes cloud run ledger artifacts, and deletes provider-created compute by default. |
+| `scripts/evaluation/run_v1_acceptance.py` | Run Mac mini/HPC gateway acceptance questions or compare existing runs. | Gateway URL, curated questions, model alias, timeout, answer capture mode, or `--compare-runs`. | Writes ignored `results.jsonl`, `summary.json`, `report.md`, report SVG plots, and optional `comparison.md` under `logs/rag_v1_acceptance/<timestamp>/`. |
 | `scripts/evaluation/*.sbatch` | Run evaluation jobs on Slurm. | Config, project root, model availability. | Writes logs and results; may log to MLflow. |
 | `scripts/models/download_models.py` | Download registry models. | `configs/models.yml`; Hugging Face CLI/auth. | Mutates `models/`. |
 | `scripts/models/verify_models.py` | Verify local model files/directories. | `configs/models.yml`. | Prints verification results. |
