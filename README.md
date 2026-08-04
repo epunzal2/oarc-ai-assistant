@@ -283,9 +283,11 @@ scripts/deployment/hpc/stop_vllm_serve.sh --endpoint-dir "$VLLM_ENDPOINT_DIR"
 
 See [`docs/hpc-vllm-runbook.md`](docs/hpc-vllm-runbook.md) for the step-by-step HPC runbook.
 
-The first-party chat UI is served by the RAG gateway itself at `/ui`. After the HPC gateway tunnel
-is open, use `http://127.0.0.1:<local-gateway-port>/ui` in a browser. OpenWebUI remains available
-as an optional comparison client after the HPC RAG gateway is already running:
+The first-party chat UI is served by the RAG gateway itself at `/ui`. The UI source is a small
+assistant-ui React app under `src/rag/ui_app/`; `npm run build:ui` compiles the assets served from
+`src/rag/ui_static/`. After the HPC gateway tunnel is open, use
+`http://127.0.0.1:<local-gateway-port>/ui` in a browser. OpenWebUI remains available as an optional
+comparison client after the HPC RAG gateway is already running:
 
 ```bash
 scripts/deployment/macos/run_openwebui_for_hpc.sh \
@@ -321,10 +323,23 @@ scripts/deployment/macmini/ui.sh
 `http://127.0.0.1:18088/ui`. The UI is served by the same gateway container and calls the same
 OpenAI-compatible `/v1/chat/completions` endpoint used by smoke tests.
 
-The gateway-hosted UI can attach small `.txt`, `.md`, `.markdown`, and `.pdf` files for a single
-chat turn. Attachments are extracted in memory through the gateway, sent with the next chat request,
-and then cleared from the browser state; they are not added to FAISS or persisted server-side. The
-Mac mini Compose workflow sets `RAG_UI_ATTACHMENTS_ENABLED=true` by default for UX iteration.
+When changing the gateway-hosted UI, run the browser build checks before redeploying:
+
+```bash
+npm run check:ui
+npm run build:ui
+```
+
+The gateway-hosted UI source lives in `src/rag/ui_app/` and uses `@assistant-ui/react` primitives
+with a custom adapter for the same-origin OpenAI-compatible `/v1/chat/completions` endpoint. Vite
+builds that template into `src/rag/ui_static/`, which is what FastAPI serves from `/ui`.
+
+The UI can attach small `.txt`, `.md`, `.markdown`, and `.pdf` files for a single chat turn.
+Attachments are extracted in memory through the gateway, sent with the next chat request, and then
+cleared from browser state; they are not added to FAISS or persisted server-side. The composer also
+has a generated `sample-attachment.md` action for testing extraction and `rag_attachments` without
+uploading a private file. The Mac mini Compose workflow sets `RAG_UI_ATTACHMENTS_ENABLED=true` by
+default for UX iteration.
 
 The deployment preserves the Mac mini server-only `.env` and generated `runtime/`, `vector_index/`,
 and log directories across rsync deploys. Raw ServiceNow task JSON is excluded; the indexer uses
@@ -366,6 +381,20 @@ unless `/health` reports `ui.attachments_enabled=true`; it does not read local p
 anything to FAISS.
 Use repeated `--question-id <id>` values for targeted reruns of specific acceptance rows.
 
+For a private RunPod attachment test, explicitly opt in and target the synthetic row:
+
+```bash
+RUNPOD_API_KEY="$(security find-generic-password -s kx-compute-prices \
+  -a RUNPOD_WRITE_API_KEY -w)" \
+  .venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+    --provider runpod \
+    --runpod-gpu "NVIDIA A40" \
+    --execute \
+    --enable-ui-attachments \
+    --question-id attachment_synthetic_marker \
+    --include-full-answer
+```
+
 Compare two runs, such as `llama3.2:1b` versus `llama3.2:3b` or vector versus hybrid retrieval:
 
 ```bash
@@ -399,6 +428,11 @@ Executed cloud runs also write `cloud_run_ledger.json` and `cloud_run_ledger.md`
 acceptance artifacts. The ledger records sanitized start/end balances, provider resource ID,
 requested GPU, runtime, estimated cost, cleanup status, question subset, answer-capture mode, and
 artifact paths.
+
+For a live browser screenshot of the RunPod-backed chat UI, keep the provider instance alive only
+long enough to open the tunneled `/ui`, send one question, capture the browser image, then delete
+the Pod. The screenshot proves the UI path, tunnel, gateway, vLLM model, and source/metadata
+inspector are connected; it does not replace the acceptance gate metrics.
 
 By default, cloud wrapper runs use provider-specific roots such as
 `logs/rag_v1_acceptance/cloud/runpod/<timestamp>/` so RunPod reports and ledgers do not mix with

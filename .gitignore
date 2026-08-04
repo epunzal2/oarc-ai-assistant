@@ -94,6 +94,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+node_modules/
+.vite/
 
 # Spyder project settings
 .spyderproject
@@ -162,6 +164,7 @@ TODO.md
 !/.plans/2026-05-31-v1-promotion-v11-hybrid-retrieval.md
 !/.plans/2026-07-17-cloud-gpu-rag-iteration.md
 !/.plans/2026-07-17-hpc-rag-chatbot-research-pro.md
+!/.plans/2026-08-04-assistant-ui-gateway-chat.md
 /tmp/
 /results/
 /.roo/

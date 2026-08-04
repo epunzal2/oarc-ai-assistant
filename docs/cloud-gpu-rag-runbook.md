@@ -175,6 +175,19 @@ Run the candidate question suite instead of the active gate:
   --full-acceptance
 ```
 
+Run the synthetic attachment row on RunPod. This starts the remote gateway with
+`RAG_UI_ATTACHMENTS_ENABLED=true`, uses only generated non-sensitive attachment text, and lets the
+browser UI's generated `sample-attachment.md` control be tested through the same private tunnel:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --execute \
+  --enable-ui-attachments \
+  --question-id attachment_synthetic_marker \
+  --include-full-answer
+```
+
 ## Question Suites
 
 The active suite is `data/evaluation/acceptance/rag_v1_questions.jsonl` and currently covers Slurm,
@@ -213,6 +226,18 @@ Executed cloud runs write the usual acceptance files under provider-specific roo
 - `cloud_run_ledger.json`: provider ledger with start/end balance, resource ID, requested GPU,
   runtime, estimated cost, cleanup status, question IDs, and artifact paths.
 - `cloud_run_ledger.md`: compact ledger summary for quick review.
+
+## Live UI Screenshot
+
+The gateway-hosted `/ui` is the same assistant-ui React app used locally, on Mac mini, and through
+cloud tunnels. A live RunPod screenshot is useful for visual evidence that the browser UI, SSH
+tunnel, FastAPI gateway, vLLM model, and source/metadata inspector are wired together.
+
+Use a short-lived RunPod pod, keep it alive only for the screenshot window, open the tunneled
+`http://127.0.0.1:<local-gateway-port>/ui`, send one non-sensitive acceptance-style question, and
+capture the browser image after the answer and sources render. Delete the pod immediately after the
+capture. The screenshot is not an accuracy gate; use `summary.json`, `report.md`, `results.jsonl`,
+plots, and `cloud_run_ledger.md` for performance, cost, and promotion evidence.
 
 ## Manual Review
 

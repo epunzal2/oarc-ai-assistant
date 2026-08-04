@@ -118,16 +118,20 @@ def test_gateway_ui_assets_are_served_without_initializing_rag_chain() -> None:
     assert ui_response.status_code == 200
     assert "text/html" in ui_response.headers["content-type"]
     assert "/ui-static/app.js" in ui_response.text
-    assert "theme-button" in ui_response.text
-    assert "attach-button" in ui_response.text
-    assert "attachment-policy" in ui_response.text
+    assert "/ui-static/styles.css" in ui_response.text
+    assert 'id="root"' in ui_response.text
     assert js_response.status_code == 200
-    assert "fetch(\"/v1/chat/completions\"" in js_response.text
-    assert "\"/ui/attachments/extract\"" in js_response.text
-    assert "localStorage" in js_response.text
+    assert "/v1/chat/completions" in js_response.text
+    assert "/ui/attachments/extract" in js_response.text
+    assert "assistant-ui template" in js_response.text
+    assert "sample-attachment.md" in js_response.text
+    assert "rag_sources" in js_response.text
     assert css_response.status_code == 200
     assert "text/css" in css_response.headers["content-type"]
-    assert ":root[data-theme=\"dark\"]" in css_response.text
+    assert ".chat-rail" in css_response.text
+    assert ".inspector" in css_response.text
+    assert ".attachment-testbar" in css_response.text
+    assert ".attachment-policy" in css_response.text
     assert favicon_response.status_code == 200
     assert "image/svg+xml" in favicon_response.headers["content-type"]
     assert initialized is False

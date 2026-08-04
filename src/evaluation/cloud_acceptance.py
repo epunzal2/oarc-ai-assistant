@@ -154,6 +154,7 @@ class CloudRunConfig:
     include_full_answer: bool = False
     max_p95_latency_ms: float = 30_000.0
     max_p95_ttft_ms: float = 15_000.0
+    ui_attachments_enabled: bool = False
     allow_public_corpus: bool = False
     build_index: bool = False
     keep_instance: bool = False
@@ -240,6 +241,7 @@ class CloudPlan:
     transfer_bytes: int
     question_ids: list[str]
     include_full_answer: bool
+    ui_attachments_enabled: bool
     create_command: list[str] | None
     delete_command_template: list[str] | None
     acceptance_command: list[str]
@@ -255,6 +257,7 @@ class CloudPlan:
             "transfer_bytes": self.transfer_bytes,
             "question_ids": self.question_ids,
             "include_full_answer": self.include_full_answer,
+            "ui_attachments_enabled": self.ui_attachments_enabled,
             "create_command": self.create_command,
             "delete_command_template": self.delete_command_template,
             "acceptance_command": self.acceptance_command,
@@ -317,6 +320,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--max-p95-latency-ms", type=float, default=30_000.0)
     parser.add_argument("--max-p95-ttft-ms", type=float, default=15_000.0)
+    parser.add_argument(
+        "--enable-ui-attachments",
+        action="store_true",
+        help=(
+            "Start the remote gateway with RAG_UI_ATTACHMENTS_ENABLED=true so synthetic "
+            "attachment acceptance rows and private tunnel UI attachment tests can run."
+        ),
+    )
     parser.add_argument("--allow-public-corpus", action="store_true")
     parser.add_argument("--build-index", action="store_true")
     parser.add_argument("--execute", action="store_true")
@@ -391,6 +402,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         include_full_answer=args.include_full_answer,
         max_p95_latency_ms=args.max_p95_latency_ms,
         max_p95_ttft_ms=args.max_p95_ttft_ms,
+        ui_attachments_enabled=args.enable_ui_attachments,
         allow_public_corpus=args.allow_public_corpus,
         build_index=args.build_index,
         keep_instance=args.keep_instance,
@@ -528,6 +540,7 @@ def build_cloud_plan(config: CloudRunConfig, manifest: TransferManifest) -> Clou
         transfer_bytes=transfer_bytes,
         question_ids=list(config.question_ids),
         include_full_answer=config.include_full_answer,
+        ui_attachments_enabled=config.ui_attachments_enabled,
         create_command=create_command,
         delete_command_template=delete_template,
         acceptance_command=acceptance_command(config),
@@ -767,6 +780,7 @@ def write_cloud_run_ledger(
         "questions_path": str(config.questions_path),
         "question_ids": list(config.question_ids),
         "include_full_answer": config.include_full_answer,
+        "ui_attachments_enabled": config.ui_attachments_enabled,
         "acceptance": {
             "run_dir": _optional_summary_path(summary, "run_dir"),
             "results_path": _optional_summary_path(summary, "results_path"),
@@ -905,6 +919,7 @@ def _cloud_run_ledger_markdown(payload: dict[str, Any]) -> str:
         f"- Start balance: `{money(start)}`\n"
         f"- End balance: `{money(end)}`\n"
         f"- Estimated cost: `{money(cost)}` ({cost_source})\n"
+        f"- UI attachments enabled: `{payload.get('ui_attachments_enabled')}`\n"
         f"- Cleanup attempted: `{payload.get('cleanup_attempted')}`\n"
         f"- Cleanup error: `{payload.get('cleanup_error') or 'none'}`\n"
         f"- Return code: `{payload.get('return_code')}`\n"
@@ -1160,6 +1175,7 @@ def remote_bootstrap_script(config: CloudRunConfig, bundle_name: str) -> str:
     """Return the remote setup script used after transfer."""
 
     rel_index = _rel_posix(config.repo_root, config.resolved_index_path)
+    ui_attachments_enabled = "true" if config.ui_attachments_enabled else "false"
     return f"""\
 set -euo pipefail
 cd {shlex.quote(config.remote_dir)}
@@ -1190,7 +1206,7 @@ export FAISS_INDEX_PATH={shlex.quote(rel_index)}
 export RAG_GATEWAY_LLM_PROVIDER="vllm"
 export RAG_GATEWAY_VECTOR_STORE="faiss"
 export RAG_RETRIEVAL_MODE="vector"
-export RAG_UI_ATTACHMENTS_ENABLED="false"
+export RAG_UI_ATTACHMENTS_ENABLED="{ui_attachments_enabled}"
 export VLLM_BASE_URL="http://127.0.0.1:{config.remote_vllm_port}"
 export VLLM_HEALTH_URL="http://127.0.0.1:{config.remote_vllm_port}/health"
 export VLLM_MODEL={shlex.quote(config.model)}

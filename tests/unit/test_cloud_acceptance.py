@@ -143,6 +143,8 @@ def test_cli_defaults_to_provider_specific_output_dir() -> None:
     parser = cloud.build_parser()
 
     assert parser.parse_args([]).acceptance_output_dir is None
+    assert parser.parse_args([]).enable_ui_attachments is False
+    assert parser.parse_args(["--enable-ui-attachments"]).enable_ui_attachments is True
 
 
 def test_cli_max_question_resolution_targets_all_requested_ids() -> None:
@@ -238,6 +240,7 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
         bundle_path=Path("bundle.tar.gz"),
         question_ids=("amarel_data_transfer", "support_helpdesk"),
         include_full_answer=True,
+        ui_attachments_enabled=True,
     )
 
     assert cloud.run_cloud_acceptance(config) == 0
@@ -249,6 +252,7 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
     assert ledger["estimated_cost_source"] == "balance_delta"
     assert ledger["question_ids"] == ["amarel_data_transfer", "support_helpdesk"]
     assert ledger["include_full_answer"] is True
+    assert ledger["ui_attachments_enabled"] is True
     assert ledger["acceptance"]["promotion_ready"] is True
     assert (run_dir / "cloud_run_ledger.md").exists()
 
@@ -294,6 +298,14 @@ def test_remote_bootstrap_pins_vllm_transformers_compatibility(tmp_path: Path) -
     assert "uv pip install 'transformers>=4.48.2,<5'" in script
     assert "uv run --no-sync vllm serve" in script
     assert "uv run --no-sync uvicorn" in script
+    assert 'export RAG_UI_ATTACHMENTS_ENABLED="false"' in script
+
+    attachment_script = cloud.remote_bootstrap_script(
+        cloud.CloudRunConfig(repo_root=tmp_path, ui_attachments_enabled=True),
+        "bundle.tar.gz",
+    )
+
+    assert 'export RAG_UI_ATTACHMENTS_ENABLED="true"' in attachment_script
 
 
 def test_cloud_acceptance_wrapper_help() -> None:

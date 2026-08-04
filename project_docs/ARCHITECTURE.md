@@ -27,7 +27,8 @@ useful for local and HPC smoke testing.
 src/
   rag/
     api.py                 OpenAI-compatible FastAPI gateway.
-    ui_static/             Gateway-hosted no-build chat UI assets.
+    ui_app/                assistant-ui React source for the gateway-hosted chat UI.
+    ui_static/             Built gateway-hosted chat UI assets served by FastAPI.
     service.py             Gateway orchestration, request IDs, source metadata, MLflow logging.
     rag_pipeline.py        LangChain retriever + prompt + LLM runnable with instrumentation.
     hybrid_retriever.py    Opt-in vector+keyword merge, reranking, and retrieval diagnostics.
@@ -122,17 +123,23 @@ details.
 
 ### Gateway-Hosted Chat UI
 
-The first-party chat UI is served by the FastAPI gateway so Mac mini and HPC deployments share the
-same browser surface. The UI is static HTML/CSS/JavaScript under `src/rag/ui_static/`; it uses
-`fetch` streaming against same-origin `POST /v1/chat/completions` with `stream: true`, because the
+The first-party chat UI is served by the FastAPI gateway so Mac mini, HPC, and cloud GPU
+deployments share the same browser surface. The UI source lives under `src/rag/ui_app/` as a Vite
+React app using `@assistant-ui/react` primitives and a custom `useLocalRuntime` adapter. `npm run
+build:ui` compiles the deployable HTML, CSS, JavaScript, and favicon under `src/rag/ui_static/`,
+which the gateway serves at `/ui` and `/ui-static/*`.
+
+The adapter streams against same-origin `POST /v1/chat/completions` with `stream: true`, because the
 OpenAI-compatible chat endpoint is a POST server-sent-events stream. It also reads `/health` and
 `/v1/models` to display provider health, model ID, backing provider, base URL, and vector-store
 type.
 
-The UI renders streamed answer text as it arrives, then fills in `rag_request_id`, `rag_sources`,
-and public `rag_metadata` from the final stream chunk. It keeps chat state only in browser memory.
-It does not call Ollama, vLLM, FAISS, or Qdrant directly, and it does not change the public
-OpenAI-compatible API contract.
+The assistant-ui thread renders streamed answer text as it arrives, then fills in
+`rag_request_id`, `rag_sources`, and public `rag_metadata` from the final stream chunk. The custom
+source inspector persists those RAG extension fields beside the answer so reviewers can see source
+snippets, chunk IDs, trust metadata, provider status, model, base URL, vector store, and request
+metadata. It keeps chat state only in browser memory. It does not call Ollama, vLLM, FAISS, or
+Qdrant directly, and it does not change the public OpenAI-compatible API contract.
 
 The chat UI supports ephemeral `.txt`, `.md`, `.markdown`, and `.pdf` attachments for testing and
 one-off questions. The browser sends selected files to `POST /ui/attachments/extract`, receives
@@ -141,7 +148,9 @@ the optional `rag_attachments` extension field. Attachment contents are not writ
 Qdrant, logs, or server-side transcript storage; persistent corpus ingestion remains a separate
 prepare/reindex workflow. Attachments fail closed unless `RAG_UI_ATTACHMENTS_ENABLED=true`;
 `/health` exposes the UI attachment capability so the browser disables the attach control on
-locked-down deployments.
+locked-down deployments. The assistant-ui composer also exposes a generated `sample-attachment.md`
+control for private tunnel tests; it exercises the same extraction endpoint without reading local
+private files.
 
 ### RAG Service
 
@@ -522,7 +531,9 @@ The automated promotion gates require `fail_count == 0`, p95 latency at or below
 with `requires_sources=true` to return `rag_sources_count > 0`. Positive questions require HTTP
 200, a non-empty answer, a request ID, and sources. Safety questions require refusal or limitation
 language and absence of configured forbidden terms. The optional attachment case uses synthetic
-in-memory text and is skipped unless `ui.attachments_enabled=true`.
+in-memory text and is skipped unless `ui.attachments_enabled=true`. Cloud runs opt into that path
+with `scripts/evaluation/run_cloud_acceptance.py --enable-ui-attachments`, which starts the remote
+gateway with `RAG_UI_ATTACHMENTS_ENABLED=true` and records the setting in the cloud ledger.
 
 Default output stores answer excerpts only. Operators can pass `--include-full-answer` for
 deliberate private review, but generated outputs remain runtime artifacts and should not be
@@ -561,6 +572,12 @@ When executed, the runner writes `cloud_run_ledger.json` and `cloud_run_ledger.m
 acceptance run artifacts, including sanitized start/end account snapshots, provider resource ID,
 requested GPU or offer query, runtime, estimated provider cost, cleanup status, question subset,
 answer-capture mode, and acceptance artifact paths.
+
+Live UI screenshot checks use the same tunnel and `/ui` route as the acceptance harness. They should
+keep a cloud instance alive only for the screenshot window, capture the chat answer with the
+source/metadata inspector visible, and then delete the provider resource. Screenshots are visual
+evidence for the browser path; acceptance artifacts remain the source of truth for promotion
+metrics.
 
 `src/evaluation/question_drafting.py` provides deterministic, offline candidate generation from
 approved Markdown roots. It skips `docs/servicenow`, writes JSONL candidates with expected topics,
