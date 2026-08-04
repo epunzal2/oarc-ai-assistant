@@ -140,10 +140,15 @@ Success metrics:
 - [ ] Use a RunPod network volume for model and FAISS/index cache.
 - [x] Repeat the Milestone 1 smoke against RunPod.
 - [x] Repeat the Milestone 2 full acceptance against RunPod.
-- [ ] Compare Vast and RunPod run artifacts with `--compare-runs`.
+- [x] Capture one live assistant-ui screenshot against RunPod and terminate the pod.
+- [x] Add explicit RunPod `--enable-ui-attachments` support for synthetic attachment tests.
+- [ ] Run a RunPod attachment-enabled synthetic marker test and capture a live UI screenshot.
+- [ ] Compare clean RunPod full acceptance artifacts against the previous full RunPod run; compare
+  Vast artifacts only if Vast is reactivated.
 
-Progression gate: RunPod produces a full acceptance run that is comparable to the successful Vast
-run, or the plan records a provider-specific blocker and keeps Vast as the active iteration target.
+Progression gate: RunPod produces a full acceptance run that is comparable to earlier RunPod
+evidence, or the plan records a provider-specific blocker and reactivates Vast as the iteration
+target.
 
 ## Milestone 4: Benchmark Iteration
 
@@ -160,6 +165,16 @@ run, or the plan records a provider-specific blocker and keeps Vast as the activ
 Progression gate: at least one cloud full acceptance run passes, manual-review answers are
 acceptable, and the chosen model/retrieval/prompt configuration has an HPC-equivalent deployment
 path.
+
+Current status: baseline RunPod parity has passed and the work is entering Milestone 4 benchmark
+iteration. The remaining Milestone 3 evidence item is a live RunPod attachment-enabled UI screenshot
+using only the synthetic marker row. Vast setup and Vast comparison are deferred while RunPod is the
+active provider.
+
+Written progress report:
+`project_docs/reports/2026-08-04-cloud-rag-progress-report.md`. Update that report after each
+cloud run with the run directory, ledger, cost, runtime, screenshot path when applicable, and
+pass/fail result.
 
 ## Milestone 5: HPC Promotion
 
@@ -336,6 +351,9 @@ by this plan.
   `runpodctl pod list` returned `[]`. The August 4 batch per-run ledgers summed to
   `$0.1789119778` at write time; the latest settled RunPod balance check showed `$9.6490003223`,
   or `$0.1810397445` spent from the `$9.8300400668` starting balance.
+- 2026-08-04: Added assistant-ui, local and live RunPod screenshot evidence, explicit
+  `--enable-ui-attachments` support, and the durable progress report
+  `project_docs/reports/2026-08-04-cloud-rag-progress-report.md`.
 
 # Provider References
 

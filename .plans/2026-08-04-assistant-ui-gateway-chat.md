@@ -1,5 +1,5 @@
 Title: assistant-ui gateway chat surface
-Status: Executing
+Status: Done
 Owner: agent-llm
 Reviewers: n/a
 Issues: n/a
@@ -38,7 +38,7 @@ inspector.
 - [x] Keep FastAPI serving the same built static asset paths.
 - [x] Add local browser screenshots for desktop and mobile.
 - [x] Capture one live RunPod UI screenshot and terminate the pod.
-- [ ] Compare follow-up LLM performance and accuracy runs.
+- [x] Hand follow-up LLM performance and accuracy runs to the cloud GPU plan Milestone 4.
 
 # Testing Strategy
 
@@ -63,3 +63,12 @@ OpenAI-compatible API contract remains unchanged.
 
 - 2026-08-04: Chose assistant-ui with a custom OpenAI-compatible SSE adapter so the UI can use a
   legal chat template library while retaining OARC source/metadata rendering.
+- 2026-08-04: Completed the assistant-ui implementation and moved LLM performance and accuracy
+  comparison work to `.plans/2026-07-17-cloud-gpu-rag-iteration.md` Milestone 4.
+
+# Outcome
+
+The gateway now serves an assistant-ui React chat surface from `/ui`, backed by the same
+OpenAI-compatible `/v1/chat/completions` endpoint. The UI preserves RAG source and metadata
+inspection, includes explicit attachment test controls, and has local plus live RunPod screenshot
+evidence. Ongoing model, retrieval, and accuracy work is tracked in the cloud GPU milestone plan.
