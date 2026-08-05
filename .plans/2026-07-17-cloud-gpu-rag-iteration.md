@@ -202,6 +202,12 @@ acceptable, the Research Pro rubric reveals no missing critical categories, and 
 configuration has an HPC equivalent for model, index, retrieval mode, and gateway environment
 variables.
 
+Current HPC promotion attempt: preflight reached the laptop network boundary on 2026-08-05. Cisco
+AnyConnect was installed but disconnected, and local DNS could not resolve `amarel.rutgers.edu`,
+`amarel-new.hpc.rutgers.edu`, or `ondemand.hpc.rutgers.edu`. No files were synced, no ServiceNow
+data was transferred, and no Slurm job was submitted. Resume this milestone after connecting the
+Rutgers VPN with Cisco AnyConnect.
+
 # Cost & Runtime Estimate
 
 As of July 30, 2026, public provider pricing pages list RunPod RTX 4090 rates around `$0.34` to
@@ -393,6 +399,10 @@ by this plan.
   `10594.62` ms, p95 TTFT `1083.03` ms, runtime `360.952` seconds, and estimated cost
   `$0.0741339814`. Pod `8lnn3f09cihxvk` was deleted by the runner; post-run `runpodctl pod list`
   returned `[]` and `currentSpendPerHr` returned `0`.
+- 2026-08-05: Started Milestone 5 HPC promotion preflight for the RunPod-proven configuration
+  (`Qwen/Qwen2.5-7B-Instruct`, `vector_index/faiss_public`, vector retrieval, local-guide fallback
+  enabled). The local Cisco AnyConnect client reported `Disconnected`; all Amarel and Open OnDemand
+  hostnames failed DNS resolution from the laptop. The attempt stopped before sync or `sbatch`.
 
 # Provider References
 

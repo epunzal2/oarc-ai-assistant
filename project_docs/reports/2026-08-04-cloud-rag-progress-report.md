@@ -246,6 +246,104 @@ Promotion decision: promote the `16` reviewed candidate rows into
 candidate-suite runs and one clean expanded active-gate run on the current RunPod A40
 `Qwen/Qwen2.5-7B-Instruct` vector baseline.
 
+### HPC Promotion Preflight
+
+- Attempt date: 2026-08-05.
+- Intended login alias: `ep523@amarel-new`.
+- Intended project root: `/scratch/ep523/oarc-ai-assistant`.
+- Intended model: `Qwen/Qwen2.5-7B-Instruct`, matching the RunPod baseline.
+- Intended FAISS path: `/scratch/ep523/oarc-ai-assistant/vector_index/faiss_public`.
+- Intended retrieval mode: `vector`, with local-guide fallback enabled.
+- Result: blocked before sync. Cisco AnyConnect was installed but disconnected, and local DNS could
+  not resolve `amarel.rutgers.edu`, `amarel-new.hpc.rutgers.edu`, or
+  `ondemand.hpc.rutgers.edu`.
+- Data transfer: none. No repository bundle, FAISS index, ServiceNow data, or secrets were uploaded.
+- Slurm jobs: none submitted.
+
+Resume checklist after connecting Rutgers VPN with Cisco AnyConnect:
+
+```bash
+python3 - <<'PY'
+import socket
+for host in ("amarel.rutgers.edu", "amarel-new.hpc.rutgers.edu"):
+    print(host, socket.getaddrinfo(host, 22)[0][4][0])
+PY
+
+ssh -o BatchMode=yes -o ConnectTimeout=10 ep523@amarel-new \
+  'hostname -f; whoami; command -v sbatch; command -v uv; pwd'
+```
+
+Sync only approved source, public docs, and the public FAISS index. Keep raw ServiceNow exports,
+secrets, generated logs, runtime directories, model directories, screenshots, and scratch material
+out of the transfer:
+
+```bash
+REMOTE=ep523@amarel-new
+REMOTE_ROOT=/scratch/ep523/oarc-ai-assistant
+
+ssh "$REMOTE" "mkdir -p '$REMOTE_ROOT'"
+rsync -az --info=progress2 \
+  --exclude '.git/' \
+  --exclude '.env*' \
+  --exclude '.venv/' \
+  --exclude 'logs/' \
+  --exclude 'mlruns/' \
+  --exclude 'models/' \
+  --exclude 'runtime/' \
+  --exclude 'results/' \
+  --exclude 'output/' \
+  --exclude 'docs/servicenow/' \
+  --exclude 'tmp/' \
+  --exclude 'scratch/' \
+  ./ "$REMOTE:$REMOTE_ROOT/"
+```
+
+Then verify the public index and model availability. If an HF-format Qwen model is not already
+staged on HPC, stage it first or record the run as a model variant instead of exact RunPod
+promotion:
+
+```bash
+ssh "$REMOTE" "cd '$REMOTE_ROOT' && ./scripts/deployment/hpc/setup_hpc.sh"
+ssh "$REMOTE" "cd '$REMOTE_ROOT' && ls -lh vector_index/faiss_public"
+ssh "$REMOTE" \
+  "find /scratch/ep523 -maxdepth 7 -type f -name config.json | grep -i 'qwen2.5-7b' || true"
+```
+
+Submit the Phase 3 verification job with the RunPod-proven gateway settings:
+
+```bash
+ssh "$REMOTE" "cd '$REMOTE_ROOT' && \
+  sbatch --partition=gpu-redhat \
+    --export=ALL,PROJECT_ROOT='$REMOTE_ROOT',\
+VLLM_MODEL='Qwen/Qwen2.5-7B-Instruct',\
+FAISS_INDEX_PATH='$REMOTE_ROOT/vector_index/faiss_public',\
+SERVICE_NOW_DATA_PATH=/dev/null,\
+RAG_GATEWAY_VECTOR_STORE=faiss,\
+RAG_GATEWAY_LLM_PROVIDER=vllm,\
+RAG_RETRIEVAL_MODE=vector,\
+RAG_LOCAL_GUIDE_FALLBACK_ENABLED=true,\
+RAG_LOCAL_GUIDE_FALLBACK_TOP_K=12,\
+RAG_FINAL_TOP_K=4,\
+RAG_MAX_CONTEXT_TOKENS=8192,\
+RAG_MAX_CONTEXT_CHARS=12000,\
+RAG_UI_ATTACHMENTS_ENABLED=false,\
+PHASE3_KEEPALIVE=true \
+    scripts/deployment/hpc/run_phase3_openwebui_verification.sbatch"
+```
+
+After the Slurm log prints the compute host, open the laptop tunnel and run the active 34-row gate:
+
+```bash
+ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
+
+.venv/bin/python scripts/evaluation/run_v1_acceptance.py \
+  --base-url http://127.0.0.1:8088/v1 \
+  --output-dir logs/rag_v1_acceptance/hpc/amarel \
+  --include-full-answer \
+  --max-p95-latency-ms 30000 \
+  --max-p95-ttft-ms 15000
+```
+
 ### Cost Ledger Snapshot
 
 - This Milestone 4 RunPod batch from `20260804T202155Z` through `20260804T213550Z`, including the
@@ -269,10 +367,12 @@ candidate-suite runs and one clean expanded active-gate run on the current RunPo
 - No model-variant comparison has been run yet.
 - Vast remains deferred by current operator decision; no current Vast smoke/full-gate evidence
   exists.
-- No HPC promotion run has started.
+- HPC promotion preflight is blocked until Cisco AnyConnect is connected to Rutgers VPN and Amarel
+  DNS resolves from the laptop.
 
 ## Next Update
 
-The next report update should be appended after the first explicit prompt/model variant or the first
-HPC promotion attempt. Include run directories, comparison artifacts, cost/runtime ledgers,
-model/retrieval settings, and the promotion decision.
+The next report update should be appended after Rutgers VPN is connected and the HPC sync, Slurm
+Phase 3 verification, or tunneled 34-row acceptance gate runs. Include run directories, comparison
+artifacts, model/retrieval settings, Slurm job IDs, compute host, tunnel port, and the promotion
+decision.
