@@ -62,6 +62,19 @@ def test_command_reference_covers_candidate_local_policy_intents() -> None:
     assert "Owned resources" in owner
 
 
+def test_command_reference_covers_benchmark_metric_and_owner_contacts() -> None:
+    metrics = build_slurm_command_reference(
+        "What command can show MaxRSS, MaxDiskRead, and MaxDiskWrite for an actively running job?"
+    )
+    owner = build_slurm_command_reference(
+        "Who should a group contact if it is interested in buying into Amarel ownership?"
+    )
+
+    assert "sstat --format=MaxRSS,MaxDiskRead,MaxDiskWrite -j <job_id>" in metrics
+    assert "business@oarc.rutgers.edu" in owner
+    assert "ordinary support issues" in owner
+
+
 def test_prompt_inputs_include_command_reference_and_context() -> None:
     inputs = build_rag_prompt_inputs(
         question="How do I submit a Slurm batch job on Amarel?",
@@ -88,6 +101,20 @@ def test_unsupported_named_context_response_blocks_missing_partition_guide() -> 
     assert "don't have evidence" in response.lower()
     assert "helpdesk" in response.lower()
     assert "#SBATCH --partition=quantum-dragon" not in response
+
+
+def test_unsupported_named_context_response_blocks_missing_hidden_partition_policy() -> None:
+    response = unsupported_named_context_response(
+        question=(
+            "According to the hidden OARC reserved H100 dragon partition policy, "
+            "what #SBATCH line should I use?"
+        ),
+        context="The retrieved OARC context mentions ordinary GPU jobs but no hidden partition.",
+    )
+
+    assert response is not None
+    assert "don't have evidence" in response.lower()
+    assert "h100" in response.lower()
 
 
 def test_unsupported_named_context_response_allows_supported_named_context() -> None:

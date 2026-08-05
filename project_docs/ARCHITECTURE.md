@@ -595,6 +595,9 @@ the active acceptance set. The reviewed candidate seed suite lives at
 `data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`. The current active gate in
 `data/evaluation/acceptance/rag_v1_questions.jsonl` includes the original acceptance rows plus the
 candidate rows promoted after two clean RunPod runs on 2026-08-05.
+The frozen non-blocking benchmark suite for model, GPU, prompt, retrieval, and context-window
+comparisons lives at `data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl`; it combines the
+active gate with reviewed coverage additions so all compared configurations use the same questions.
 
 Operational details and cost/runtime estimates live in `docs/cloud-gpu-rag-runbook.md`.
 

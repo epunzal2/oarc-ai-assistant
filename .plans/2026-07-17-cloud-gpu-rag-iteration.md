@@ -165,6 +165,16 @@ target.
   active gate.
 - [x] Promote candidate rows only after two clean cloud runs show stable expected topics, sources,
   and latency on the chosen model/retrieval configuration.
+- [x] Generate and review a larger candidate dataset for benchmarking; reject the raw generated
+  rows as the frozen suite when they skew toward low-value Slurm man-page fragments.
+- [x] Add a frozen 91-question benchmark suite for RunPod model, GPU, prompt, retrieval, and
+  context-window comparisons while keeping the 34-question gate as the blocking suite.
+- [x] Run the 91-question benchmark suite on the current RunPod A40
+  `Qwen/Qwen2.5-7B-Instruct` vector baseline with full-answer transcripts.
+- [ ] Run a RunPod RTX 4090 versus A40 cost/runtime comparison using the same 91-question suite.
+- [ ] Compare `Qwen/Qwen2.5-14B-Instruct` against the 7B baseline on the same suite.
+- [ ] Compare A100 and L40S GPU options for larger models.
+- [ ] Trial one roughly 32B-class instruct model after the 14B and GPU-cost baselines are captured.
 
 Progression gate: at least one cloud full acceptance run passes, manual-review answers are
 acceptable, and the chosen model/retrieval/prompt configuration has an HPC-equivalent deployment
@@ -180,8 +190,15 @@ manual-review IDs each. Those `16` candidate rows have been promoted into the ac
 expanded active RunPod gate
 `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z` passed with `33` executed, `1` skipped
 attachment row, `0` failures, no manual-review IDs, p95 latency `10594.62` ms, p95 TTFT
-`1083.03` ms, and `promotion_ready=true`. Vast setup and Vast comparison are deferred while RunPod
-is the active provider.
+`1083.03` ms, and `promotion_ready=true`. The frozen 91-question benchmark suite at
+`data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl` now has a clean RunPod A40
+full-answer baseline:
+`logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z` passed with `90` executed, `1` skipped
+attachment row, `0` failures, `39` advisory manual-review IDs, p95 latency `10773.45` ms, p95
+TTFT `861.33` ms, runtime `601.849` seconds, estimated cost `$0.0718145704`, and
+`promotion_ready=true`. The next benchmark evidence steps are 4090 versus A40 cost/runtime,
+Qwen2.5-14B, A100/L40S, prompt variants, and a roughly 32B-class instruct model. Vast setup and
+Vast comparison are deferred while RunPod is the active provider.
 
 Written progress report:
 `project_docs/reports/2026-08-04-cloud-rag-progress-report.md`. Update that report after each
@@ -224,6 +241,9 @@ Default 7B-class estimate:
   4090-class GPU. The current warm RunPod A40 expanded gate ran in `360.952` seconds and cost
   `$0.0741339814` by balance delta.
 - Candidate suite: 45-120 minutes depending on selected question count and model throughput.
+- Frozen 91-question benchmark: latest warm RunPod A40 vector baseline ran in `601.849` seconds
+  and cost `$0.0718145704`; larger models and first-run model downloads should be budgeted above
+  that.
 
 Most first-run time is image boot, dependency install, model download, and local FAISS indexing.
 Always destroy/terminate the instance after the run; stopped resources can still incur storage
@@ -262,6 +282,15 @@ Live provider checks:
   --execute \
   --questions data/evaluation/acceptance/rag_v1_candidate_questions.jsonl \
   --full-acceptance
+
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --runpod-gpu "NVIDIA A40" \
+  --execute \
+  --retrieval-mode vector \
+  --questions data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl \
+  --full-acceptance \
+  --include-full-answer
 
 .venv/bin/python scripts/evaluation/run_v1_acceptance.py \
   --base-url http://127.0.0.1:<local-gateway-port>/v1 \
@@ -403,6 +432,19 @@ by this plan.
   (`Qwen/Qwen2.5-7B-Instruct`, `vector_index/faiss_public`, vector retrieval, local-guide fallback
   enabled). The local Cisco AnyConnect client reported `Disconnected`; all Amarel and Open OnDemand
   hostnames failed DNS resolution from the laptop. The attempt stopped before sync or `sbatch`.
+- 2026-08-05: Generated `data/evaluation/acceptance/rag_v1_candidate_questions.generated.jsonl`
+  with 100 deterministic rows, reviewed it, and rejected the raw file as the frozen benchmark suite
+  because it skewed toward low-value Slurm man-page/admin fragments. Added reviewed benchmark suite
+  `data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl` with 91 total rows: the 34-row
+  active gate plus 57 reviewed additions across Slurm, Amarel access/storage, support/software
+  policy, research-data services, negative safety, and the existing attachment marker.
+- 2026-08-05: Ran the frozen 91-question RunPod A40
+  `Qwen/Qwen2.5-7B-Instruct` vector benchmark baseline with full-answer transcripts. Final run
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z` passed with `90` executed, `1` skipped
+  attachment row, `0` failures, `39` advisory manual-review IDs, p95 latency `10773.45` ms, p95
+  TTFT `861.33` ms, runtime `601.849` seconds, estimated cost `$0.0718145704`, and
+  `promotion_ready=true`. Pod `smckc97h8phopr` was deleted by the runner; post-run
+  `runpodctl pod list` returned `[]` and `currentSpendPerHr` returned `0`.
 
 # Provider References
 

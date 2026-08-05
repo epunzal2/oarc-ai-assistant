@@ -449,6 +449,11 @@ offline from approved Markdown roots:
   --output data/evaluation/acceptance/rag_v1_candidate_questions.generated.jsonl
 ```
 
+For model, GPU, prompt, retrieval, and context-window comparisons, use the frozen benchmark suite at
+`data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl`. It intentionally includes the
+current 34-row gate plus reviewed non-blocking coverage, so every compared configuration sees the
+same prompts.
+
 See [`docs/cloud-gpu-rag-runbook.md`](docs/cloud-gpu-rag-runbook.md) for provider setup, transfer
 safety rules, cleanup behavior, cost/runtime estimates, and candidate-promotion guidance.
 

@@ -17,9 +17,10 @@ plumbing into model, retrieval, and answer-quality improvement.
   - `.plans/2026-08-04-assistant-ui-gateway-chat.md`
 
 RunPod baseline parity is complete, including the attachment-enabled UI path. Milestone 4 now has
-two clean candidate-suite runs and a clean expanded 34-row active gate. Candidate promotion is done;
-the remaining benchmark work is explicit prompt/model variant comparison, plus HPC promotion when
-the chosen cloud configuration is ready to move back to the cluster.
+two clean candidate-suite runs, a clean expanded 34-row active gate, and a frozen 91-question
+benchmark suite for RunPod model/GPU/config comparisons. Candidate promotion and the 91-question
+RunPod A40 baseline are done; the next benchmark work is explicit GPU, prompt, and model variant
+comparisons.
 
 ## Milestone Checklist
 
@@ -32,8 +33,10 @@ the chosen cloud configuration is ready to move back to the cluster.
 - Milestone 3, RunPod parity: done. Full RunPod gate, live UI screenshot, attachment-enabled live UI
   screenshot, and assistant-ui implementation are complete.
 - Milestone 4, benchmark iteration: active now. Vector-vs-hybrid, candidate-suite coverage,
-  candidate fixes, a second clean candidate-suite stability run, candidate promotion, and a clean
-  expanded 34-row active gate are complete on RunPod. Prompt/model variants remain open.
+  candidate fixes, a second clean candidate-suite stability run, candidate promotion, a clean
+  expanded 34-row active gate, a reviewed 91-question benchmark suite, and the 91-question RunPod
+  A40 baseline are complete. The 4090/A40 cost comparison, Qwen 14B comparison, A100/L40S GPU
+  comparison, prompt variants, and roughly 32B-class model trial remain open.
 - Milestone 5, HPC promotion: not started. Wait for chosen cloud config plus clean manual review and
   performance evidence.
 
@@ -258,7 +261,57 @@ candidate-suite runs and one clean expanded active-gate run on the current RunPo
   not resolve `amarel.rutgers.edu`, `amarel-new.hpc.rutgers.edu`, or
   `ondemand.hpc.rutgers.edu`.
 - Data transfer: none. No repository bundle, FAISS index, ServiceNow data, or secrets were uploaded.
+
+### Benchmark Dataset Expansion
+
+- Raw generated candidate file:
+  `data/evaluation/acceptance/rag_v1_candidate_questions.generated.jsonl`
+- Reviewed frozen benchmark suite:
+  `data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl`
+- Raw generation command:
+  `.venv/bin/python scripts/evaluation/draft_acceptance_questions.py`
+  with approved source roots `docs/google_sites_guide`,
+  `docs/slurm-23.02.7/markdown/html`, `docs/slurm-23.02.7/markdown/man`, and
+  `docs/corpus/authoritative/rutgers/research-data-finder.md`; max questions `100`; output
+  `data/evaluation/acceptance/rag_v1_candidate_questions.generated.jsonl`.
+- Raw generated review result: `100` schema-valid rows, no duplicate IDs/questions, no blocked
+  `docs/servicenow` paths, but the distribution was unsuitable for a benchmark because `89` rows
+  were `slurm_basics` and many late rows were low-value Slurm man-page/admin fragments.
+- Reviewed benchmark result: `91` schema-valid rows, no duplicate IDs/questions, no blocked paths.
+  Category balance is `30` Slurm basics, `29` Amarel access/storage, `14` support/software policy,
+  `9` research-data services, `8` negative safety, and `1` attachment-optional row.
+- Decision: keep the 34-question active gate as the blocking smoke/regression suite; use the
+  91-question benchmark suite as the fixed non-blocking comparison set across Qwen/Llama/Gemma,
+  7B/14B/~32B, A40/4090/A100/L40S, vector/hybrid, prompt variants, and context settings.
 - Slurm jobs: none submitted.
+
+### 91-Question RunPod A40 Benchmark Baseline
+
+- Run directory: `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z`
+- Report: `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z/report.md`
+- Summary: `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z/summary.json`
+- Ledger: `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z/cloud_run_ledger.md`
+- Plots:
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z/plots/latency-by-question.svg`,
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z/plots/ttft-by-question.svg`,
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z/plots/source-counts-by-question.svg`
+- Questions: `90` executed, `1` skipped synthetic attachment row, `91` total.
+- Result: `90` pass, `0` fail, `promotion_ready=true`.
+- Manual-review IDs: `39` advisory rows. These are quality-review rows for benchmark analysis,
+  not automated gate failures.
+- Full answers: included in `results.jsonl`.
+- Model: `Qwen/Qwen2.5-7B-Instruct`.
+- Retrieval mode: `vector`, with local-guide fallback enabled.
+- p50/p95 latency: `3364.42` ms / `10773.45` ms.
+- p50/p95 time to first token: `637.2` ms / `861.33` ms.
+- Runtime: `601.849 s`.
+- Estimated cost: `$0.0718145704` from balance delta.
+- Pod: `smckc97h8phopr`, deleted by the runner.
+- Cleanup verification: `runpodctl pod list` returned `[]`; `currentSpendPerHr` returned `0`.
+
+Benchmark decision: use this run as the current A40/Qwen2.5-7B/vector baseline for the upcoming
+4090/A40, Qwen2.5-14B, A100/L40S, prompt-variant, and roughly 32B-class comparisons. Keep the
+34-question active gate as the blocking smoke/regression gate.
 
 Resume checklist after connecting Rutgers VPN with Cisco AnyConnect:
 
@@ -349,11 +402,11 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
 - This Milestone 4 RunPod batch from `20260804T202155Z` through `20260804T213550Z`, including the
   one SSH known-hosts failure ledger, has `13` ledger entries, `2985.943 s` of recorded runtime, and
   `$0.3144250890` estimated ledger cost.
-- The 2026-08-05 promotion batch has `2` ledger entries, `626.006 s` of recorded runtime, and
-  `$0.1065294703` estimated ledger cost.
-- All RunPod cloud ledgers under `logs/rag_v1_acceptance/cloud/runpod/` currently sum to `18`
-  ledger entries, `4212.649 s` of recorded runtime, and `$0.5298696853` estimated ledger cost.
-- Latest balance check after billing settled: `$9.1369140778`, `currentSpendPerHr=0`, and
+- The 2026-08-05 batch has `7` ledger entries, `2690.36 s` of recorded runtime, and
+  `$0.3365055110` estimated ledger cost.
+- All RunPod cloud ledgers under `logs/rag_v1_acceptance/cloud/runpod/` currently sum to `23`
+  ledger entries, `6277.003 s` of recorded runtime, and `$0.7598457260` estimated ledger cost.
+- Latest balance check after billing settled: `$8.8890317482`, `currentSpendPerHr=0`, and
   `runpodctl pod list` returned `[]`.
 - One failed setup attempt is recorded at
   `logs/rag_v1_acceptance/cloud/runpod/cloud_run_ledger/oarc-rag-20260804T212403Z/`. It failed
@@ -362,9 +415,12 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
 
 ## Current Gaps
 
-- No explicit prompt-variant A/B comparison has been run yet; this batch changed the baseline prompt
-  cues directly and verified them on RunPod.
-- No model-variant comparison has been run yet.
+- The 91-question RunPod A40 baseline is complete; its `39` manual-review rows still need
+  qualitative review before using the benchmark as HPC promotion evidence.
+- No explicit prompt-variant A/B comparison has been run yet; the earlier batch changed baseline
+  prompt cues directly and verified them on RunPod.
+- No model-variant comparison has been run yet. The queued order is 4090 versus A40 cost/runtime,
+  then Qwen2.5-14B, then A100/L40S comparisons and one roughly 32B-class instruct model.
 - Vast remains deferred by current operator decision; no current Vast smoke/full-gate evidence
   exists.
 - HPC promotion preflight is blocked until Cisco AnyConnect is connected to Rutgers VPN and Amarel
@@ -372,7 +428,7 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
 
 ## Next Update
 
-The next report update should be appended after Rutgers VPN is connected and the HPC sync, Slurm
-Phase 3 verification, or tunneled 34-row acceptance gate runs. Include run directories, comparison
-artifacts, model/retrieval settings, Slurm job IDs, compute host, tunnel port, and the promotion
-decision.
+The next report update should be appended after either the 4090/A40 benchmark comparison or Rutgers
+VPN reconnection plus HPC sync. Include run directories, comparison artifacts, model/retrieval
+settings, GPU type, runtime, cost, Slurm job IDs when applicable, compute host, tunnel port, and
+the promotion decision.
