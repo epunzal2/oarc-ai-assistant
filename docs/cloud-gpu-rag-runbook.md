@@ -48,7 +48,7 @@ Expected wall clock for the default `Qwen/Qwen2.5-7B-Instruct` path:
 | Run type | First run | Warm rerun | GPU cost ballpark |
 | --- | ---: | ---: | ---: |
 | 3-question smoke | 30-60 min | 10-25 min | `$0.10-$0.70` on 4090-class GPUs |
-| Full 18-question gate | 45-90 min | 20-45 min | `$0.20-$1.50` on 4090-class GPUs |
+| Full active gate | 45-90 min | 20-45 min | `$0.20-$1.50` on 4090-class GPUs |
 | Candidate suite | 45-120 min | 25-60 min | depends on selected question count |
 
 First runs spend most time on image start, dependency install, model download, and local index build.
@@ -207,13 +207,13 @@ browser UI's generated `sample-attachment.md` control be tested through the same
 
 ## Question Suites
 
-The active suite is `data/evaluation/acceptance/rag_v1_questions.jsonl` and currently covers Slurm,
-Amarel access, support policy, safety refusals, and synthetic attachments.
+The active suite is `data/evaluation/acceptance/rag_v1_questions.jsonl`. It currently has `34`
+rows and covers Slurm, Amarel access, support policy, research data services, community software,
+owned resources, safety refusals, and synthetic attachments.
 
-The candidate suite is `data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`. It adds
-reviewed candidates for login-node policy, access rules, Open OnDemand, storage quotas, file
-transfer, interactive Slurm usage, community software support, owned resources, and Research Data
-Finder topics.
+The candidate seed suite is `data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`. Its
+reviewed rows were promoted into the active gate after two clean RunPod runs on 2026-08-05. Keep
+the file as provenance and as a template for future non-blocking coverage additions.
 
 ## SSH Host Keys
 
@@ -234,8 +234,10 @@ The drafter is deterministic and offline. It skips `docs/servicenow` and writes 
 the rows can be reviewed before promotion. Promote only rows with clear expected topics, a source
 hint that appears in returned source metadata, and a non-sensitive source excerpt.
 
-Keep the active 18-question suite as the blocking promotion gate. Use the larger candidate suite for
-non-blocking regression and coverage work until candidates are repeatable enough to promote.
+Use the active suite as the blocking promotion gate. Future generated or hand-written candidates
+should stay in a non-blocking candidate file until they have clear expected topics, a source hint
+that appears in returned source metadata, a non-sensitive source excerpt, and at least two clean
+cloud runs on the chosen model/retrieval configuration.
 
 ## Run Artifacts
 

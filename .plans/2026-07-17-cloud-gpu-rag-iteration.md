@@ -120,7 +120,7 @@ weakening the success metrics.
 ## Milestone 2: Repeatable Vast Acceptance
 
 - [ ] Build or copy a fresh public-corpus FAISS index; do not use raw ServiceNow task JSON.
-- [ ] Run the full 18-question acceptance set against the Vast gateway.
+- [ ] Run the full active acceptance set against the Vast gateway.
 - [ ] Save `logs/rag_v1_acceptance/<timestamp>/results.jsonl`, `summary.json`, and `report.md`.
 - [ ] Keep full answers disabled unless deliberately performing private review.
 - [ ] Stop or terminate the Vast instance after evidence is captured.
@@ -162,8 +162,8 @@ target.
 - [x] Use run comparisons to track pass/fail, p95 latency, p95 TTFT, source counts, failed IDs,
   zero-source IDs, and manual-review IDs.
 - [x] Expand non-blocking coverage with the candidate suite before promoting any rows beyond the
-  active 18-question gate.
-- [ ] Promote candidate rows only after two clean cloud runs show stable expected topics, sources,
+  active gate.
+- [x] Promote candidate rows only after two clean cloud runs show stable expected topics, sources,
   and latency on the chosen model/retrieval configuration.
 
 Progression gate: at least one cloud full acceptance run passes, manual-review answers are
@@ -173,11 +173,15 @@ path.
 Current status: RunPod parity has passed, including the attachment-enabled synthetic marker UI
 screenshot. Milestone 4 benchmark iteration is active. Vector retrieval plus the FAISS-docstore
 local-guide fallback is the current baseline: hybrid passed automated gates but introduced five
-manual-review IDs. The non-blocking candidate suite now has one clean full RunPod run
-(`logs/rag_v1_acceptance/cloud/runpod/20260804T212908Z`) with `16` pass, `0` fail, and no
-manual-review IDs. Candidate rows should not be promoted into the blocking gate until a second
-clean cloud run confirms stability. Vast setup and Vast comparison are deferred while RunPod is the
-active provider.
+manual-review IDs. The candidate suite now has two clean full RunPod runs
+(`logs/rag_v1_acceptance/cloud/runpod/20260804T212908Z` and
+`logs/rag_v1_acceptance/cloud/runpod/20260805T011326Z`) with `16` pass, `0` fail, and no
+manual-review IDs each. Those `16` candidate rows have been promoted into the active gate. The
+expanded active RunPod gate
+`logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z` passed with `33` executed, `1` skipped
+attachment row, `0` failures, no manual-review IDs, p95 latency `10594.62` ms, p95 TTFT
+`1083.03` ms, and `promotion_ready=true`. Vast setup and Vast comparison are deferred while RunPod
+is the active provider.
 
 Written progress report:
 `project_docs/reports/2026-08-04-cloud-rag-progress-report.md`. Update that report after each
@@ -210,8 +214,9 @@ Default 7B-class estimate:
 
 - Three-question smoke: 30-60 minutes on first run, 10-25 minutes warm, about `$0.10-$0.70` on a
   4090-class GPU.
-- Full 18-question gate: 45-90 minutes on first run, 20-45 minutes warm, about `$0.20-$1.50` on a
-  4090-class GPU.
+- Full active gate: 45-90 minutes on first run, 20-45 minutes warm, about `$0.20-$1.50` on a
+  4090-class GPU. The current warm RunPod A40 expanded gate ran in `360.952` seconds and cost
+  `$0.0741339814` by balance delta.
 - Candidate suite: 45-120 minutes depending on selected question count and model throughput.
 
 Most first-run time is image boot, dependency install, model download, and local FAISS indexing.
@@ -375,10 +380,19 @@ by this plan.
   prompt cues for candidate rows, and isolated cloud SSH known-hosts files per RunPod/Vast
   resource. Targeted RunPod reruns fixed the candidate failures and advisory rows. Final candidate
   suite `logs/rag_v1_acceptance/cloud/runpod/20260804T212908Z` passed `16` of `16` rows with no
-  manual-review IDs. Final active 18-question gate
+  manual-review IDs. Final prior 18-question gate
   `logs/rag_v1_acceptance/cloud/runpod/20260804T213550Z` passed with `17` executed, `1` skipped
   attachment row, `0` failures, no manual-review IDs, p95 latency `14678.81` ms, p95 TTFT
   `637.36` ms, and `promotion_ready=true`.
+- 2026-08-05: Completed the second clean candidate-suite stability run
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T011326Z` with `16` pass, `0` fail, no
+  manual-review IDs, p95 latency `10338.82` ms, p95 TTFT `664.53` ms, runtime `265.054` seconds,
+  and estimated cost `$0.0323954889`. Promoted all `16` candidate rows into the active acceptance
+  gate, then ran expanded gate `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z` with `33`
+  executed, `1` skipped attachment row, `0` failures, no manual-review IDs, p95 latency
+  `10594.62` ms, p95 TTFT `1083.03` ms, runtime `360.952` seconds, and estimated cost
+  `$0.0741339814`. Pod `8lnn3f09cihxvk` was deleted by the runner; post-run `runpodctl pod list`
+  returned `[]` and `currentSpendPerHr` returned `0`.
 
 # Provider References
 

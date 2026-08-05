@@ -5,7 +5,7 @@ plumbing into model, retrieval, and answer-quality improvement.
 
 ## Current Status
 
-- Date: 2026-08-04
+- Date: 2026-08-05
 - Current milestone: Milestone 4, benchmark iteration.
 - Baseline provider: RunPod.
 - Baseline model: `Qwen/Qwen2.5-7B-Instruct` served by `vllm`.
@@ -16,10 +16,10 @@ plumbing into model, retrieval, and answer-quality improvement.
   - `.plans/2026-07-17-cloud-gpu-rag-iteration.md`
   - `.plans/2026-08-04-assistant-ui-gateway-chat.md`
 
-RunPod baseline parity is complete, including the attachment-enabled UI path. Milestone 4 now has a
-clean candidate-suite run and a current clean 18-question gate. The remaining benchmark work is a
-second clean candidate-suite stability run, explicit prompt/model variant comparisons, and eventual
-candidate promotion into the blocking gate.
+RunPod baseline parity is complete, including the attachment-enabled UI path. Milestone 4 now has
+two clean candidate-suite runs and a clean expanded 34-row active gate. Candidate promotion is done;
+the remaining benchmark work is explicit prompt/model variant comparison, plus HPC promotion when
+the chosen cloud configuration is ready to move back to the cluster.
 
 ## Milestone Checklist
 
@@ -32,8 +32,8 @@ candidate promotion into the blocking gate.
 - Milestone 3, RunPod parity: done. Full RunPod gate, live UI screenshot, attachment-enabled live UI
   screenshot, and assistant-ui implementation are complete.
 - Milestone 4, benchmark iteration: active now. Vector-vs-hybrid, candidate-suite coverage,
-  candidate fixes, and a current 18-question full gate are complete on RunPod. A second clean
-  candidate-suite stability run, prompt/model variants, and candidate promotion remain open.
+  candidate fixes, a second clean candidate-suite stability run, candidate promotion, and a clean
+  expanded 34-row active gate are complete on RunPod. Prompt/model variants remain open.
 - Milestone 5, HPC promotion: not started. Wait for chosen cloud config plus clean manual review and
   performance evidence.
 
@@ -148,8 +148,8 @@ not be promoted until those answer-quality regressions are fixed.
   `owner_resources_general_vs_owned`.
 - Cleanup verification: pod `ax7xebfjk9hwy4` was deleted; `runpodctl pod list` returned `[]`.
 
-Decision: do not promote candidate rows yet. Fix the two failing candidate rows and review the five
-manual-review rows before adding any candidate question to the blocking 18-question gate.
+Historical decision at this point: hold promotion until the two failing rows and five manual-review
+rows were fixed and verified cleanly.
 
 ### Candidate Fixes And Current Baseline
 
@@ -187,7 +187,7 @@ Clean candidate-suite evidence:
 - Estimated cost: `$0.0222879408` from balance delta.
 - Pod: `fdpfx8c57lpx00`, deleted by the runner.
 
-Current 18-question baseline gate:
+Previous 18-question baseline gate:
 
 - Run directory: `logs/rag_v1_acceptance/cloud/runpod/20260804T213550Z`
 - Report: `logs/rag_v1_acceptance/cloud/runpod/20260804T213550Z/report.md`
@@ -202,19 +202,60 @@ Current 18-question baseline gate:
 - Estimated cost: `$0.0343698519` from balance delta.
 - Pod: `f54opmyohbat4c`, deleted by the runner.
 
-Promotion decision: keep the current 18-question gate as-is for now. The 16 candidate rows have one
-clean full RunPod run, but the plan requires a second clean cloud run before promoting them into the
-blocking gate.
+Second clean candidate-suite stability run:
+
+- Run directory: `logs/rag_v1_acceptance/cloud/runpod/20260805T011326Z`
+- Report: `logs/rag_v1_acceptance/cloud/runpod/20260805T011326Z/report.md`
+- Summary: `logs/rag_v1_acceptance/cloud/runpod/20260805T011326Z/summary.json`
+- Ledger: `logs/rag_v1_acceptance/cloud/runpod/20260805T011326Z/cloud_run_ledger.md`
+- Result: `16` pass, `0` fail, `promotion_ready=true`.
+- Manual-review IDs: `[]`.
+- p95 latency: `10338.82 ms`.
+- p95 time to first token: `664.53 ms`.
+- Runtime: `265.054 s`.
+- Estimated cost: `$0.0323954889` from runtime times pod rate.
+- Pod: `rzco7hcjn23g79`, deleted by the runner.
+- Candidate comparison:
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T011326Z/comparison.md`
+  versus `logs/rag_v1_acceptance/cloud/runpod/20260804T212908Z`.
+
+Expanded 34-row active gate after candidate promotion:
+
+- Run directory: `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z`
+- Report: `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z/report.md`
+- Summary: `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z/summary.json`
+- Ledger: `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z/cloud_run_ledger.md`
+- Plots:
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z/plots/latency-by-question.svg`,
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z/plots/ttft-by-question.svg`,
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z/plots/source-counts-by-question.svg`
+- Result: `33` pass, `0` fail, `1` skipped attachment row, `promotion_ready=true`.
+- Manual-review IDs: `[]`.
+- Zero-source IDs: `safety_password_request`, `safety_raw_ticket_data`.
+- p95 latency: `10594.62 ms`.
+- p95 time to first token: `1083.03 ms`.
+- Runtime: `360.952 s`.
+- Estimated cost: `$0.0741339814` from balance delta.
+- Pod: `8lnn3f09cihxvk`, deleted by the runner.
+- Expanded-gate comparison:
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T012141Z/comparison.md`
+  versus `logs/rag_v1_acceptance/cloud/runpod/20260804T213550Z`.
+
+Promotion decision: promote the `16` reviewed candidate rows into
+`data/evaluation/acceptance/rag_v1_questions.jsonl`. The promotion gate now has two clean
+candidate-suite runs and one clean expanded active-gate run on the current RunPod A40
+`Qwen/Qwen2.5-7B-Instruct` vector baseline.
 
 ### Cost Ledger Snapshot
 
 - This Milestone 4 RunPod batch from `20260804T202155Z` through `20260804T213550Z`, including the
   one SSH known-hosts failure ledger, has `13` ledger entries, `2985.943 s` of recorded runtime, and
   `$0.3144250890` estimated ledger cost.
-- All timestamped 2026-08-04 RunPod cloud ledgers under `logs/rag_v1_acceptance/cloud/runpod/`
-  currently sum to `15` runs, `3551.786 s` of recorded runtime, and `$0.4190799150` estimated
-  ledger cost.
-- Latest balance check after billing settled: `$9.2110480592`, `currentSpendPerHr=0`, and
+- The 2026-08-05 promotion batch has `2` ledger entries, `626.006 s` of recorded runtime, and
+  `$0.1065294703` estimated ledger cost.
+- All RunPod cloud ledgers under `logs/rag_v1_acceptance/cloud/runpod/` currently sum to `18`
+  ledger entries, `4212.649 s` of recorded runtime, and `$0.5298696853` estimated ledger cost.
+- Latest balance check after billing settled: `$9.1369140778`, `currentSpendPerHr=0`, and
   `runpodctl pod list` returned `[]`.
 - One failed setup attempt is recorded at
   `logs/rag_v1_acceptance/cloud/runpod/cloud_run_ledger/oarc-rag-20260804T212403Z/`. It failed
@@ -226,13 +267,12 @@ blocking gate.
 - No explicit prompt-variant A/B comparison has been run yet; this batch changed the baseline prompt
   cues directly and verified them on RunPod.
 - No model-variant comparison has been run yet.
-- Candidate rows have one clean full candidate-suite cloud run; a second clean run is still needed
-  before promotion into the blocking gate.
-- Vast remains deferred; no current Vast smoke/full-gate evidence exists.
+- Vast remains deferred by current operator decision; no current Vast smoke/full-gate evidence
+  exists.
 - No HPC promotion run has started.
 
 ## Next Update
 
-The next report update should be appended after the second clean candidate-suite stability run, the
-first explicit prompt/model variant, or the first HPC promotion attempt. Include run directories,
-comparison artifacts, cost/runtime ledgers, model/retrieval settings, and the promotion decision.
+The next report update should be appended after the first explicit prompt/model variant or the first
+HPC promotion attempt. Include run directories, comparison artifacts, cost/runtime ledgers,
+model/retrieval settings, and the promotion decision.

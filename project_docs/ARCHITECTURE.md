@@ -592,7 +592,9 @@ metrics.
 approved Markdown roots. It skips `docs/servicenow`, writes JSONL candidates with expected topics,
 source hints, and reference excerpts, and is intended to feed review before rows are promoted into
 the active acceptance set. The reviewed candidate seed suite lives at
-`data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`.
+`data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`. The current active gate in
+`data/evaluation/acceptance/rag_v1_questions.jsonl` includes the original acceptance rows plus the
+candidate rows promoted after two clean RunPod runs on 2026-08-05.
 
 Operational details and cost/runtime estimates live in `docs/cloud-gpu-rag-runbook.md`.
 
