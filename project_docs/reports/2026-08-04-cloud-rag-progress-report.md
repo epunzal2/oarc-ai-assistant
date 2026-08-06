@@ -343,6 +343,61 @@ explicitly says otherwise. Compare every new run against the current baseline
    prompt comparisons. Treat L40S/32B as a separate quantization or serving experiment unless the
    current full-precision vLLM command is proven to fit.
 
+### Milestone 4 Report Table Draft
+
+Use this table as the main Milestone 4 comparison surface. Fill each row from the run directory's
+`summary.json`, `results.jsonl`, `report.md`, `cloud_run_ledger.json`, and generated plots.
+
+Run inventory:
+
+| Run | Model | GPU | Prompt | Status |
+| --- | --- | --- | --- | --- |
+| A40 7B baseline | `Qwen2.5-7B` | A40 | current | done |
+| 4090 7B | `Qwen2.5-7B` | RTX 4090 | current | planned |
+| A40 14B | `Qwen2.5-14B` | A40 | current | planned |
+| L40S 14B | `Qwen2.5-14B` | L40S | current | conditional |
+| A100 14B | `Qwen2.5-14B` | A100 80GB | current | conditional |
+| 7B strict prompt | selected 7B | selected 7B GPU | citation-strict-refusal | blocked |
+| 7B concise prompt | selected 7B | selected 7B GPU | concise-procedure | blocked |
+| A100 32B | `Qwen2.5-32B` | A100 80GB | best prompt | planned |
+
+Completed metrics:
+
+| Run | Pass/fail/skip | Manual review | p95 latency | p95 TTFT | Runtime | Cost | Cost/question |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| A40 7B baseline | 90/0/1 | 39 | 10773.45 | 861.33 | 601.849 | $0.0718145704 | $0.000798 |
+
+Planned rows should fill the same completed-metrics columns, plus a short decision note:
+`promote`, `reject`, `rerun targeted subset`, or `exploratory only`.
+
+Report each comparison with these derived deltas:
+
+- pass/fail/skipped delta versus the current best run;
+- manual-review IDs added, removed, and unchanged;
+- p95 latency and p95 TTFT deltas;
+- total cost, runtime, and cost per executed question;
+- zero-source positive IDs and safety/refusal regressions;
+- recommendation: promote, reject, rerun targeted subset, or keep as exploratory.
+
+### Milestone 4 Deliverables
+
+- Frozen datasets: `data/evaluation/acceptance/rag_v1_questions.jsonl` for the blocking gate and
+  `data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl` for comparisons.
+- Baseline evidence: completed A40 7B run
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z` with full answers, ledger, report, and
+  plots.
+- GPU comparison package: 4090 versus A40 report, ledger comparison, plot links, and default
+  RunPod iteration GPU decision.
+- Model comparison package: 14B versus 7B result, manual-review deltas, source-quality notes, and
+  whether 14B is worth using for the chatbot.
+- Larger-GPU package: L40S/A100 results if run, including fit, latency, and cost tradeoffs.
+- Prompt package: prompt selector implementation, prompt variant report, and chosen prompt or
+  rollback decision.
+- 32B package: A100 32B trial report with memory/serving outcome and quality/cost verdict.
+- Final Milestone 4 recommendation memo: selected production-candidate config or no-go, including
+  model, GPU, retrieval mode, prompt, context settings, attachment posture, expected cost/runtime,
+  remaining risks, and whether to continue RunPod tuning or start HPC promotion.
+
 Resume checklist after connecting Rutgers VPN with Cisco AnyConnect:
 
 ```bash

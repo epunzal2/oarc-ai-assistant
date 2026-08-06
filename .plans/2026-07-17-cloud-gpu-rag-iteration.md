@@ -195,6 +195,26 @@ target.
   comparisons. Treat L40S for 32B as a separate quantization/serving experiment unless vLLM memory
   checks show the current full-precision command fits.
 
+Milestone 4 deliverables:
+
+- [x] Frozen benchmark data: 34-question blocking gate plus reviewed 91-question non-blocking
+  comparison suite.
+- [x] Baseline report: Qwen2.5-7B on RunPod A40 with full-answer transcripts, ledger, plots,
+  pass/fail summary, and manual-review queue.
+- [ ] GPU cost/runtime report: Qwen2.5-7B on RunPod 4090 versus the A40 baseline, including cost
+  per executed question and default RunPod iteration GPU recommendation.
+- [ ] Model-quality report: Qwen2.5-14B versus selected 7B baseline, with manual-review deltas and
+  source-quality notes.
+- [ ] Larger-GPU report: 14B on L40S/A100 if A40 is promising or blocked, with fit/performance/cost
+  decision.
+- [ ] Prompt-variant report: recorded prompt selector plus baseline/current, citation-strict, and
+  concise-procedure comparisons.
+- [ ] 32B trial report: Qwen2.5-32B on A100, including memory/serving outcome, quality deltas, and
+  whether 32B is worth further optimization.
+- [ ] Milestone 4 recommendation memo: chosen production-candidate config or explicit no-go,
+  including model, GPU class, retrieval mode, prompt variant, context settings, attachment posture,
+  expected cost/runtime, remaining manual-review risks, and next RunPod/HPC action.
+
 Progression gate: the RunPod iteration loop produces a production-candidate configuration with
 clean 34-question blocking gates, a clean or explicitly reviewed 91-question benchmark, acceptable
 manual-review answers, recorded UI/attachment evidence, and a clear cost/latency tradeoff. HPC
