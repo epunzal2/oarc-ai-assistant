@@ -64,12 +64,20 @@ community software, ownership, license review, research-data service selection, 
 
 ## Remaining Runs
 
-Reuse exactly the same suite for the requested comparisons:
+Reuse exactly the same suite for the requested comparisons, with `--full-acceptance`,
+`--include-full-answer`, and `--retrieval-mode vector` unless a run explicitly tests retrieval:
 
-- RTX 4090 versus A40 cost/runtime
-- `Qwen/Qwen2.5-14B-Instruct` versus the 7B baseline
-- A100 and L40S GPU options
-- one roughly 32B-class instruct model after the 14B/GPU baselines
+- `Qwen/Qwen2.5-7B-Instruct` on `NVIDIA GeForce RTX 4090` versus the completed A40 baseline.
+  Compare pass/fail, manual-review rows, p95 latency, p95 TTFT, runtime, total cost, and cost per
+  executed question.
+- `Qwen/Qwen2.5-14B-Instruct` on `NVIDIA A40` versus the selected 7B baseline. Start on A40
+  because the current vLLM command is full precision and may not fit the 24 GB 4090.
+- `Qwen/Qwen2.5-14B-Instruct` on `NVIDIA L40S` and `NVIDIA A100 80GB PCIe` if the A40 14B run is
+  promising or blocked by memory/performance.
+- Prompt variants after adding a recorded selector: `baseline-current`, `citation-strict-refusal`,
+  and `concise-procedure`, first on the cheapest clean 7B/GPU baseline.
+- `Qwen/Qwen2.5-32B-Instruct` on `NVIDIA A100 80GB PCIe` after the 14B/GPU/prompt baselines.
+  Treat L40S/32B as a separate quantization or serving experiment.
 
 No private ServiceNow task JSON, secrets, `.env` files, or raw private corpus should be uploaded for
 these runs.

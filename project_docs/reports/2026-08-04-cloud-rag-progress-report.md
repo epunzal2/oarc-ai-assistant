@@ -20,7 +20,8 @@ RunPod baseline parity is complete, including the attachment-enabled UI path. Mi
 two clean candidate-suite runs, a clean expanded 34-row active gate, and a frozen 91-question
 benchmark suite for RunPod model/GPU/config comparisons. Candidate promotion and the 91-question
 RunPod A40 baseline are done; the next benchmark work is explicit GPU, prompt, and model variant
-comparisons.
+comparisons on RunPod. HPC promotion is intentionally deferred until this loop selects a
+production-candidate chatbot configuration.
 
 ## Milestone Checklist
 
@@ -37,8 +38,8 @@ comparisons.
   expanded 34-row active gate, a reviewed 91-question benchmark suite, and the 91-question RunPod
   A40 baseline are complete. The 4090/A40 cost comparison, Qwen 14B comparison, A100/L40S GPU
   comparison, prompt variants, and roughly 32B-class model trial remain open.
-- Milestone 5, HPC promotion: not started. Wait for chosen cloud config plus clean manual review and
-  performance evidence.
+- Milestone 5, HPC promotion: deferred by design. Resume only after RunPod selects a
+  production-candidate model/GPU/retrieval/prompt/context/UI configuration.
 
 ## Evidence So Far
 
@@ -313,6 +314,35 @@ Benchmark decision: use this run as the current A40/Qwen2.5-7B/vector baseline f
 4090/A40, Qwen2.5-14B, A100/L40S, prompt-variant, and roughly 32B-class comparisons. Keep the
 34-question active gate as the blocking smoke/regression gate.
 
+### Specific RunPod Benchmark Queue
+
+Use `data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl` for every run below, with
+`--full-acceptance`, `--include-full-answer`, and `--retrieval-mode vector` unless the row
+explicitly says otherwise. Compare every new run against the current baseline
+`logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z`, then against the current best run.
+
+1. RTX 4090 cost/runtime check for the 7B baseline:
+   `--model Qwen/Qwen2.5-7B-Instruct --runpod-gpu "NVIDIA GeForce RTX 4090"`. Decide whether the
+   cheaper/faster 4090 can replace A40 for routine 7B iterations using zero new failures, no worse
+   manual-review queue, p95 latency/TTFT, runtime, cost, and cost per executed question.
+2. Qwen 14B quality check on A40:
+   `--model Qwen/Qwen2.5-14B-Instruct --runpod-gpu "NVIDIA A40"`. Use A40 before 4090 because the
+   runner currently starts full-precision vLLM without quantization flags, and 24 GB may not fit
+   14B plus context.
+3. Larger-model GPU check:
+   run the same Qwen 14B command on `NVIDIA L40S` and `NVIDIA A100 80GB PCIe` only if the A40 14B
+   result is promising or blocked by memory/performance. Pick by clean gates first, then cost per
+   executed question and p95 latency.
+4. Prompt-variant A/B check:
+   first add a recorded prompt selector, such as `--prompt-variant` or `RAG_PROMPT_VARIANT`, then
+   compare `baseline-current`, `citation-strict-refusal`, and `concise-procedure` on the cheapest
+   clean 7B/GPU baseline. Promote a prompt only if it reduces manual-review issues without adding
+   failures or materially worsening latency.
+5. 32B-class trial:
+   run `--model Qwen/Qwen2.5-32B-Instruct --runpod-gpu "NVIDIA A100 80GB PCIe"` after the 14B and
+   prompt comparisons. Treat L40S/32B as a separate quantization or serving experiment unless the
+   current full-precision vLLM command is proven to fit.
+
 Resume checklist after connecting Rutgers VPN with Cisco AnyConnect:
 
 ```bash
@@ -418,17 +448,19 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
 - The 91-question RunPod A40 baseline is complete; its `39` manual-review rows still need
   qualitative review before using the benchmark as HPC promotion evidence.
 - No explicit prompt-variant A/B comparison has been run yet; the earlier batch changed baseline
-  prompt cues directly and verified them on RunPod.
-- No model-variant comparison has been run yet. The queued order is 4090 versus A40 cost/runtime,
-  then Qwen2.5-14B, then A100/L40S comparisons and one roughly 32B-class instruct model.
+  prompt cues directly and verified them on RunPod. Prompt variants need a recorded selector before
+  they become proper benchmark evidence.
+- No model-variant comparison has been run yet. The queued order is 4090 versus A40 for
+  Qwen2.5-7B, Qwen2.5-14B on A40, optional 14B L40S/A100 GPU comparison, prompt variants on the
+  cheapest clean 7B baseline, and one Qwen2.5-32B A100 trial.
 - Vast remains deferred by current operator decision; no current Vast smoke/full-gate evidence
   exists.
-- HPC promotion preflight is blocked until Cisco AnyConnect is connected to Rutgers VPN and Amarel
-  DNS resolves from the laptop.
+- HPC promotion is intentionally deferred until the RunPod benchmark loop selects a
+  production-candidate chatbot configuration. A previous VPN/DNS preflight remains useful context,
+  but it is not blocking the current RunPod iteration work.
 
 ## Next Update
 
-The next report update should be appended after either the 4090/A40 benchmark comparison or Rutgers
-VPN reconnection plus HPC sync. Include run directories, comparison artifacts, model/retrieval
-settings, GPU type, runtime, cost, Slurm job IDs when applicable, compute host, tunnel port, and
-the promotion decision.
+The next report update should be appended after the 4090/A40 Qwen2.5-7B comparison. Include run
+directories, comparison artifacts, model/retrieval settings, GPU type, runtime, cost, cost per
+executed question, manual-review deltas, and the chosen default RunPod iteration GPU.

@@ -171,14 +171,35 @@ target.
   context-window comparisons while keeping the 34-question gate as the blocking suite.
 - [x] Run the 91-question benchmark suite on the current RunPod A40
   `Qwen/Qwen2.5-7B-Instruct` vector baseline with full-answer transcripts.
-- [ ] Run a RunPod RTX 4090 versus A40 cost/runtime comparison using the same 91-question suite.
-- [ ] Compare `Qwen/Qwen2.5-14B-Instruct` against the 7B baseline on the same suite.
-- [ ] Compare A100 and L40S GPU options for larger models.
-- [ ] Trial one roughly 32B-class instruct model after the 14B and GPU-cost baselines are captured.
+- [ ] Run `Qwen/Qwen2.5-7B-Instruct` on `NVIDIA GeForce RTX 4090` using the same 91-question
+  suite, `--retrieval-mode vector`, and `--include-full-answer`; compare against A40 baseline
+  `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z` on pass/fail, manual-review count,
+  p95 latency, p95 TTFT, runtime, cost, and cost per executed question.
+- [ ] If the 4090 run has no new failures and no worse manual-review queue than A40, promote the
+  cheaper/faster 7B GPU as the default RunPod iteration GPU; otherwise keep A40 as the baseline.
+- [ ] Run `Qwen/Qwen2.5-14B-Instruct` on `NVIDIA A40` first, because the current runner serves
+  full-precision vLLM without quantization flags and a 24 GB 4090 may not fit the 14B model plus
+  context. Compare against the selected 7B/GPU baseline on automated gates, manual-review answers,
+  latency, TTFT, source quality, and cost per executed question.
+- [ ] Run the 14B model on `NVIDIA L40S` and `NVIDIA A100 80GB PCIe` only after the A40 14B run is
+  informative or blocked by memory/performance; pick the larger-model GPU by clean gates first,
+  then by cost per executed question and p95 latency.
+- [ ] Add a prompt-variant selector before A/B prompt runs, such as `--prompt-variant` or
+  `RAG_PROMPT_VARIANT`, and record the selected variant in `summary.json` and
+  `cloud_run_ledger.json`.
+- [ ] Run prompt variants on the cheapest clean 7B/GPU baseline before larger-model reruns:
+  `baseline-current`, `citation-strict-refusal` for stronger no-evidence behavior, and
+  `concise-procedure` for shorter command/procedure answers. Promote a prompt only if it has zero
+  automated failures and reduces manual-review issues without materially worsening p95 latency.
+- [ ] Trial `Qwen/Qwen2.5-32B-Instruct` on `NVIDIA A100 80GB PCIe` after the 14B and prompt
+  comparisons. Treat L40S for 32B as a separate quantization/serving experiment unless vLLM memory
+  checks show the current full-precision command fits.
 
-Progression gate: at least one cloud full acceptance run passes, manual-review answers are
-acceptable, and the chosen model/retrieval/prompt configuration has an HPC-equivalent deployment
-path.
+Progression gate: the RunPod iteration loop produces a production-candidate configuration with
+clean 34-question blocking gates, a clean or explicitly reviewed 91-question benchmark, acceptable
+manual-review answers, recorded UI/attachment evidence, and a clear cost/latency tradeoff. HPC
+equivalence is checked after that; it is not required before the RunPod model/GPU/prompt search is
+finished.
 
 Current status: RunPod parity has passed, including the attachment-enabled synthetic marker UI
 screenshot. Milestone 4 benchmark iteration is active. Vector retrieval plus the FAISS-docstore
@@ -196,9 +217,10 @@ full-answer baseline:
 `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z` passed with `90` executed, `1` skipped
 attachment row, `0` failures, `39` advisory manual-review IDs, p95 latency `10773.45` ms, p95
 TTFT `861.33` ms, runtime `601.849` seconds, estimated cost `$0.0718145704`, and
-`promotion_ready=true`. The next benchmark evidence steps are 4090 versus A40 cost/runtime,
-Qwen2.5-14B, A100/L40S, prompt variants, and a roughly 32B-class instruct model. Vast setup and
-Vast comparison are deferred while RunPod is the active provider.
+`promotion_ready=true`. The next benchmark evidence steps are, in order: 4090 versus A40 for the
+same Qwen2.5-7B run, Qwen2.5-14B on A40, 14B on L40S/A100 if useful, prompt-variant A/B support
+and runs, and then one Qwen2.5-32B A100 trial. Vast setup, Vast comparison, and HPC promotion are
+deferred while RunPod is the active iteration provider.
 
 Written progress report:
 `project_docs/reports/2026-08-04-cloud-rag-progress-report.md`. Update that report after each
@@ -214,16 +236,18 @@ pass/fail result.
   `rag_sources`.
 - [ ] Run the acceptance harness through the HPC tunnel before any broader demo.
 
-HPC promotion is allowed only when a cloud full acceptance run passes, manual-review answers are
-acceptable, the Research Pro rubric reveals no missing critical categories, and the chosen cloud
-configuration has an HPC equivalent for model, index, retrieval mode, and gateway environment
-variables.
+HPC promotion is the final production-port gate, not the current workstream. Do not resume this
+milestone until the RunPod loop has selected a production-candidate model, GPU/serving assumptions,
+retrieval mode, prompt variant, context settings, and UI/attachment posture. Promotion then proves
+that the chosen RunPod configuration has an HPC-equivalent deployment for model, index, retrieval
+mode, prompt/config environment variables, Slurm launch, tunnel, gateway health, and acceptance
+results.
 
-Current HPC promotion attempt: preflight reached the laptop network boundary on 2026-08-05. Cisco
-AnyConnect was installed but disconnected, and local DNS could not resolve `amarel.rutgers.edu`,
+Current HPC status: intentionally deferred. A 2026-08-05 preflight reached the laptop network
+boundary, found Cisco AnyConnect disconnected, and could not resolve `amarel.rutgers.edu`,
 `amarel-new.hpc.rutgers.edu`, or `ondemand.hpc.rutgers.edu`. No files were synced, no ServiceNow
-data was transferred, and no Slurm job was submitted. Resume this milestone after connecting the
-Rutgers VPN with Cisco AnyConnect.
+data was transferred, and no Slurm job was submitted. Resume this milestone only after the RunPod
+benchmark loop has a production-candidate configuration and the Rutgers VPN is connected.
 
 # Cost & Runtime Estimate
 
