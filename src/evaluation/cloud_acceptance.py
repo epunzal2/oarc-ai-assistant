@@ -170,6 +170,10 @@ class CloudRunConfig:
     runpod_image: str = DEFAULT_RUNPOD_IMAGE
     runpod_template_id: str | None = DEFAULT_RUNPOD_TEMPLATE_ID
     runpod_gpu: str | None = None
+    runpod_cloud_type: str | None = None
+    runpod_data_center_ids: str | None = None
+    runpod_public_ip: bool = False
+    runpod_global_networking: bool = False
     runpod_container_disk_gb: int = 40
     runpod_terminate_after_hours: int = 3
     vast_image: str = DEFAULT_VAST_IMAGE
@@ -352,6 +356,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runpod-image", default=DEFAULT_RUNPOD_IMAGE)
     parser.add_argument("--runpod-template-id", default=DEFAULT_RUNPOD_TEMPLATE_ID)
     parser.add_argument("--runpod-gpu")
+    parser.add_argument(
+        "--runpod-cloud-type",
+        choices=("SECURE", "COMMUNITY"),
+        help="Optional RunPod cloud type passed to `runpodctl pod create`.",
+    )
+    parser.add_argument(
+        "--runpod-data-center-ids",
+        help="Optional comma-separated RunPod data center ids passed to pod create.",
+    )
+    parser.add_argument("--runpod-public-ip", action="store_true")
+    parser.add_argument("--runpod-global-networking", action="store_true")
     parser.add_argument("--runpod-container-disk-gb", type=int, default=40)
     parser.add_argument("--runpod-terminate-after-hours", type=int, default=3)
     parser.add_argument("--vast-image", default=DEFAULT_VAST_IMAGE)
@@ -426,6 +441,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         runpod_image=args.runpod_image,
         runpod_template_id=args.runpod_template_id,
         runpod_gpu=args.runpod_gpu,
+        runpod_cloud_type=args.runpod_cloud_type,
+        runpod_data_center_ids=args.runpod_data_center_ids,
+        runpod_public_ip=args.runpod_public_ip,
+        runpod_global_networking=args.runpod_global_networking,
         runpod_container_disk_gb=args.runpod_container_disk_gb,
         runpod_terminate_after_hours=args.runpod_terminate_after_hours,
         vast_image=args.vast_image,
@@ -973,6 +992,14 @@ def runpod_create_command(config: CloudRunConfig, gpu: str | None = None) -> lis
         command.extend(["--template-id", config.runpod_template_id])
     else:
         command.extend(["--image", config.runpod_image])
+    if config.runpod_cloud_type:
+        command.extend(["--cloud-type", config.runpod_cloud_type])
+    if config.runpod_data_center_ids:
+        command.extend(["--data-center-ids", config.runpod_data_center_ids])
+    if config.runpod_public_ip:
+        command.append("--public-ip")
+    if config.runpod_global_networking:
+        command.append("--global-networking")
     if config.runpod_terminate_after_hours > 0:
         command.extend(
             [

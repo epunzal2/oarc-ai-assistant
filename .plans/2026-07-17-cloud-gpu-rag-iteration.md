@@ -171,11 +171,11 @@ target.
   context-window comparisons while keeping the 34-question gate as the blocking suite.
 - [x] Run the 91-question benchmark suite on the current RunPod A40
   `Qwen/Qwen2.5-7B-Instruct` vector baseline with full-answer transcripts.
-- [ ] Run `Qwen/Qwen2.5-7B-Instruct` on `NVIDIA GeForce RTX 4090` using the same 91-question
+- [x] Run `Qwen/Qwen2.5-7B-Instruct` on `NVIDIA GeForce RTX 4090` using the same 91-question
   suite, `--retrieval-mode vector`, and `--include-full-answer`; compare against A40 baseline
   `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z` on pass/fail, manual-review count,
   p95 latency, p95 TTFT, runtime, cost, and cost per executed question.
-- [ ] If the 4090 run has no new failures and no worse manual-review queue than A40, promote the
+- [x] If the 4090 run has no new failures and no worse manual-review queue than A40, promote the
   cheaper/faster 7B GPU as the default RunPod iteration GPU; otherwise keep A40 as the baseline.
 - [ ] Run `Qwen/Qwen2.5-14B-Instruct` on `NVIDIA A40` first, because the current runner serves
   full-precision vLLM without quantization flags and a 24 GB 4090 may not fit the 14B model plus
@@ -201,7 +201,7 @@ Milestone 4 deliverables:
   comparison suite.
 - [x] Baseline report: Qwen2.5-7B on RunPod A40 with full-answer transcripts, ledger, plots,
   pass/fail summary, and manual-review queue.
-- [ ] GPU cost/runtime report: Qwen2.5-7B on RunPod 4090 versus the A40 baseline, including cost
+- [x] GPU cost/runtime report: Qwen2.5-7B on RunPod 4090 versus the A40 baseline, including cost
   per executed question and default RunPod iteration GPU recommendation.
 - [ ] Model-quality report: Qwen2.5-14B versus selected 7B baseline, with manual-review deltas and
   source-quality notes.
@@ -237,10 +237,15 @@ full-answer baseline:
 `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z` passed with `90` executed, `1` skipped
 attachment row, `0` failures, `39` advisory manual-review IDs, p95 latency `10773.45` ms, p95
 TTFT `861.33` ms, runtime `601.849` seconds, estimated cost `$0.0718145704`, and
-`promotion_ready=true`. The next benchmark evidence steps are, in order: 4090 versus A40 for the
-same Qwen2.5-7B run, Qwen2.5-14B on A40, 14B on L40S/A100 if useful, prompt-variant A/B support
-and runs, and then one Qwen2.5-32B A100 trial. Vast setup, Vast comparison, and HPC promotion are
-deferred while RunPod is the active iteration provider.
+`promotion_ready=true`. The frozen 91-question RTX 4090 run
+`logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z` also passed with `90` executed, `1`
+skipped attachment row, `0` failures, p95 latency `5652.14` ms, p95 TTFT `605.62` ms, runtime
+`387.9` seconds, estimated cost `$0.0547255185`, and `promotion_ready=true`, but it added two
+advisory manual-review rows versus A40. Keep A40 as the quality baseline for now; use pinned
+secure RunPod `EU-RO-1` RTX 4090 as a speed/cost candidate pending targeted review or rerun. The
+next benchmark evidence steps are, in order: Qwen2.5-14B on A40, 14B on L40S/A100 if useful,
+prompt-variant A/B support and runs, and then one Qwen2.5-32B A100 trial. Vast setup, Vast
+comparison, and HPC promotion are deferred while RunPod is the active iteration provider.
 
 Written progress report:
 `project_docs/reports/2026-08-04-cloud-rag-progress-report.md`. Update that report after each
@@ -489,6 +494,22 @@ by this plan.
   TTFT `861.33` ms, runtime `601.849` seconds, estimated cost `$0.0718145704`, and
   `promotion_ready=true`. Pod `smckc97h8phopr` was deleted by the runner; post-run
   `runpodctl pod list` returned `[]` and `currentSpendPerHr` returned `0`.
+- 2026-08-07: Ran the frozen 91-question RunPod RTX 4090
+  `Qwen/Qwen2.5-7B-Instruct` vector benchmark with full-answer transcripts. Unpinned secure 4090
+  provisioning was unreliable, community 4090 create attempts failed before pod creation, and the
+  successful run used pinned secure placement `--runpod-data-center-ids EU-RO-1` with the explicit
+  PyTorch image. Final run `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z` passed with
+  `90` executed, `1` skipped attachment row, `0` failures, `41` advisory manual-review IDs, p95
+  latency `5652.14` ms, p95 TTFT `605.62` ms, runtime `387.9` seconds, estimated cost
+  `$0.0547255185`, and `promotion_ready=true`. Pod `n8mllih723tzqg` was deleted by the runner;
+  post-run `runpodctl pod list` returned `[]` and `currentSpendPerHr` returned `0`. The 4090
+  successful run was about `35.6%` faster and `23.8%` cheaper than A40, but added
+  `amarel_access_external_guest_netid` and `community_lmod_modulefile_required` to the advisory
+  manual-review queue. Decision: keep A40 as the quality baseline and use pinned `EU-RO-1` RTX
+  4090 as a speed/cost candidate pending targeted review or rerun. Post-verification RunPod
+  balance settled to `$8.6359040964`, so total M4 4090 batch spend from the preflight balance
+  `$8.8800553815` was about `$0.2441512851`, including failed/stopped launch/setup attempts and
+  delayed provider balance updates.
 
 # Provider References
 

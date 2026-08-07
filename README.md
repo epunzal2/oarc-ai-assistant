@@ -424,6 +424,21 @@ and deletes provider-created compute by default.
   --include-full-answer
 ```
 
+For RunPod GPU comparison runs, the wrapper can pass placement flags through to `runpodctl`.
+This is useful when aggregate GPU availability is healthy but unpinned pod placement is unreliable:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --runpod-template-id "" \
+  --runpod-cloud-type SECURE \
+  --runpod-data-center-ids EU-RO-1 \
+  --runpod-gpu "NVIDIA GeForce RTX 4090" \
+  --execute \
+  --full-acceptance \
+  --include-full-answer
+```
+
 Executed cloud runs also write `cloud_run_ledger.json` and `cloud_run_ledger.md` next to the
 acceptance artifacts. The ledger records sanitized start/end balances, provider resource ID,
 requested GPU, runtime, estimated cost, cleanup status, question subset, answer-capture mode, and

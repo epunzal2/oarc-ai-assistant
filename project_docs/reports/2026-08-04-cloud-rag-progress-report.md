@@ -5,7 +5,7 @@ plumbing into model, retrieval, and answer-quality improvement.
 
 ## Current Status
 
-- Date: 2026-08-05
+- Date: 2026-08-07
 - Current milestone: Milestone 4, benchmark iteration.
 - Baseline provider: RunPod.
 - Baseline model: `Qwen/Qwen2.5-7B-Instruct` served by `vllm`.
@@ -18,10 +18,10 @@ plumbing into model, retrieval, and answer-quality improvement.
 
 RunPod baseline parity is complete, including the attachment-enabled UI path. Milestone 4 now has
 two clean candidate-suite runs, a clean expanded 34-row active gate, and a frozen 91-question
-benchmark suite for RunPod model/GPU/config comparisons. Candidate promotion and the 91-question
-RunPod A40 baseline are done; the next benchmark work is explicit GPU, prompt, and model variant
-comparisons on RunPod. HPC promotion is intentionally deferred until this loop selects a
-production-candidate chatbot configuration.
+benchmark suite for RunPod model/GPU/config comparisons. Candidate promotion, the 91-question
+RunPod A40 baseline, and the first 4090/A40 cost-runtime comparison are done. The next benchmark
+work is 14B model quality, prompt variants, and larger-GPU trials on RunPod. HPC promotion is
+intentionally deferred until this loop selects a production-candidate chatbot configuration.
 
 ## Milestone Checklist
 
@@ -35,9 +35,9 @@ production-candidate chatbot configuration.
   screenshot, and assistant-ui implementation are complete.
 - Milestone 4, benchmark iteration: active now. Vector-vs-hybrid, candidate-suite coverage,
   candidate fixes, a second clean candidate-suite stability run, candidate promotion, a clean
-  expanded 34-row active gate, a reviewed 91-question benchmark suite, and the 91-question RunPod
-  A40 baseline are complete. The 4090/A40 cost comparison, Qwen 14B comparison, A100/L40S GPU
-  comparison, prompt variants, and roughly 32B-class model trial remain open.
+  expanded 34-row active gate, a reviewed 91-question benchmark suite, the 91-question RunPod A40
+  baseline, and the 4090/A40 cost-runtime comparison are complete. Qwen 14B comparison,
+  A100/L40S GPU comparison, prompt variants, and roughly 32B-class model trial remain open.
 - Milestone 5, HPC promotion: deferred by design. Resume only after RunPod selects a
   production-candidate model/GPU/retrieval/prompt/context/UI configuration.
 
@@ -314,6 +314,57 @@ Benchmark decision: use this run as the current A40/Qwen2.5-7B/vector baseline f
 4090/A40, Qwen2.5-14B, A100/L40S, prompt-variant, and roughly 32B-class comparisons. Keep the
 34-question active gate as the blocking smoke/regression gate.
 
+### 91-Question RunPod RTX 4090 Cost-Runtime Check
+
+- Run directory: `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z`
+- Report: `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z/report.md`
+- Summary: `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z/summary.json`
+- Ledger: `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z/cloud_run_ledger.md`
+- Comparison: `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z/comparison.md`
+- Plots:
+  `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z/plots/latency-by-question.svg`,
+  `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z/plots/ttft-by-question.svg`,
+  `logs/rag_v1_acceptance/cloud/runpod/20260807T021803Z/plots/source-counts-by-question.svg`
+- Questions: `90` executed, `1` skipped synthetic attachment row, `91` total.
+- Result: `90` pass, `0` fail, `promotion_ready=true`.
+- Manual-review IDs: `41` advisory rows, `+2` versus A40. Added IDs:
+  `amarel_access_external_guest_netid`, `community_lmod_modulefile_required`; removed IDs: none.
+- Full answers: included in `results.jsonl`.
+- Model: `Qwen/Qwen2.5-7B-Instruct`.
+- Retrieval mode: `vector`, with local-guide fallback enabled.
+- p50/p95 latency: `2024.88` ms / `5652.14` ms.
+- p50/p95 time to first token: `504.59` ms / `605.62` ms.
+- Runtime: `387.9 s`.
+- Estimated cost: `$0.0547255185` from balance delta.
+- Cost per executed question: `$0.000608`.
+- Pod: `n8mllih723tzqg`, deleted by the runner.
+- Cleanup verification: `runpodctl pod list` returned `[]`; `currentSpendPerHr` returned `0`.
+
+Comparison against A40 baseline `20260805T192820Z`:
+
+- Pass/fail/skip: unchanged at `90/0/1`.
+- p95 latency delta: `-5121.31` ms; p95 TTFT delta: `-255.71` ms.
+- Runtime delta: `-213.949 s`, about `35.6%` faster.
+- Cost delta: `-$0.0170890519`, about `23.8%` cheaper for the successful measured run.
+- Source-count p50/p95 deltas: unchanged at `0.0`.
+
+Launch notes:
+
+- Unpinned secure 4090 attempts were not reliable: one no-pod GraphQL create failure and two
+  rented pods that stayed at `pod not ready`/`uptimeSeconds=0`.
+- Community 4090 create attempts failed before pod creation with RunPod resource-allocation errors.
+- The successful path pinned secure 4090 placement to `EU-RO-1` and used the explicit PyTorch
+  image rather than the template.
+- Failed/stopped 4090 launch/setup attempts before the successful measured run cost about
+  `$0.1494992722` before delayed provider balance updates. The successful run ledger recorded an
+  immediate `$0.0547255185` balance delta. The post-verification RunPod account balance was
+  `$8.6359040964`, making total M4 4090 batch spend from the preflight balance
+  `$8.8800553815` about `$0.2441512851`.
+
+Benchmark decision: keep the A40 7B run as the quality baseline for now because the 4090 run added
+two advisory manual-review rows. Treat the pinned `EU-RO-1` RTX 4090 path as the current speed/cost
+candidate for 7B after a targeted review or rerun confirms those two added rows are acceptable.
+
 ### Specific RunPod Benchmark Queue
 
 Use `data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl` for every run below, with
@@ -353,7 +404,7 @@ Run inventory:
 | Run | Model | GPU | Prompt | Status |
 | --- | --- | --- | --- | --- |
 | A40 7B baseline | `Qwen2.5-7B` | A40 | current | done |
-| 4090 7B | `Qwen2.5-7B` | RTX 4090 | current | planned |
+| 4090 7B | `Qwen2.5-7B` | RTX 4090 | current | done |
 | A40 14B | `Qwen2.5-14B` | A40 | current | planned |
 | L40S 14B | `Qwen2.5-14B` | L40S | current | conditional |
 | A100 14B | `Qwen2.5-14B` | A100 80GB | current | conditional |
@@ -366,6 +417,7 @@ Completed metrics:
 | Run | Pass/fail/skip | Manual review | p95 latency | p95 TTFT | Runtime | Cost | Cost/question |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | A40 7B baseline | 90/0/1 | 39 | 10773.45 | 861.33 | 601.849 | $0.0718145704 | $0.000798 |
+| 4090 7B | 90/0/1 | 41 | 5652.14 | 605.62 | 387.9 | $0.0547255185 | $0.000608 |
 
 Planned rows should fill the same completed-metrics columns, plus a short decision note:
 `promote`, `reject`, `rerun targeted subset`, or `exploratory only`.
@@ -386,8 +438,9 @@ Report each comparison with these derived deltas:
 - Baseline evidence: completed A40 7B run
   `logs/rag_v1_acceptance/cloud/runpod/20260805T192820Z` with full answers, ledger, report, and
   plots.
-- GPU comparison package: 4090 versus A40 report, ledger comparison, plot links, and default
-  RunPod iteration GPU decision.
+- GPU comparison package: completed 4090 versus A40 report, ledger comparison, plot links, and
+  default RunPod iteration GPU decision. Keep A40 as quality baseline; keep pinned `EU-RO-1` 4090
+  as a speed/cost candidate pending targeted review or rerun of the two added manual-review rows.
 - Model comparison package: 14B versus 7B result, manual-review deltas, source-quality notes, and
   whether 14B is worth using for the chatbot.
 - Larger-GPU package: L40S/A100 results if run, including fit, latency, and cost tradeoffs.
@@ -501,13 +554,15 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
 ## Current Gaps
 
 - The 91-question RunPod A40 baseline is complete; its `39` manual-review rows still need
-  qualitative review before using the benchmark as HPC promotion evidence.
+  qualitative review before using the benchmark as HPC promotion evidence. The 4090 comparison
+  adds two advisory manual-review rows that need targeted review before promoting 4090 as the
+  routine 7B iteration GPU.
 - No explicit prompt-variant A/B comparison has been run yet; the earlier batch changed baseline
   prompt cues directly and verified them on RunPod. Prompt variants need a recorded selector before
   they become proper benchmark evidence.
-- No model-variant comparison has been run yet. The queued order is 4090 versus A40 for
-  Qwen2.5-7B, Qwen2.5-14B on A40, optional 14B L40S/A100 GPU comparison, prompt variants on the
-  cheapest clean 7B baseline, and one Qwen2.5-32B A100 trial.
+- No model-variant comparison has been run yet. The queued order is Qwen2.5-14B on A40, optional
+  14B L40S/A100 GPU comparison, prompt variants on the cheapest clean reviewed 7B baseline, and
+  one Qwen2.5-32B A100 trial.
 - Vast remains deferred by current operator decision; no current Vast smoke/full-gate evidence
   exists.
 - HPC promotion is intentionally deferred until the RunPod benchmark loop selects a
@@ -516,6 +571,7 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
 
 ## Next Update
 
-The next report update should be appended after the 4090/A40 Qwen2.5-7B comparison. Include run
-directories, comparison artifacts, model/retrieval settings, GPU type, runtime, cost, cost per
-executed question, manual-review deltas, and the chosen default RunPod iteration GPU.
+The next report update should be appended after the Qwen2.5-14B A40 run or a targeted 4090 rerun.
+Include run directories, comparison artifacts, model/retrieval settings, GPU type, runtime, cost,
+cost per executed question, manual-review deltas, and whether 14B or pinned 4090 changes the
+current baseline recommendation.

@@ -95,6 +95,17 @@ def test_provider_command_defaults_and_parsers(tmp_path: Path) -> None:
     image_command = cloud.runpod_create_command(image_config)
     assert "--image" in image_command
     assert cloud.DEFAULT_RUNPOD_IMAGE in image_command
+    placement_config = cloud.CloudRunConfig(
+        repo_root=tmp_path,
+        runpod_cloud_type="COMMUNITY",
+        runpod_data_center_ids="EU-RO-1,US-IL-1",
+        runpod_public_ip=True,
+    )
+    placement_command = cloud.runpod_create_command(placement_config)
+    assert placement_command[placement_command.index("--cloud-type") + 1] == "COMMUNITY"
+    data_center_value = placement_command[placement_command.index("--data-center-ids") + 1]
+    assert data_center_value == "EU-RO-1,US-IL-1"
+    assert "--public-ip" in placement_command
     assert cloud.vast_search_command(config)[:4] == ["vastai", "search", "offers", "--raw"]
     assert cloud.vast_create_command(config, 12345)[:4] == [
         "vastai",
@@ -151,6 +162,18 @@ def test_cli_defaults_to_provider_specific_output_dir() -> None:
     assert parser.parse_args(["--retrieval-mode", "hybrid"]).retrieval_mode == "hybrid"
     assert parser.parse_args([]).enable_ui_attachments is False
     assert parser.parse_args(["--enable-ui-attachments"]).enable_ui_attachments is True
+    placement_args = parser.parse_args(
+        [
+            "--runpod-cloud-type",
+            "COMMUNITY",
+            "--runpod-data-center-ids",
+            "EU-RO-1",
+            "--runpod-public-ip",
+        ]
+    )
+    assert placement_args.runpod_cloud_type == "COMMUNITY"
+    assert placement_args.runpod_data_center_ids == "EU-RO-1"
+    assert placement_args.runpod_public_ip is True
 
 
 def test_cli_max_question_resolution_targets_all_requested_ids() -> None:

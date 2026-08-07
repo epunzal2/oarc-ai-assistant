@@ -569,10 +569,13 @@ MLflow artifacts, model directories, generated results/runtime directories, and 
 The cloud runner sets `SERVICE_NOW_DATA_PATH=/dev/null` for the remote gateway and for local public
 index creation, so raw ServiceNow task exports are not part of the cloud loop.
 
-RunPod defaults to an RTX 4090 for 7B-class models and A100 for larger models. Vast can either use
-`--vast-offer-id` or search for a matching offer before launch. Created RunPod Pods are terminated
-with `runpodctl pod delete`; created Vast instances are destroyed with `vastai destroy instance`
-unless the operator explicitly passes `--keep-instance`.
+RunPod defaults to an RTX 4090 for 7B-class models and A100 for larger models. Placement-sensitive
+RunPod comparisons can pass through `--runpod-cloud-type`, `--runpod-data-center-ids`,
+`--runpod-public-ip`, and `--runpod-global-networking` to `runpodctl pod create`; use these when a
+benchmark needs reproducible GPU placement or when unpinned placement is unreliable. Vast can
+either use `--vast-offer-id` or search for a matching offer before launch. Created RunPod Pods are
+terminated with `runpodctl pod delete`; created Vast instances are destroyed with
+`vastai destroy instance` unless the operator explicitly passes `--keep-instance`.
 
 Cloud runs forward the acceptance harness `--include-full-answer` and repeated `--question-id`
 options. By default, cloud wrapper artifacts are separated by provider under
