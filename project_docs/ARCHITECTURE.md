@@ -577,6 +577,10 @@ either use `--vast-offer-id` or search for a matching offer before launch. Creat
 terminated with `runpodctl pod delete`; created Vast instances are destroyed with
 `vastai destroy instance` unless the operator explicitly passes `--keep-instance`.
 
+Large Hugging Face/vLLM models may also need explicit RunPod container disk sizing. The
+`Qwen/Qwen2.5-14B-Instruct` A40 benchmark needed `--runpod-container-disk-gb 100`; a 40 GB
+container disk failed before acceptance while reconstructing model weights.
+
 Cloud runs forward the acceptance harness `--include-full-answer` and repeated `--question-id`
 options. By default, cloud wrapper artifacts are separated by provider under
 `logs/rag_v1_acceptance/cloud/<provider>/<timestamp>/`; `--acceptance-output-dir` can override this.

@@ -439,6 +439,10 @@ This is useful when aggregate GPU availability is healthy but unpinned pod place
   --include-full-answer
 ```
 
+For 14B-class vLLM runs on RunPod, use a larger container disk. The A40
+`Qwen/Qwen2.5-14B-Instruct` benchmark needed `--runpod-container-disk-gb 100`; a `40 GB` container
+disk failed before acceptance while reconstructing model weights with `No space left on device`.
+
 Executed cloud runs also write `cloud_run_ledger.json` and `cloud_run_ledger.md` next to the
 acceptance artifacts. The ledger records sanitized start/end balances, provider resource ID,
 requested GPU, runtime, estimated cost, cleanup status, question subset, answer-capture mode, and
