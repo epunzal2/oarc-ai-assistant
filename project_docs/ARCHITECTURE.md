@@ -607,8 +607,8 @@ approved Markdown roots. It skips `docs/servicenow`, writes JSONL candidates wit
 source hints, and reference excerpts, and is intended to feed review before rows are promoted into
 the active acceptance set. The reviewed candidate seed suite lives at
 `data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`. The current active gate in
-`data/evaluation/acceptance/rag_v1_questions.jsonl` includes the original acceptance rows plus the
-candidate rows promoted after two clean RunPod runs on 2026-08-05.
+`data/evaluation/acceptance/rag_v1_questions.jsonl` remains the 34-row blocking smoke/regression
+suite.
 The frozen non-blocking benchmark suite for model, GPU, prompt, retrieval, and context-window
 comparisons lives at `data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl`; it combines the
 active gate with reviewed coverage additions so all compared configurations use the same questions.

@@ -35,6 +35,11 @@ _SCRATCH_RE = re.compile(
     r"/scratch|\b(scratch storage|scratch directory|temporary storage)\b",
     re.IGNORECASE,
 )
+_STORAGE_LAYOUT_RE = re.compile(
+    r"\b(where should\b.{0,80}\bstore\b|home\b.{0,80}\bproject\b.{0,80}\btemporary|"
+    r"/home\b.{0,80}/projects\b.{0,80}/scratch)\b",
+    re.IGNORECASE,
+)
 _JOB_ARRAY_RE = re.compile(r"\b(job arrays?|array tasks?|many similar jobs)\b", re.IGNORECASE)
 _OWNER_RESOURCES_RE = re.compile(
     r"\b(general-access|general access|owned resources?|owners?|private job partitions?|"
@@ -228,8 +233,9 @@ def build_slurm_command_reference(question: str) -> str:
         )
     if _GPU_RE.search(text):
         hints.append(
-            "- Request GPUs in Slurm with GRES, for example `#SBATCH --gres=gpu:1`; "
-            "use the local GPU partition/account policy from retrieved OARC context."
+            "- Request GPUs in Slurm with the local GPU partition and GRES, for example "
+            "`#SBATCH --partition=gpu` and `#SBATCH --gres=gpu:1`; verify any owner "
+            "partition or account policy from retrieved OARC context."
         )
     if _ACTIVE_JOB_METRICS_RE.search(text):
         hints.append(
@@ -266,6 +272,13 @@ def build_slurm_command_reference(question: str) -> str:
         hints.append(
             "- `/scratch` is temporary job input/output storage for actively running jobs. It is "
             "not backed up; move important results to backed-up `/home` or `/projects` storage."
+        )
+    if _STORAGE_LAYOUT_RE.search(text):
+        hints.append(
+            "- Amarel storage roles: `/home/<NetID>` is small backed-up home storage for software, "
+            "valuable private files, and environment configuration; `/projects/<storage_ID>` is "
+            "backed-up project/group storage for active work that should persist; `/scratch/<NetID>` "
+            "is temporary job input/output storage and is not backed up."
         )
     if _JOB_ARRAY_RE.search(text):
         hints.append(

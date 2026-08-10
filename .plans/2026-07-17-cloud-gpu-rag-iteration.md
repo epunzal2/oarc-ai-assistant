@@ -192,10 +192,11 @@ target.
   `cloud_run_ledger.json`.
 - [x] Run `citation-strict-refusal` on the A40 7B baseline, first on
   `safety_ignore_sources_make_up_helpdesk`, then on the frozen 91-question suite.
-- [ ] Run remaining prompt variants on the cheapest clean 7B/GPU baseline before larger-model reruns:
-  `concise-procedure` for shorter command/procedure answers, and any revised strict variant needed
-  after manual-review inspection. Promote a prompt only if it has zero automated failures and reduces
-  manual-review issues without materially worsening p95 latency.
+- [x] Review strict-prompt manual-review deltas, patch the two real 7B regressions, and rerun the
+  frozen 91-question suite on A40 7B.
+- [ ] Run the patched-strict 14B targeted/full rerun. Defer remaining prompt variants unless the
+  strict 14B run still leaves a quality issue worth isolating; `concise-procedure` remains a
+  shorter-answer candidate for later A/B comparison.
 - [ ] Trial `Qwen/Qwen2.5-32B-Instruct` on `NVIDIA A100 80GB PCIe` after the 14B and prompt
   comparisons. Treat L40S for 32B as a separate quantization/serving experiment unless vLLM memory
   checks show the current full-precision command fits.
@@ -212,10 +213,10 @@ Milestone 4 deliverables:
   source-quality notes.
 - [ ] Larger-GPU report: 14B on L40S/A100 if A40 is promising or blocked, with fit/performance/cost
   decision.
-- [ ] Prompt-variant report: recorded prompt selector plus baseline/current, citation-strict, and
-  concise-procedure comparisons. Citation-strict has a clean 91-question A40 7B gate but added five
-  net manual-review rows versus baseline, so it still needs manual-review inspection before
-  promotion.
+- [ ] Prompt-variant report: recorded prompt selector plus baseline/current, patched
+  citation-strict, and concise-procedure comparisons. Patched citation-strict has a clean
+  91-question A40 7B gate and is accepted for the next 14B strict rerun, but it is not yet the
+  production default.
 - [ ] 32B trial report: Qwen2.5-32B on A100, including memory/serving outcome, quality deltas, and
   whether 32B is worth further optimization.
 - [ ] Milestone 4 recommendation memo: chosen production-candidate config or explicit no-go,
@@ -261,13 +262,15 @@ prompt/safety variant is tested. The citation-strict 7B A40 run
 `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z` passed the frozen 91-question suite with
 `90` executed, `1` skipped attachment row, `0` failures, `44` advisory manual-review IDs, p95
 latency `10688.49` ms, p95 TTFT `593.66` ms, runtime `621.333` seconds, estimated cost
-`$0.0720665926`, and `promotion_ready=true`. It fixed
-`safety_ignore_sources_make_up_helpdesk` with a deterministic no-phone refusal, but added five net
-manual-review rows versus the A40 baseline. The next benchmark evidence steps are, in order:
-manual-review inspection of the strict-variant deltas, a 14B strict targeted/full rerun if the
-manual review is acceptable, then one Qwen2.5-32B A100 trial if larger-model safety remains worth
-testing. Vast setup, Vast comparison, and HPC promotion are deferred while RunPod is the active
-iteration provider.
+`$0.0720665926`, and `promotion_ready=true`. Manual-review inspection found two real strict-prompt
+regressions, `amarel_storage` and `slurm_request_gpu`; the patched command reference fixed both.
+The patched A40 7B strict run `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z` passed the
+frozen 91-question suite with `90` executed, `1` skipped attachment row, `0` failures, `42`
+advisory manual-review IDs, p95 latency `10605.16` ms, p95 TTFT `571.12` ms, runtime `587.979`
+seconds, estimated cost `$0.0656977148`, and `promotion_ready=true`. The next benchmark evidence
+steps are, in order: a 14B strict targeted/full rerun, then one Qwen2.5-32B A100 trial if
+larger-model safety remains worth testing. Vast setup, Vast comparison, and HPC promotion are
+deferred while RunPod is the active iteration provider.
 
 Written progress report:
 `project_docs/reports/2026-08-04-cloud-rag-progress-report.md`. Update that report after each
@@ -564,6 +567,19 @@ by this plan.
   failure, two create failures, two prewarm debug failures, delayed provider settlement, the final
   targeted pass, and the final full run. Post-run `runpodctl pod list` returned `[]` and
   `currentSpendPerHr` returned `0`.
+- 2026-08-10: Reviewed strict-prompt manual-review deltas. The first strict run had two real
+  regressions, `amarel_storage` and `slurm_request_gpu`; the remaining strict-only advisory rows
+  were content-acceptable. Patched the command reference with explicit Amarel storage roles and GPU
+  partition/GRES guidance, then reran the strict variant on RunPod A40. The eight-row targeted run
+  `logs/rag_v1_acceptance/cloud/runpod/20260810T195715Z` passed with `8` executed, `0` failures,
+  and `4` advisory manual-review IDs. The patched full run
+  `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z` passed the frozen 91-question suite with
+  `90` executed, `1` skipped, `0` failures, `42` advisory manual-review IDs, p95 latency
+  `10605.16` ms, p95 TTFT `571.12` ms, runtime `587.979` seconds, estimated cost
+  `$0.0656977148`, and `promotion_ready=true`. RunPod cleanup returned `[]` pods and
+  `currentSpendPerHr=0`; final observed balance was `$8.1241633556`. Decision: use patched
+  `citation-strict-refusal` for the next 14B targeted/full rerun; do not make it the production
+  default yet.
 
 # Provider References
 

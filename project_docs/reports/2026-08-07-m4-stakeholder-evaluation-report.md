@@ -16,9 +16,9 @@ Current status: the 91-question benchmark is passing on the 7B baseline model. A
 run was faster and cheaper than the A40 baseline, but it added two advisory manual-review rows that
 were reviewed as content-acceptable. A RunPod A40 14B run completed but failed the negative-safety
 gate by fabricating an emergency phone number. A recorded `citation-strict-refusal` prompt/safety
-variant now fixes that safety row on the 7B A40 baseline and keeps automated gates clean, but it
-adds five net manual-review rows. For now, keep 7B as the quality baseline and do not promote 14B
-under the old prompt.
+variant now fixes that safety row on the 7B A40 baseline and keeps automated gates clean. Manual
+review found two real strict-prompt regressions; a patched command-reference rerun fixed both. For
+now, keep 7B as the quality baseline and rerun 14B only with the patched strict prompt.
 
 # What Is Being Evaluated
 
@@ -73,6 +73,7 @@ Outcome summary:
 | 4090 7B | Qwen2.5-7B | RTX 4090 | baseline | 90/0/1 | 41 |
 | A40 14B | Qwen2.5-14B | A40 | baseline | 89/1/1 | 42 |
 | A40 7B strict | Qwen2.5-7B | A40 | citation-strict | 90/0/1 | 44 |
+| A40 7B patched strict | Qwen2.5-7B | A40 | citation-strict | 90/0/1 | 42 |
 
 Performance and cost:
 
@@ -82,6 +83,7 @@ Performance and cost:
 | 4090 7B | 5652.14 | 605.62 | 387.9 | $0.0547255185 | $0.000608 |
 | A40 14B | 16820.51 | 954.42 | 989.211 | $0.1525636186 | $0.001695 |
 | A40 7B strict | 10688.49 | 593.66 | 621.333 | $0.0720665926 | $0.000801 |
+| A40 7B patched strict | 10605.16 | 571.12 | 587.979 | $0.0656977148 | $0.000730 |
 
 4090 versus A40:
 
@@ -113,6 +115,16 @@ Citation-strict versus A40 7B:
 - Manual-review count increased by five rows net.
 - Added manual-review rows need qualitative review before promotion.
 
+Patched citation-strict versus first strict run:
+
+- Same automated result: `90` pass, `0` fail, `1` skipped attachment marker.
+- Manual-review inspection found two real regressions: `amarel_storage` and `slurm_request_gpu`.
+- The patched command reference fixed both rows; manual-review count dropped from `44` to `42`.
+- p95 latency improved by `83.33 ms`; p95 time to first token improved by `22.54 ms`.
+- Remaining strict-only manual-review rows are content-acceptable advisory misses:
+  `amarel_acl_parent_directory`, `amarel_globus_personal_connect`,
+  `community_lmod_modulefile_required`, and `owner_resources_general_vs_owned`.
+
 # Cost Journal
 
 The successful 4090 run ledger recorded `$0.0547255185`. Because several 4090 launch attempts were
@@ -132,6 +144,11 @@ observed `$8.2490366556`, about `$0.2251295778` total. That includes targeted pr
 create/prewarm attempts, one SSH debug inspection, delayed provider settlement, and the final full
 run. The successful full run ledger recorded `$0.0720665926`.
 
+The patched strict delta-review phase moved the RunPod balance from `$8.2490366556` to the final
+observed `$8.1241633556`, about `$0.1248733000` total. That includes one wrong-suite targeted
+attempt, the successful eight-row targeted delta run, delayed provider settlement, and the patched
+full 91-row run. The patched full-run ledger recorded `$0.0656977148`.
+
 The successful 4090 path used:
 
 - `--runpod-template-id ""`
@@ -147,9 +164,9 @@ and more expensive than 7B.
 For 7B, keep A40 as the conservative quality baseline. The pinned `EU-RO-1` RTX 4090 path is the
 best speed/cost candidate, and the two advisory 4090 rows reviewed as acceptable on content.
 
-The citation-strict prompt/safety variant is promising but not promoted yet. It fixes the safety row
-and keeps automated gates clean, but the six added manual-review rows, one removed manual-review
-row, and five-row net increase need review.
+The patched citation-strict prompt/safety variant is accepted for the next 14B strict rerun. Do not
+make it the production default yet; use it as the larger-model safety candidate because it fixed the
+fabricated-helpdesk path and the two real strict-prompt 7B regressions.
 
 # Artifacts
 
@@ -187,6 +204,12 @@ Current strict prompt comparison:
 - `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z/comparison.md`
 - `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z/cloud_run_ledger.md`
 - `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z/plots/`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T195715Z/report.md`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/report.md`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/summary.json`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/comparison.md`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/cloud_run_ledger.md`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/plots/`
 
 # Open Risks
 
@@ -194,16 +217,15 @@ Current strict prompt comparison:
   evidence for production readiness.
 - 4090 RunPod placement was unreliable unless pinned; future 4090 runs should use the pinned
   secure data-center path or record placement failures as provider evidence.
-- 14B failed the old safety gate; rerun 14B only after strict-prompt manual-review deltas are
-  accepted.
+- 14B failed the old safety gate; the next 14B run should use the patched strict prompt.
 - No 32B model-quality evidence exists yet.
-- The first prompt variant is tracked and clean on automated gates, but not promoted until manual
-  review is done.
+- The first prompt variant is tracked and clean on automated gates. It is accepted for the next 14B
+  rerun, but not yet made the production default.
 - HPC promotion remains intentionally deferred until RunPod identifies a production-candidate
   chatbot configuration.
 
 # Next Update
 
-Append the strict-prompt manual-review decision or the next 14B strict rerun to this report and
-regenerate the PDF. Include pass/fail/skip, manual-review deltas, latency, TTFT, runtime, cost,
-cost/question, cleanup status, and whether the variant should become the default.
+Append the next 14B strict rerun to this report and regenerate the PDF. Include pass/fail/skip,
+manual-review deltas, latency, TTFT, runtime, cost, cost/question, cleanup status, and whether the
+variant should become the default.

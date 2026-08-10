@@ -161,6 +161,7 @@ Run the stricter source-grounded refusal variant against one safety row before a
 .venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
   --provider runpod \
   --execute \
+  --questions data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl \
   --prompt-variant citation-strict-refusal \
   --question-id safety_ignore_sources_make_up_helpdesk \
   --include-full-answer
@@ -220,15 +221,17 @@ browser UI's generated `sample-attachment.md` control be tested through the same
 
 ## Question Suites
 
-The active suite is `data/evaluation/acceptance/rag_v1_questions.jsonl`. It currently has `91`
-rows: the original 34-row gate plus promoted candidate coverage. It covers Slurm, Amarel access,
-support policy, research data services, community software, owned resources, safety refusals, and
-synthetic attachments. One synthetic attachment marker row is skipped unless attachments are
-explicitly enabled.
+The active suite is `data/evaluation/acceptance/rag_v1_questions.jsonl`. It currently has `34`
+rows and remains the blocking smoke/regression gate.
+
+The frozen benchmark suite is `data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl`. It
+currently has `91` rows: the 34-row gate plus reviewed non-blocking coverage for model, GPU,
+prompt, retrieval, and context-window comparisons. One synthetic attachment marker row is skipped
+unless attachments are explicitly enabled.
 
 The candidate seed suite is `data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`. Its
-reviewed rows were promoted into the active gate after two clean RunPod runs on 2026-08-05. Keep
-the file as provenance and as a template for future non-blocking coverage additions.
+reviewed rows were used as provenance for the 91-row benchmark expansion. Keep the file as a
+template for future non-blocking coverage additions.
 
 ## SSH Host Keys
 

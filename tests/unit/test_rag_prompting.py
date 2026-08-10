@@ -17,11 +17,14 @@ def test_slurm_command_reference_covers_acceptance_smoke_intents() -> None:
     submit = build_slurm_command_reference("How do I submit a Slurm batch job on Amarel?")
     cancel = build_slurm_command_reference("How do I cancel a running Slurm job?")
     queue = build_slurm_command_reference("What command checks my queued or running jobs?")
+    gpu = build_slurm_command_reference("How should I request a GPU for a Slurm job?")
     support = build_slurm_command_reference("Where is the helpdesk?")
 
     assert "sbatch" in submit
     assert "scancel" in cancel
     assert "squeue" in queue
+    assert "`#SBATCH --partition=gpu`" in gpu
+    assert "`#SBATCH --gres=gpu:1`" in gpu
     assert "help@oarc.rutgers.edu" in support
 
 
@@ -49,6 +52,9 @@ def test_command_reference_covers_candidate_local_policy_intents() -> None:
     scratch = build_slurm_command_reference(
         "What is /scratch on Amarel for, and should I treat it as backed-up storage?"
     )
+    storage = build_slurm_command_reference(
+        "Where should I store home, project, and temporary job data on Amarel?"
+    )
     array = build_slurm_command_reference("When should I use a Slurm job array on Amarel?")
     owner = build_slurm_command_reference(
         "What is the difference between general-access and owned Amarel resources?"
@@ -60,6 +66,9 @@ def test_command_reference_covers_candidate_local_policy_intents() -> None:
     assert "web browser based graphical Linux desktop" in ondemand
     assert "`/scratch` is temporary" in scratch
     assert "not backed up" in scratch
+    assert "`/home/<NetID>` is small backed-up home storage" in storage
+    assert "`/projects/<storage_ID>` is backed-up project/group storage" in storage
+    assert "`/scratch/<NetID>` is temporary job input/output storage" in storage
     assert "array tasks" in array
     assert "shared job queues" in owner
     assert "Owned resources" in owner

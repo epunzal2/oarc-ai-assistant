@@ -478,6 +478,15 @@ For model, GPU, prompt, retrieval, and context-window comparisons, use the froze
 current 34-row gate plus reviewed non-blocking coverage, so every compared configuration sees the
 same prompts.
 
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --questions data/evaluation/acceptance/rag_v1_benchmark_questions.jsonl \
+  --execute \
+  --full-acceptance \
+  --include-full-answer
+```
+
 See [`docs/cloud-gpu-rag-runbook.md`](docs/cloud-gpu-rag-runbook.md) for provider setup, transfer
 safety rules, cleanup behavior, cost/runtime estimates, and candidate-promotion guidance.
 

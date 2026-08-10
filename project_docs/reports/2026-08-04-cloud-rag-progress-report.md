@@ -20,10 +20,10 @@ RunPod baseline parity is complete, including the attachment-enabled UI path. Mi
 two clean candidate-suite runs, a clean expanded 34-row active gate, and a frozen 91-question
 benchmark suite for RunPod model/GPU/config comparisons. Candidate promotion, the 91-question
 RunPod A40 baseline, the first 4090/A40 cost-runtime comparison, the A40 14B model-quality check,
-and the first recorded citation-strict prompt/safety variant run are done. The next benchmark work
-is manual-review inspection of the strict-variant deltas before any larger 14B GPU or 32B-class
-spending. HPC promotion is intentionally deferred until this loop selects a
-production-candidate chatbot configuration.
+the first recorded citation-strict prompt/safety variant run, and strict manual-review delta
+inspection are done. The next benchmark work is a patched-strict 14B rerun before any 32B-class
+spending. HPC promotion is intentionally deferred until this loop selects a production-candidate
+chatbot configuration.
 
 ## Milestone Checklist
 
@@ -39,10 +39,10 @@ production-candidate chatbot configuration.
   candidate fixes, a second clean candidate-suite stability run, candidate promotion, a clean
   expanded 34-row active gate, a reviewed 91-question benchmark suite, the 91-question RunPod A40
   baseline, the 4090/A40 cost-runtime comparison, the Qwen 14B A40 comparison, prompt-variant
-  selector, and the citation-strict A40 7B prompt/safety run are complete. A100/L40S 14B GPU
-  comparison is deferred because 14B failed safety under the current prompt. Strict-variant
-  manual-review inspection, remaining prompt variants, and a roughly 32B-class model trial remain
-  open.
+  selector, the citation-strict A40 7B prompt/safety run, strict manual-review inspection, and the
+  patched strict A40 7B full rerun are complete. A100/L40S 14B GPU comparison is deferred because
+  14B failed safety under the current prompt. The patched-strict 14B rerun, remaining prompt
+  variants, and a roughly 32B-class model trial remain open.
 - Milestone 5, HPC promotion: deferred by design. Resume only after RunPod selects a
   production-candidate model/GPU/retrieval/prompt/context/UI configuration.
 
@@ -450,10 +450,59 @@ template-backed and one explicit-image run failed during prewarm with an indenta
 kept debug pod was inspected over SSH and then manually deleted. Those attempts are recorded under
 `logs/rag_v1_acceptance/cloud/runpod/cloud_run_ledger/`.
 
-Benchmark decision: do not promote the strict variant yet. It fixes the safety row with no automated
-regression and better TTFT, but the six added manual-review rows need qualitative review before
-using it as the default prompt. If those rows are acceptable, the next useful larger-model check is
-a targeted then full 14B rerun with `--prompt-variant citation-strict-refusal`.
+Manual-review delta inspection found two real strict-prompt regressions: `amarel_storage` placed
+home data in `/scratch`, and `slurm_request_gpu` omitted the local GPU partition requirement. The
+remaining four strict-only manual rows were content-acceptable wording/detail misses:
+`amarel_acl_parent_directory`, `amarel_globus_personal_connect`,
+`community_lmod_modulefile_required`, and `owner_resources_general_vs_owned`.
+
+### Patched Citation-Strict Manual-Review Rerun
+
+The command reference was patched to make Amarel storage roles and GPU partition/GRES requirements
+explicit before rerunning the strict variant.
+
+- Targeted delta run: `logs/rag_v1_acceptance/cloud/runpod/20260810T195715Z`
+- Full run directory: `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z`
+- Report: `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/report.md`
+- Summary: `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/summary.json`
+- Ledger: `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/cloud_run_ledger.md`
+- Comparison:
+  `logs/rag_v1_acceptance/cloud/runpod/20260810T200127Z/comparison.md`
+- Questions: `90` executed, `1` skipped synthetic attachment row, `91` total.
+- Result: `90` pass, `0` fail, `promotion_ready=true`.
+- Manual review: `42` rows, down from `44` in the first strict run.
+- Prompt variant: `citation-strict-refusal`.
+- Model/GPU/provider: `Qwen/Qwen2.5-7B-Instruct`, RunPod `NVIDIA A40`, successful full-run pod
+  `rcdrsz8kerz9vd`, deleted by the runner.
+- Retrieval: FAISS vector mode with local-guide fallback.
+- p50 latency: `3342.29 ms`; p95 latency: `10605.16 ms`.
+- p50 TTFT: `329.61 ms`; p95 TTFT: `571.12 ms`.
+- Runtime: `587.979 s`.
+- Estimated full-run cost: `$0.0656977148`; cost per executed question: `$0.000730`.
+- Cleanup: post-run `runpodctl pod list` returned `[]` and `currentSpendPerHr=0`.
+
+Comparison versus first strict run:
+
+- Automated gates unchanged: `90` pass, `0` fail, `1` skipped.
+- p95 latency improved by `83.33 ms`.
+- p95 TTFT improved by `22.54 ms`.
+- Manual-review IDs removed: `amarel_storage`, `slurm_request_gpu`.
+- Manual-review IDs added: none.
+
+Comparison versus A40 7B baseline:
+
+- Automated gates unchanged: `90` pass, `0` fail, `1` skipped.
+- p95 latency improved by `168.29 ms`.
+- p95 TTFT improved by `290.21 ms`.
+- Manual-review count increased from `39` to `42`.
+- Manual-review IDs added: `amarel_acl_parent_directory`, `amarel_globus_personal_connect`,
+  `community_lmod_modulefile_required`, `owner_resources_general_vs_owned`.
+- Manual-review ID removed: `amarel_scratch_campus_locality`.
+
+Benchmark decision: the patched strict variant is accepted for the next 14B strict rerun. Do not
+change the production default yet; use the patched strict variant as the larger-model safety
+candidate because it fixes the helpdesk fabrication path, keeps the 91-row 7B benchmark clean, and
+has only content-acceptable advisory deltas versus the 7B baseline.
 
 ### Specific RunPod Benchmark Queue
 
@@ -475,9 +524,9 @@ explicitly says otherwise. Compare every new run against the current baseline
    the A40 14B safety regression. Pick by clean gates first, then cost per executed question and
    p95 latency.
 4. Prompt-variant A/B check:
-   `citation-strict-refusal` is complete on A40 7B and fixed the helpdesk fabrication row, but it
-   added five net manual-review rows. Review those deltas before promotion, then compare
-   `concise-procedure` or a revised strict prompt only if needed.
+   patched `citation-strict-refusal` is complete on A40 7B and fixed the helpdesk fabrication row.
+   Manual-review inspection accepted the remaining strict-only advisory rows. Use this variant for
+   the next 14B targeted/full rerun before any default-prompt change.
 5. 32B-class trial:
    run `--model Qwen/Qwen2.5-32B-Instruct --runpod-gpu "NVIDIA A100 80GB PCIe"` after the 14B and
    prompt comparisons. Treat L40S/32B as a separate quantization or serving experiment unless the
@@ -497,7 +546,7 @@ Run inventory:
 | A40 14B | `Qwen2.5-14B` | A40 | current | done, rejected |
 | L40S 14B | `Qwen2.5-14B` | L40S | current | deferred |
 | A100 14B | `Qwen2.5-14B` | A100 80GB | current | deferred |
-| 7B strict prompt | `Qwen2.5-7B` | A40 | citation-strict-refusal | done, review deltas |
+| 7B strict prompt | `Qwen2.5-7B` | A40 | citation-strict-refusal | done, accepted for 14B rerun |
 | 7B concise prompt | selected 7B | selected 7B GPU | concise-procedure | blocked |
 | A100 32B | `Qwen2.5-32B` | A100 80GB | best prompt | planned |
 
@@ -509,6 +558,7 @@ Completed metrics:
 | 4090 7B | 90/0/1 | 41 | 5652.14 | 605.62 | 387.9 | $0.0547255185 | $0.000608 |
 | A40 14B | 89/1/1 | 42 | 16820.51 | 954.42 | 989.211 | $0.1525636186 | $0.001695 |
 | A40 7B strict prompt | 90/0/1 | 44 | 10688.49 | 593.66 | 621.333 | $0.0720665926 | $0.000801 |
+| A40 7B patched strict prompt | 90/0/1 | 42 | 10605.16 | 571.12 | 587.979 | $0.0656977148 | $0.000730 |
 
 Planned rows should fill the same completed-metrics columns, plus a short decision note:
 `promote`, `reject`, `rerun targeted subset`, or `exploratory only`.
@@ -643,7 +693,13 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
   `$8.4741662334` to the final observed `$8.2490366556`, including targeted runs, failed
   create/prewarm attempts, one SSH debug inspection, delayed provider settlement, and the final
   full run.
-- Latest balance check after the A40 7B strict prompt run: `$8.2490366556`, `currentSpendPerHr=0`,
+- The strict delta-review rerun phase moved the RunPod balance from `$8.2490366556` to the final
+  observed `$8.1241633556`, about `$0.1248733000` total. That includes one wrong-suite targeted
+  attempt that failed before acceptance, the successful eight-row targeted delta run, delayed
+  provider settlement, and the patched 91-row strict run. The patched full-run ledger recorded
+  `$0.0656977148`.
+- Latest balance check after the A40 7B patched strict prompt run: `$8.1241633556`,
+  `currentSpendPerHr=0`,
   and
   `runpodctl pod list` returned `[]`.
 - One failed setup attempt is recorded at
@@ -657,12 +713,13 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
   qualitative review before using the benchmark as HPC promotion evidence. The 4090 comparison
   added two advisory manual-review rows; targeted review found those answers content-acceptable,
   but A40 remains the quality baseline until the manual-review queue is fully reviewed.
-- The first recorded prompt/safety variant is complete. `citation-strict-refusal` fixed the
-  helpdesk fabrication row and kept automated gates clean, but added five net manual-review rows.
-  Those rows need review before promoting the strict variant or using it for the next 14B run.
+- The first recorded prompt/safety variant is complete. Patched `citation-strict-refusal` fixed the
+  helpdesk fabrication row, removed the two real strict-prompt regressions found in manual-review
+  inspection, and kept the 91-row A40 7B benchmark clean. It is accepted for the next 14B strict
+  targeted/full rerun, but not yet made the production default.
 - The first model-variant comparison is complete: Qwen2.5-14B on A40 failed one negative-safety row
-  under the current prompt. The queued order is now strict-variant manual-review inspection, optional
-  14B strict rerun if acceptable, and one Qwen2.5-32B A100 trial.
+  under the current prompt. The queued order is now a 14B strict targeted/full rerun, then one
+  Qwen2.5-32B A100 trial if larger-model safety remains worth testing.
 - Vast remains deferred by current operator decision; no current Vast smoke/full-gate evidence
   exists.
 - HPC promotion is intentionally deferred until the RunPod benchmark loop selects a
@@ -671,8 +728,7 @@ ssh -N -L 8088:<compute-host>:8088 ep523@amarel-new
 
 ## Next Update
 
-The next report update should be appended after the six added strict-variant manual-review rows are
-reviewed, or after a targeted/full 14B strict rerun if the review accepts the strict 7B output.
-Include run directories, comparison artifacts, model/retrieval settings, GPU type, runtime, cost,
-cost per executed question, manual-review deltas, and whether the stricter prompt changes the
-current baseline recommendation.
+The next report update should be appended after the targeted/full 14B strict rerun. Include run
+directories, comparison artifacts, model/retrieval settings, GPU type, runtime, cost, cost per
+executed question, manual-review deltas, and whether the stricter prompt changes the current
+baseline recommendation.
