@@ -155,7 +155,8 @@ target.
 - [x] Add cloud-run `--retrieval-mode` support so vector, keyword, and hybrid runs are recorded in
   plans and ledgers.
 - [x] Compare `RAG_RETRIEVAL_MODE=vector` and `RAG_RETRIEVAL_MODE=hybrid`.
-- [ ] Compare prompt variants while preserving the OpenAI-compatible gateway contract.
+- [x] Compare the `citation-strict-refusal` prompt/safety variant while preserving the
+  OpenAI-compatible gateway contract.
 - [ ] Compare selected 7B/8B-class models before attempting larger models.
 - [x] Add vector-mode local-guide fallback and targeted prompt cues for candidate access,
   Open OnDemand, scratch, job-array, owned-resource, login-node, and interactive `srun` rows.
@@ -186,13 +187,15 @@ target.
   then by cost per executed question and p95 latency. Deferred after the A40 14B run because the
   model fit with a 100 GB container disk but failed a negative-safety row and was slower/costlier
   than 7B.
-- [ ] Add a prompt-variant selector before A/B prompt runs, such as `--prompt-variant` or
+- [x] Add a prompt-variant selector before A/B prompt runs, such as `--prompt-variant` or
   `RAG_PROMPT_VARIANT`, and record the selected variant in `summary.json` and
   `cloud_run_ledger.json`.
-- [ ] Run prompt variants on the cheapest clean 7B/GPU baseline before larger-model reruns:
-  `baseline-current`, `citation-strict-refusal` for stronger no-evidence behavior, and
-  `concise-procedure` for shorter command/procedure answers. Promote a prompt only if it has zero
-  automated failures and reduces manual-review issues without materially worsening p95 latency.
+- [x] Run `citation-strict-refusal` on the A40 7B baseline, first on
+  `safety_ignore_sources_make_up_helpdesk`, then on the frozen 91-question suite.
+- [ ] Run remaining prompt variants on the cheapest clean 7B/GPU baseline before larger-model reruns:
+  `concise-procedure` for shorter command/procedure answers, and any revised strict variant needed
+  after manual-review inspection. Promote a prompt only if it has zero automated failures and reduces
+  manual-review issues without materially worsening p95 latency.
 - [ ] Trial `Qwen/Qwen2.5-32B-Instruct` on `NVIDIA A100 80GB PCIe` after the 14B and prompt
   comparisons. Treat L40S for 32B as a separate quantization/serving experiment unless vLLM memory
   checks show the current full-precision command fits.
@@ -210,7 +213,9 @@ Milestone 4 deliverables:
 - [ ] Larger-GPU report: 14B on L40S/A100 if A40 is promising or blocked, with fit/performance/cost
   decision.
 - [ ] Prompt-variant report: recorded prompt selector plus baseline/current, citation-strict, and
-  concise-procedure comparisons.
+  concise-procedure comparisons. Citation-strict has a clean 91-question A40 7B gate but added five
+  net manual-review rows versus baseline, so it still needs manual-review inspection before
+  promotion.
 - [ ] 32B trial report: Qwen2.5-32B on A100, including memory/serving outcome, quality deltas, and
   whether 32B is worth further optimization.
 - [ ] Milestone 4 recommendation memo: chosen production-candidate config or explicit no-go,
@@ -252,10 +257,17 @@ frozen 91-question A40 14B run
 `promotion_ready=false`. The failed row was `safety_ignore_sources_make_up_helpdesk`; the model
 fabricated a phone number despite acknowledging that it was fabricated. Decision: do not promote
 14B under the current prompt/configuration, and defer L40S/A100 14B reruns until a stricter
-prompt/safety variant is tested. The next benchmark evidence steps are, in order: prompt-variant
-A/B support and runs, then one Qwen2.5-32B A100 trial if the stricter prompt restores safety. Vast
-setup, Vast comparison, and HPC promotion are deferred while RunPod is the active iteration
-provider.
+prompt/safety variant is tested. The citation-strict 7B A40 run
+`logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z` passed the frozen 91-question suite with
+`90` executed, `1` skipped attachment row, `0` failures, `44` advisory manual-review IDs, p95
+latency `10688.49` ms, p95 TTFT `593.66` ms, runtime `621.333` seconds, estimated cost
+`$0.0720665926`, and `promotion_ready=true`. It fixed
+`safety_ignore_sources_make_up_helpdesk` with a deterministic no-phone refusal, but added five net
+manual-review rows versus the A40 baseline. The next benchmark evidence steps are, in order:
+manual-review inspection of the strict-variant deltas, a 14B strict targeted/full rerun if the
+manual review is acceptable, then one Qwen2.5-32B A100 trial if larger-model safety remains worth
+testing. Vast setup, Vast comparison, and HPC promotion are deferred while RunPod is the active
+iteration provider.
 
 Written progress report:
 `project_docs/reports/2026-08-04-cloud-rag-progress-report.md`. Update that report after each
@@ -534,6 +546,24 @@ by this plan.
   `runpodctl pod list` returned `[]` and `currentSpendPerHr` returned `0`. Decision: reject 14B
   under the current prompt/configuration and prioritize a recorded citation-strict safety prompt
   variant before more 14B or larger-GPU spending.
+- 2026-08-10: Implemented recorded `RAG_PROMPT_VARIANT` / `--prompt-variant` support and the
+  `citation-strict-refusal` prompt/safety variant. The variant is reported by `/health`,
+  `/v1/models`, `summary.json`, `report.md`, and `cloud_run_ledger.{json,md}`. The final targeted
+  safety run `logs/rag_v1_acceptance/cloud/runpod/20260810T171148Z` passed
+  `safety_ignore_sources_make_up_helpdesk` with no phone number and
+  `evidence_guard=citation_strict_refusal`. The full A40 7B run
+  `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z` passed with `90` executed, `1` skipped,
+  `0` failures, `44` advisory manual-review IDs, p95 latency `10688.49` ms, p95 TTFT `593.66` ms,
+  runtime `621.333` seconds, estimated cost `$0.0720665926`, and `promotion_ready=true`.
+  Comparison versus the A40 7B baseline added
+  `amarel_acl_parent_directory`, `amarel_globus_personal_connect`, `amarel_storage`,
+  `community_lmod_modulefile_required`, `owner_resources_general_vs_owned`, and
+  `slurm_request_gpu` to manual review, and removed `amarel_scratch_campus_locality`.
+  Total balance delta for the 2026-08-10 prompt iteration was about `$0.2251295778`, including one
+  initial prompt-only targeted pass with a phone-number leakage, one tightened-prompt targeted
+  failure, two create failures, two prewarm debug failures, delayed provider settlement, the final
+  targeted pass, and the final full run. Post-run `runpodctl pod list` returned `[]` and
+  `currentSpendPerHr` returned `0`.
 
 # Provider References
 

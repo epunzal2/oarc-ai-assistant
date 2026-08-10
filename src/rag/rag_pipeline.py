@@ -44,6 +44,8 @@ from src.rag.hybrid_retriever import (
 )
 from src.rag.prompting import (
     build_rag_prompt_inputs,
+    citation_strict_refusal_response,
+    normalize_prompt_variant,
     rag_prompt_template,
     unsupported_named_context_response,
 )
@@ -326,7 +328,8 @@ def create_rag_chain(
         llm = llm_provider.get_llm()
 
     # Define the prompt template.
-    template = rag_prompt_template()
+    prompt_variant = normalize_prompt_variant(config.RAG_PROMPT_VARIANT)
+    template = rag_prompt_template(prompt_variant)
     prompt = PromptTemplate.from_template(template)
 
     # Create the RAG chain
@@ -391,11 +394,17 @@ def create_rag_chain(
             )
         )
 
-    def evidence_guard_response(question: str, docs) -> str | None:
-        return unsupported_named_context_response(
+    def evidence_guard_response(question: str, docs) -> tuple[str, str] | None:
+        strict_response = citation_strict_refusal_response(question, prompt_variant)
+        if strict_response is not None:
+            return strict_response, "citation_strict_refusal"
+        unsupported_response = unsupported_named_context_response(
             question=question,
             context=format_docs(docs),
         )
+        if unsupported_response is not None:
+            return unsupported_response, "unsupported_named_local_reference"
+        return None
 
     def stream_answer(question: str) -> Dict[str, Any]:
         if llm_provider is None:
@@ -403,9 +412,10 @@ def create_rag_chain(
 
         docs = retrieve_docs(question)
         metadata = {"retrieval_diagnostics": retrieval_diagnostics(retriever)}
-        guard_response = evidence_guard_response(question, docs)
-        if guard_response is not None:
-            metadata["evidence_guard"] = "unsupported_named_local_reference"
+        guard = evidence_guard_response(question, docs)
+        if guard is not None:
+            guard_response, guard_name = guard
+            metadata["evidence_guard"] = guard_name
             return {
                 "context": docs,
                 "chunks": [guard_response],
@@ -427,8 +437,9 @@ def create_rag_chain(
     def answer_from_payload(payload: dict[str, Any]) -> str:
         docs = payload["context"]
         question = payload["question"]
-        guard_response = evidence_guard_response(question, docs)
-        if guard_response is not None:
+        guard = evidence_guard_response(question, docs)
+        if guard is not None:
+            guard_response, _guard_name = guard
             return guard_response
         return (
             prompt
@@ -473,6 +484,7 @@ def create_rag_chain(
         "local_guide_fallback_paths": list(config.RAG_LOCAL_GUIDE_FALLBACK_PATHS),
         "max_context_tokens": max_context_tokens,
         "max_context_chars": max_context_chars,
+        "prompt_variant": prompt_variant,
     }
     if retriever is not None:
         retriever_descriptor["retriever_cls"] = retriever.__class__.__name__

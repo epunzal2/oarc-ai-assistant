@@ -233,6 +233,7 @@ DEFAULT_LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "llama_cpp").lower()
 
 # Retrieval mode controls. Defaults preserve the v1 FAISS/Qdrant vector-only path.
 RAG_RETRIEVAL_MODE = os.environ.get("RAG_RETRIEVAL_MODE", "vector").strip().lower()
+RAG_PROMPT_VARIANT = os.environ.get("RAG_PROMPT_VARIANT", "baseline-current").strip()
 RAG_VECTOR_TOP_K = _env_int("RAG_VECTOR_TOP_K", 20) or 20
 RAG_KEYWORD_TOP_K = _env_int("RAG_KEYWORD_TOP_K", 20) or 20
 RAG_RERANK_TOP_K = _env_int("RAG_RERANK_TOP_K", 8) or 8

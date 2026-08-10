@@ -252,6 +252,7 @@ def test_models_returns_openai_style_model_list() -> None:
     assert payload["data"][0]["object"] == "model"
     assert payload["data"][0]["metadata"]["rag"] is True
     assert payload["data"][0]["metadata"]["backing_provider"] == "vllm"
+    assert payload["data"][0]["metadata"]["prompt_variant"] == "baseline-current"
 
 
 def test_chat_completion_extracts_latest_user_message_and_returns_response_shape() -> None:

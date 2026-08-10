@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 
 from src.rag import config, mlflow_tracker
 from src.rag.logger import get_logger
+from src.rag.prompting import normalize_prompt_variant
 from src.rag.safety import safety_refusal_for_question
 
 logger = get_logger(__name__)
@@ -221,6 +222,7 @@ class RAGService:
             "embedding_model": config.EMBEDDING_MODEL,
             "faiss_index_path": config.FAISS_INDEX_PATH,
             "retrieval_mode": config.RAG_RETRIEVAL_MODE,
+            "prompt_variant": normalize_prompt_variant(config.RAG_PROMPT_VARIANT),
             "max_context_tokens": provider_kwargs.get("max_context_tokens"),
             "max_context_chars": _env_int("RAG_MAX_CONTEXT_CHARS", 12000),
             "retrieval_settings": {

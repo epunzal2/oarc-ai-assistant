@@ -443,10 +443,15 @@ For 14B-class vLLM runs on RunPod, use a larger container disk. The A40
 `Qwen/Qwen2.5-14B-Instruct` benchmark needed `--runpod-container-disk-gb 100`; a `40 GB` container
 disk failed before acceptance while reconstructing model weights with `No space left on device`.
 
+Prompt/safety variants are explicit run parameters. The default is the current production prompt
+(`baseline-current`). Use `--prompt-variant citation-strict-refusal` when testing the stricter
+source-grounded refusal behavior, especially for rows that ask the model to ignore sources or invent
+support contacts.
+
 Executed cloud runs also write `cloud_run_ledger.json` and `cloud_run_ledger.md` next to the
 acceptance artifacts. The ledger records sanitized start/end balances, provider resource ID,
-requested GPU, runtime, estimated cost, cleanup status, question subset, answer-capture mode, and
-artifact paths.
+requested GPU, runtime, estimated cost, cleanup status, question subset, prompt variant,
+answer-capture mode, and artifact paths.
 
 For a live browser screenshot of the RunPod-backed chat UI, keep the provider instance alive only
 long enough to open the tunneled `/ui`, send one question, capture the browser image, then delete
@@ -621,15 +626,15 @@ sbatch scripts/rag/run_pipeline.sbatch
 This script executes [`scripts/rag/run_pipeline.sh`](scripts/rag/run_pipeline.sh), which handles cleaning the data, preparing it for ingestion, and creating the final FAISS vector store in the `vector_index/faiss_amarel` directory.
 
 ## Data Preparation Pipeline
- 
+
 The `run_pipeline.sh` script automates the data preparation process, which includes cleaning the data, preparing it for ingestion, and creating the vector store.
- 
+
 To run the pipeline, execute the following command:
- 
+
 ```bash
 ./scripts/rag/run_pipeline.sh
 ```
- 
+
 ## Running the Chatbot
 
 The method for running the chatbot differs depending on whether you are in a local environment

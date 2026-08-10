@@ -26,6 +26,12 @@ from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from src.rag.prompting import (
+    DEFAULT_PROMPT_VARIANT,
+    SUPPORTED_PROMPT_VARIANTS,
+    normalize_prompt_variant,
+)
+
 DEFAULT_PROVIDER = "runpod"
 DEFAULT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 DEFAULT_RUNPOD_IMAGE = "runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04"
@@ -160,6 +166,7 @@ class CloudRunConfig:
     max_p95_latency_ms: float = 30_000.0
     max_p95_ttft_ms: float = 15_000.0
     retrieval_mode: str = "vector"
+    prompt_variant: str = DEFAULT_PROMPT_VARIANT
     ui_attachments_enabled: bool = False
     allow_public_corpus: bool = False
     build_index: bool = False
@@ -252,6 +259,7 @@ class CloudPlan:
     question_ids: list[str]
     include_full_answer: bool
     retrieval_mode: str
+    prompt_variant: str
     ui_attachments_enabled: bool
     create_command: list[str] | None
     delete_command_template: list[str] | None
@@ -269,6 +277,7 @@ class CloudPlan:
             "question_ids": self.question_ids,
             "include_full_answer": self.include_full_answer,
             "retrieval_mode": self.retrieval_mode,
+            "prompt_variant": self.prompt_variant,
             "ui_attachments_enabled": self.ui_attachments_enabled,
             "create_command": self.create_command,
             "delete_command_template": self.delete_command_template,
@@ -337,6 +346,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("vector", "keyword", "hybrid"),
         default="vector",
         help="Remote gateway RAG_RETRIEVAL_MODE for benchmark comparison runs.",
+    )
+    parser.add_argument(
+        "--prompt-variant",
+        choices=SUPPORTED_PROMPT_VARIANTS,
+        default=DEFAULT_PROMPT_VARIANT,
+        help="Remote gateway RAG_PROMPT_VARIANT for prompt/safety benchmark runs.",
     )
     parser.add_argument(
         "--enable-ui-attachments",
@@ -432,6 +447,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         max_p95_latency_ms=args.max_p95_latency_ms,
         max_p95_ttft_ms=args.max_p95_ttft_ms,
         retrieval_mode=args.retrieval_mode,
+        prompt_variant=normalize_prompt_variant(args.prompt_variant),
         ui_attachments_enabled=args.enable_ui_attachments,
         allow_public_corpus=args.allow_public_corpus,
         build_index=args.build_index,
@@ -575,6 +591,7 @@ def build_cloud_plan(config: CloudRunConfig, manifest: TransferManifest) -> Clou
         question_ids=list(config.question_ids),
         include_full_answer=config.include_full_answer,
         retrieval_mode=config.retrieval_mode,
+        prompt_variant=normalize_prompt_variant(config.prompt_variant),
         ui_attachments_enabled=config.ui_attachments_enabled,
         create_command=create_command,
         delete_command_template=delete_template,
@@ -816,6 +833,7 @@ def write_cloud_run_ledger(
         "question_ids": list(config.question_ids),
         "include_full_answer": config.include_full_answer,
         "retrieval_mode": config.retrieval_mode,
+        "prompt_variant": normalize_prompt_variant(config.prompt_variant),
         "ui_attachments_enabled": config.ui_attachments_enabled,
         "acceptance": {
             "run_dir": _optional_summary_path(summary, "run_dir"),
@@ -828,6 +846,7 @@ def write_cloud_run_ledger(
             "fail_count": summary.get("fail_count"),
             "promotion_ready": summary.get("promotion_ready"),
             "manual_review_question_ids": summary.get("manual_review_question_ids"),
+            "prompt_variant": summary.get("prompt_variant"),
         },
         "ledger_path": str(ledger_path),
         "journal_path": str(journal_path),
@@ -956,6 +975,7 @@ def _cloud_run_ledger_markdown(payload: dict[str, Any]) -> str:
         f"- End balance: `{money(end)}`\n"
         f"- Estimated cost: `{money(cost)}` ({cost_source})\n"
         f"- Retrieval mode: `{payload.get('retrieval_mode')}`\n"
+        f"- Prompt variant: `{payload.get('prompt_variant')}`\n"
         f"- UI attachments enabled: `{payload.get('ui_attachments_enabled')}`\n"
         f"- Cleanup attempted: `{payload.get('cleanup_attempted')}`\n"
         f"- Cleanup error: `{payload.get('cleanup_error') or 'none'}`\n"
@@ -968,6 +988,7 @@ def _cloud_run_ledger_markdown(payload: dict[str, Any]) -> str:
         f"- Report: `{acceptance.get('report_path')}`\n"
         f"- Pass / fail: `{acceptance.get('pass_count')}` / `{acceptance.get('fail_count')}`\n"
         f"- Promotion ready: `{acceptance.get('promotion_ready')}`\n"
+        f"- Served prompt variant: `{acceptance.get('prompt_variant')}`\n"
         f"- Manual-review IDs: `{acceptance.get('manual_review_question_ids')}`\n"
     )
 
@@ -1249,6 +1270,7 @@ def remote_bootstrap_script(config: CloudRunConfig, bundle_name: str) -> str:
     rel_index = _rel_posix(config.repo_root, config.resolved_index_path)
     ui_attachments_enabled = "true" if config.ui_attachments_enabled else "false"
     retrieval_mode = shlex.quote(config.retrieval_mode)
+    prompt_variant = shlex.quote(normalize_prompt_variant(config.prompt_variant))
     return f"""\
 set -euo pipefail
 cd {shlex.quote(config.remote_dir)}
@@ -1279,6 +1301,7 @@ export FAISS_INDEX_PATH={shlex.quote(rel_index)}
 export RAG_GATEWAY_LLM_PROVIDER="vllm"
 export RAG_GATEWAY_VECTOR_STORE="faiss"
 export RAG_RETRIEVAL_MODE={retrieval_mode}
+export RAG_PROMPT_VARIANT={prompt_variant}
 export RAG_UI_ATTACHMENTS_ENABLED="{ui_attachments_enabled}"
 export VLLM_BASE_URL="http://127.0.0.1:{config.remote_vllm_port}"
 export VLLM_HEALTH_URL="http://127.0.0.1:{config.remote_vllm_port}/health"

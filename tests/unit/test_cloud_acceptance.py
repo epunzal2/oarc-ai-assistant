@@ -143,6 +143,7 @@ def test_provider_command_defaults_and_parsers(tmp_path: Path) -> None:
         question_ids=("amarel_data_transfer", "support_helpdesk"),
         include_full_answer=True,
         retrieval_mode="hybrid",
+        prompt_variant="citation-strict-refusal",
         max_questions=None,
     )
     acceptance_command = cloud.acceptance_command(targeted_config)
@@ -152,6 +153,7 @@ def test_provider_command_defaults_and_parsers(tmp_path: Path) -> None:
     assert "support_helpdesk" in acceptance_command
     plan = cloud.build_cloud_plan(targeted_config, cloud.build_transfer_manifest(targeted_config))
     assert plan.as_dict()["retrieval_mode"] == "hybrid"
+    assert plan.as_dict()["prompt_variant"] == "citation-strict-refusal"
 
 
 def test_cli_defaults_to_provider_specific_output_dir() -> None:
@@ -160,6 +162,11 @@ def test_cli_defaults_to_provider_specific_output_dir() -> None:
     assert parser.parse_args([]).acceptance_output_dir is None
     assert parser.parse_args([]).retrieval_mode == "vector"
     assert parser.parse_args(["--retrieval-mode", "hybrid"]).retrieval_mode == "hybrid"
+    assert parser.parse_args([]).prompt_variant == "baseline-current"
+    assert (
+        parser.parse_args(["--prompt-variant", "citation-strict-refusal"]).prompt_variant
+        == "citation-strict-refusal"
+    )
     assert parser.parse_args([]).enable_ui_attachments is False
     assert parser.parse_args(["--enable-ui-attachments"]).enable_ui_attachments is True
     placement_args = parser.parse_args(
@@ -227,6 +234,7 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
             "fail_count": 0,
             "promotion_ready": True,
             "manual_review_question_ids": [],
+            "prompt_variant": "citation-strict-refusal",
         },
     )
 
@@ -270,6 +278,7 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
         question_ids=("amarel_data_transfer", "support_helpdesk"),
         include_full_answer=True,
         retrieval_mode="hybrid",
+        prompt_variant="citation-strict-refusal",
         ui_attachments_enabled=True,
     )
 
@@ -283,6 +292,8 @@ def test_run_cloud_acceptance_deletes_created_runpod(monkeypatch: pytest.MonkeyP
     assert ledger["question_ids"] == ["amarel_data_transfer", "support_helpdesk"]
     assert ledger["include_full_answer"] is True
     assert ledger["retrieval_mode"] == "hybrid"
+    assert ledger["prompt_variant"] == "citation-strict-refusal"
+    assert ledger["acceptance"]["prompt_variant"] == "citation-strict-refusal"
     assert ledger["ui_attachments_enabled"] is True
     assert ledger["acceptance"]["promotion_ready"] is True
     assert (run_dir / "cloud_run_ledger.md").exists()
@@ -350,11 +361,13 @@ def test_remote_bootstrap_pins_vllm_transformers_compatibility(tmp_path: Path) -
     assert "uv run --no-sync uvicorn" in script
     assert 'export RAG_UI_ATTACHMENTS_ENABLED="false"' in script
     assert "export RAG_RETRIEVAL_MODE=vector" in script
+    assert "export RAG_PROMPT_VARIANT=baseline-current" in script
 
     attachment_script = cloud.remote_bootstrap_script(
         cloud.CloudRunConfig(
             repo_root=tmp_path,
             retrieval_mode="hybrid",
+            prompt_variant="citation-strict-refusal",
             ui_attachments_enabled=True,
         ),
         "bundle.tar.gz",
@@ -362,6 +375,7 @@ def test_remote_bootstrap_pins_vllm_transformers_compatibility(tmp_path: Path) -
 
     assert 'export RAG_UI_ATTACHMENTS_ENABLED="true"' in attachment_script
     assert "export RAG_RETRIEVAL_MODE=hybrid" in attachment_script
+    assert "export RAG_PROMPT_VARIANT=citation-strict-refusal" in attachment_script
 
 
 def test_cloud_acceptance_wrapper_help() -> None:

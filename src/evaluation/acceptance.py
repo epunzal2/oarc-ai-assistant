@@ -538,6 +538,7 @@ def _run_metadata_from_gateway(
     vector_store_type = _optional_str(combined.get("vector_store_type"))
     faiss_index_path = _optional_str(combined.get("faiss_index_path"))
     retrieval_mode = _optional_str(combined.get("retrieval_mode"))
+    prompt_variant = _optional_str(combined.get("prompt_variant"))
     health_passed = int(health.get("http_status") or 0) < 400 and health.get("status") == "ok"
     models_passed = int(models.get("http_status") or 0) < 400 and models.get("status") == "ok"
     attachments_enabled = bool(health.get("attachments_enabled"))
@@ -550,6 +551,7 @@ def _run_metadata_from_gateway(
         "embedding_model": combined.get("embedding_model"),
         "faiss_index_path": faiss_index_path,
         "retrieval_mode": retrieval_mode or ("keyword" if vector_store_type == "keyword" else "vector"),
+        "prompt_variant": prompt_variant or "unknown",
         "max_context_tokens": combined.get("max_context_tokens"),
         "max_context_chars": combined.get("max_context_chars"),
         "retrieval_settings": combined.get("retrieval_settings"),

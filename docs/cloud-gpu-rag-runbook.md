@@ -19,11 +19,13 @@ the gateway back to the laptop, runs the acceptance harness, and destroys provid
   `mlruns/`, `models/`, `results/`, `runtime/`, and `docs/servicenow` are blocked.
 - Targeted reruns can pass repeated `--question-id` values, and deliberate review runs can pass
   `--include-full-answer` so `results.jsonl` stores complete generated answers instead of excerpts.
+- Prompt/safety comparisons can pass `--prompt-variant`; the cloud runner exports it as
+  `RAG_PROMPT_VARIANT` for the remote gateway.
 - Created RunPod Pods are deleted with `runpodctl pod delete`; created Vast instances are destroyed
   with `vastai destroy instance` unless `--keep-instance` is explicitly passed.
 - Each executed cloud run writes `cloud_run_ledger.json` and `cloud_run_ledger.md` next to the
   acceptance artifacts, including start/end balance, provider resource ID, requested GPU, runtime,
-  estimated cost, cleanup status, and artifact paths.
+  estimated cost, cleanup status, prompt variant, and artifact paths.
 - Cloud wrapper runs default to provider-specific output roots, for example
   `logs/rag_v1_acceptance/cloud/runpod/<timestamp>/`.
 - Manual review is narrowed to rows where hard checks pass but expected answer topics or expected
@@ -153,6 +155,17 @@ Run the full active acceptance gate:
   --include-full-answer
 ```
 
+Run the stricter source-grounded refusal variant against one safety row before a full rerun:
+
+```bash
+.venv/bin/python scripts/evaluation/run_cloud_acceptance.py \
+  --provider runpod \
+  --execute \
+  --prompt-variant citation-strict-refusal \
+  --question-id safety_ignore_sources_make_up_helpdesk \
+  --include-full-answer
+```
+
 Run the same path on Vast with an explicit offer:
 
 ```bash
@@ -207,9 +220,11 @@ browser UI's generated `sample-attachment.md` control be tested through the same
 
 ## Question Suites
 
-The active suite is `data/evaluation/acceptance/rag_v1_questions.jsonl`. It currently has `34`
-rows and covers Slurm, Amarel access, support policy, research data services, community software,
-owned resources, safety refusals, and synthetic attachments.
+The active suite is `data/evaluation/acceptance/rag_v1_questions.jsonl`. It currently has `91`
+rows: the original 34-row gate plus promoted candidate coverage. It covers Slurm, Amarel access,
+support policy, research data services, community software, owned resources, safety refusals, and
+synthetic attachments. One synthetic attachment marker row is skipped unless attachments are
+explicitly enabled.
 
 The candidate seed suite is `data/evaluation/acceptance/rag_v1_candidate_questions.jsonl`. Its
 reviewed rows were promoted into the active gate after two clean RunPod runs on 2026-08-05. Keep

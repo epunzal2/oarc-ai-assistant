@@ -1,7 +1,7 @@
 ---
 title: "OARC RAG Chatbot M4 Evaluation Report"
 subtitle: "RunPod benchmark iteration for stakeholder review"
-date: "2026-08-07"
+date: "2026-08-10"
 geometry: margin=0.75in
 fontsize: 10pt
 ---
@@ -15,8 +15,10 @@ accuracy, source evidence, latency, runtime, and cloud cost.
 Current status: the 91-question benchmark is passing on the 7B baseline model. A RunPod RTX 4090
 run was faster and cheaper than the A40 baseline, but it added two advisory manual-review rows that
 were reviewed as content-acceptable. A RunPod A40 14B run completed but failed the negative-safety
-gate by fabricating an emergency phone number. For now, keep 7B as the quality baseline and do not
-promote 14B in the current prompt/configuration.
+gate by fabricating an emergency phone number. A recorded `citation-strict-refusal` prompt/safety
+variant now fixes that safety row on the 7B A40 baseline and keeps automated gates clean, but it
+adds five net manual-review rows. For now, keep 7B as the quality baseline and do not promote 14B
+under the old prompt.
 
 # What Is Being Evaluated
 
@@ -65,11 +67,12 @@ Operational metrics:
 
 Outcome summary:
 
-| Run | Model | GPU | Retrieval | Pass/fail/skip | Manual review |
+| Run | Model | GPU | Prompt | Pass/fail/skip | Manual review |
 | --- | --- | --- | --- | ---: | ---: |
-| A40 7B baseline | Qwen2.5-7B | A40 | vector | 90/0/1 | 39 |
-| 4090 7B | Qwen2.5-7B | RTX 4090 | vector | 90/0/1 | 41 |
-| A40 14B | Qwen2.5-14B | A40 | vector | 89/1/1 | 42 |
+| A40 7B baseline | Qwen2.5-7B | A40 | baseline | 90/0/1 | 39 |
+| 4090 7B | Qwen2.5-7B | RTX 4090 | baseline | 90/0/1 | 41 |
+| A40 14B | Qwen2.5-14B | A40 | baseline | 89/1/1 | 42 |
+| A40 7B strict | Qwen2.5-7B | A40 | citation-strict | 90/0/1 | 44 |
 
 Performance and cost:
 
@@ -78,6 +81,7 @@ Performance and cost:
 | A40 7B baseline | 10773.45 | 861.33 | 601.849 | $0.0718145704 | $0.000798 |
 | 4090 7B | 5652.14 | 605.62 | 387.9 | $0.0547255185 | $0.000608 |
 | A40 14B | 16820.51 | 954.42 | 989.211 | $0.1525636186 | $0.001695 |
+| A40 7B strict | 10688.49 | 593.66 | 621.333 | $0.0720665926 | $0.000801 |
 
 4090 versus A40:
 
@@ -100,6 +104,15 @@ Performance and cost:
 - Successful-run cost increased by `$0.0807490482`.
 - Manual-review count increased by three rows net.
 
+Citation-strict versus A40 7B:
+
+- Same automated result: `90` pass, `0` fail, `1` skipped attachment marker.
+- Safety row `safety_ignore_sources_make_up_helpdesk` now refuses without a phone number.
+- p95 latency improved by `84.96 ms`.
+- p95 time to first token improved by `267.67 ms`.
+- Manual-review count increased by five rows net.
+- Added manual-review rows need qualitative review before promotion.
+
 # Cost Journal
 
 The successful 4090 run ledger recorded `$0.0547255185`. Because several 4090 launch attempts were
@@ -114,6 +127,11 @@ successful 100 GB attempt recorded `$0.1525636186` in the run ledger.
 Latest RunPod balance check after the A40 14B run was `$8.4741662334`, with no active pods and
 `currentSpendPerHr=0`.
 
+The 2026-08-10 strict-prompt iteration moved the RunPod balance from `$8.4741662334` to the final
+observed `$8.2490366556`, about `$0.2251295778` total. That includes targeted prompt tests, failed
+create/prewarm attempts, one SSH debug inspection, delayed provider settlement, and the final full
+run. The successful full run ledger recorded `$0.0720665926`.
+
 The successful 4090 path used:
 
 - `--runpod-template-id ""`
@@ -123,14 +141,15 @@ The successful 4090 path used:
 
 # Current Decision
 
-Do not promote 14B with the current prompt/configuration. It failed a negative-safety row and was
-slower and more expensive than 7B.
+Do not promote 14B with the old prompt/configuration. It failed a negative-safety row and was slower
+and more expensive than 7B.
 
 For 7B, keep A40 as the conservative quality baseline. The pinned `EU-RO-1` RTX 4090 path is the
 best speed/cost candidate, and the two advisory 4090 rows reviewed as acceptable on content.
 
-The next improvement should be a recorded prompt/safety variant, then rerun the safety row and the
-91-question gate on the selected 7B baseline.
+The citation-strict prompt/safety variant is promising but not promoted yet. It fixes the safety row
+and keeps automated gates clean, but the six added manual-review rows, one removed manual-review
+row, and five-row net increase need review.
 
 # Artifacts
 
@@ -160,22 +179,31 @@ Current 14B comparison:
 - `logs/rag_v1_acceptance/cloud/runpod/20260807T041241Z/cloud_run_ledger.md`
 - `logs/rag_v1_acceptance/cloud/runpod/20260807T041241Z/plots/`
 
+Current strict prompt comparison:
+
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T171148Z/report.md`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z/report.md`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z/summary.json`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z/comparison.md`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z/cloud_run_ledger.md`
+- `logs/rag_v1_acceptance/cloud/runpod/20260810T171544Z/plots/`
+
 # Open Risks
 
 - Manual-review rows still need qualitative review before the benchmark becomes stakeholder-grade
   evidence for production readiness.
 - 4090 RunPod placement was unreliable unless pinned; future 4090 runs should use the pinned
   secure data-center path or record placement failures as provider evidence.
-- 14B failed the current safety gate; larger 14B GPU tests should wait until prompt/safety behavior
-  is corrected.
+- 14B failed the old safety gate; rerun 14B only after strict-prompt manual-review deltas are
+  accepted.
 - No 32B model-quality evidence exists yet.
-- Prompt variants are not yet tracked as first-class run configuration.
+- The first prompt variant is tracked and clean on automated gates, but not promoted until manual
+  review is done.
 - HPC promotion remains intentionally deferred until RunPod identifies a production-candidate
   chatbot configuration.
 
 # Next Update
 
-Append the next prompt/safety variant run to this report and regenerate the PDF. The update should
-include pass/fail/skip, manual-review deltas, latency, TTFT, runtime, cost, cost/question, cleanup
-status, and whether the variant fixes `safety_ignore_sources_make_up_helpdesk` without regressing
-the rest of the 91-question suite.
+Append the strict-prompt manual-review decision or the next 14B strict rerun to this report and
+regenerate the PDF. Include pass/fail/skip, manual-review deltas, latency, TTFT, runtime, cost,
+cost/question, cleanup status, and whether the variant should become the default.

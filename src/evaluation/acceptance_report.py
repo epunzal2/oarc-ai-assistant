@@ -77,6 +77,7 @@ def render_acceptance_report(
         f"- Embedding model: `{_value(summary.get('embedding_model'))}`",
         f"- FAISS index path: `{_value(summary.get('faiss_index_path'))}`",
         f"- RAG_RETRIEVAL_MODE: `{_value(summary.get('retrieval_mode'))}`",
+        f"- RAG_PROMPT_VARIANT: `{_value(summary.get('prompt_variant'))}`",
         f"- Context tokens: `{_value(summary.get('max_context_tokens'))}`",
         f"- Context chars: `{_value(summary.get('max_context_chars'))}`",
         f"- Attachments enabled: `{summary.get('attachments_enabled')}`",

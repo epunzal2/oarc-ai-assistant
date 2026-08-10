@@ -199,6 +199,12 @@ partition requests: when the retrieved context does not contain the distinctive 
 pipeline returns a limitation/helpdesk response instead of letting a small model synthesize a local
 partition command.
 
+Prompt/safety variants are selected with `RAG_PROMPT_VARIANT`; the default is
+`baseline-current`. The `citation-strict-refusal` variant adds stronger source-grounding and refusal
+instructions and includes a deterministic guard for fabricated OARC emergency/support-contact
+requests. The selected variant is included in gateway provider metadata, acceptance summaries,
+cloud ledgers, and run reports so prompt comparisons are reproducible.
+
 ### LLM Providers
 
 `src/rag/llm_provider.py` defines `LLMProvider`, `LLMResponse`, and `LLMUsage`. Provider
@@ -582,12 +588,13 @@ Large Hugging Face/vLLM models may also need explicit RunPod container disk sizi
 container disk failed before acceptance while reconstructing model weights.
 
 Cloud runs forward the acceptance harness `--include-full-answer` and repeated `--question-id`
-options. By default, cloud wrapper artifacts are separated by provider under
-`logs/rag_v1_acceptance/cloud/<provider>/<timestamp>/`; `--acceptance-output-dir` can override this.
+options, plus `--prompt-variant` as remote `RAG_PROMPT_VARIANT`. By default, cloud wrapper
+artifacts are separated by provider under `logs/rag_v1_acceptance/cloud/<provider>/<timestamp>/`;
+`--acceptance-output-dir` can override this.
 When executed, the runner writes `cloud_run_ledger.json` and `cloud_run_ledger.md` next to the
 acceptance run artifacts, including sanitized start/end account snapshots, provider resource ID,
 requested GPU or offer query, runtime, estimated provider cost, cleanup status, question subset,
-answer-capture mode, and acceptance artifact paths.
+prompt variant, answer-capture mode, and acceptance artifact paths.
 
 Live UI screenshot checks use the same tunnel and `/ui` route as the acceptance harness. They should
 keep a cloud instance alive only for the screenshot window, capture the chat answer with the

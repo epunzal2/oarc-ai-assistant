@@ -31,6 +31,7 @@ def _summary(**overrides) -> dict:
         "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
         "faiss_index_path": "vector_index/faiss_macmini",
         "retrieval_mode": "vector",
+        "prompt_variant": "citation-strict-refusal",
         "attachments_enabled": False,
         "total_questions": 1,
         "executed_questions": 1,
@@ -100,6 +101,8 @@ def test_render_acceptance_report_is_excerpt_only_by_default() -> None:
     assert "# RAG v1 Acceptance Report" in report
     assert "llama3.2:1b" in report
     assert "RAG_RETRIEVAL_MODE" in report
+    assert "RAG_PROMPT_VARIANT" in report
+    assert "citation-strict-refusal" in report
     assert "Slurm Quickstart" in report
     assert "Use sbatch." in report
     assert "FULL ANSWER SHOULD NOT RENDER" not in report
