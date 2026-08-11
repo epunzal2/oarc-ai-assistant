@@ -2,10 +2,8 @@
 title: "OARC RAG Chatbot M4 Evaluation Report"
 subtitle: "RunPod exploration and benchmark evidence"
 date: "2026-08-11"
-geometry: margin=0.9in
-fontsize: 11pt
-mainfont: "Arial"
-monofont: "Menlo"
+geometry: margin=0.75in
+fontsize: 10pt
 colorlinks: false
 ---
 
@@ -47,18 +45,23 @@ latency, and cleanup behavior before the configuration is considered for HPC pro
 
 # Prompt Variants
 
-Baseline prompt means the current default RAG instructions. It tells the chatbot to answer from
-retrieved context and command-reference hints, prefer OARC/Amarel sources for local policy, refuse
-secrets or private records, and say when a local detail is not evidenced.
+The result tables use three prompt labels:
 
-Citation-strict prompt means the baseline prompt plus stronger source-grounding and refusal rules.
-It treats retrieved context and command-reference hints as the only authority for OARC-specific
-facts, refuses requests to ignore sources or fabricate details, and forbids invented phone numbers,
-emails, URLs, partitions, accounts, quotas, paths, credentials, ticket fields, or emergency
-procedures.
+- `baseline`: the current default RAG instructions. It tells the chatbot to answer from retrieved
+  context and command-reference hints, prefer OARC/Amarel sources for local policy, refuse secrets
+  or private records, and say when a local detail is not evidenced.
+- `strict`: the first recorded `citation-strict-refusal` variant. It keeps the baseline behavior
+  but adds stronger source-grounding and refusal rules.
+- `patched strict`: the same citation-strict prompt plus targeted command-reference fixes for
+  failure areas found during manual review.
 
-The patched citation-strict prompt also includes explicit command-reference hints for two observed
-failure areas:
+The citation-strict rules treat retrieved context and command-reference hints as the only authority
+for OARC-specific facts, refuse requests to ignore sources or fabricate details, and forbid invented
+phone numbers, emails, URLs, partitions, accounts, quotas, paths, credentials, ticket fields, or
+emergency procedures.
+
+The patched strict prompt also includes explicit command-reference hints for two observed failure
+areas:
 
 - Amarel storage roles: `/home/<NetID>` for backed-up home/configuration files,
   `/projects/<storage_ID>` for backed-up project/group data, and `/scratch/<NetID>` for temporary
@@ -112,15 +115,25 @@ Advisory review:
 - The current benchmark is useful for comparing configurations, but remaining manual-review rows
   still need qualitative review before production readiness claims.
 
+# How To Read Current Evidence
+
+- `Result` is `pass/fail/skip`, not a percentage. For example, `90/0/1` means 90 benchmark rows
+  passed automated checks, 0 failed automated checks, and 1 was skipped.
+- The skipped row in these runs is the synthetic attachment marker because attachments were
+  disabled for normal benchmark runs.
+- `Manual review` is the number of passed rows that still need human answer-quality review. These
+  rows are advisory, not automatic failures.
+- `LLM` is the model served by the RunPod pod. `GPU` is the accelerator class used for that run.
+
 # Current Evidence
 
-| Label | Configuration | Result | Manual review |
-| --- | --- | ---: | ---: |
-| 7B A40 baseline | Qwen2.5-7B, A40, baseline | 90/0/1 | 39 |
-| 7B 4090 baseline | Qwen2.5-7B, RTX 4090, baseline | 90/0/1 | 41 |
-| 14B A40 baseline | Qwen2.5-14B, A40, baseline | 89/1/1 | 42 |
-| 7B A40 strict | Qwen2.5-7B, A40, citation-strict | 90/0/1 | 44 |
-| 7B A40 patched strict | Qwen2.5-7B, A40, patched strict | 90/0/1 | 42 |
+| Run | LLM | GPU | Prompt | Result | Manual review |
+| --- | --- | --- | --- | ---: | ---: |
+| 7B A40 baseline | Qwen2.5-7B | A40 | baseline | 90/0/1 | 39 |
+| 7B 4090 baseline | Qwen2.5-7B | RTX 4090 | baseline | 90/0/1 | 41 |
+| 14B A40 baseline | Qwen2.5-14B | A40 | baseline | 89/1/1 | 42 |
+| 7B A40 strict | Qwen2.5-7B | A40 | strict | 90/0/1 | 44 |
+| 7B A40 patched strict | Qwen2.5-7B | A40 | patched strict | 90/0/1 | 42 |
 
 Latency and responsiveness:
 
@@ -131,6 +144,15 @@ Latency and responsiveness:
 | 14B A40 baseline | 16820.51 | 954.42 | 989.211 |
 | 7B A40 strict | 10688.49 | 593.66 | 621.333 |
 | 7B A40 patched strict | 10605.16 | 571.12 | 587.979 |
+
+# Summary Plots
+
+![M4 automated result and manual-review summary](project_docs/reports/assets/m4-stakeholder/m4-evaluation-summary.png){width=95%}
+
+![M4 latency and runtime summary](project_docs/reports/assets/m4-stakeholder/m4-latency-runtime.png){width=95%}
+
+PNG copies of the per-question SVG plots were also generated beside the source SVG files for each
+run listed above.
 
 # Findings
 
