@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+<rect x="0" y="0" width="1600" height="1020" rx="0" fill="white" stroke="none" stroke-width="1" />
+<text x="70" y="90" font-family="Helvetica, Arial, sans-serif" font-size="58" font-weight="700" fill="#222222" text-anchor="start">Automated accuracy and review queue</text>
+<text x="70" y="135" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#666666" text-anchor="start">Result is pass/fail/skip. Accuracy is pass rate among executed rows; manual review is advisory.</text>
+<text x="420" y="205" font-family="Helvetica, Arial, sans-serif" font-size="36" font-weight="700" fill="#222222" text-anchor="start">Automated result</text>
+<text x="1200" y="205" font-family="Helvetica, Arial, sans-serif" font-size="36" font-weight="700" fill="#222222" text-anchor="start">Manual review rows</text>
+<text x="70" y="285" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="400" fill="#222222" text-anchor="start">7B A40 baseline</text>
+<rect x="420" y="245" width="643" height="58" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="741.5" y="284" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="white" text-anchor="middle">90</text>
+<rect x="1063" y="245" width="7" height="58" rx="0" fill="#9C9C9C" stroke="none" stroke-width="1" />
+<rect x="420" y="245" width="650" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1098" y="285" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">90/0/1</text>
+<rect x="1200" y="245" width="218" height="58" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<rect x="1200" y="245" width="280" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1504" y="285" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">39</text>
+<text x="70" y="410" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="400" fill="#222222" text-anchor="start">7B 4090 baseline</text>
+<rect x="420" y="370" width="643" height="58" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="741.5" y="409" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="white" text-anchor="middle">90</text>
+<rect x="1063" y="370" width="7" height="58" rx="0" fill="#9C9C9C" stroke="none" stroke-width="1" />
+<rect x="420" y="370" width="650" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1098" y="410" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">90/0/1</text>
+<rect x="1200" y="370" width="230" height="58" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<rect x="1200" y="370" width="280" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1504" y="410" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">41</text>
+<text x="70" y="535" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="400" fill="#222222" text-anchor="start">14B A40 baseline</text>
+<rect x="420" y="495" width="636" height="58" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="738.0" y="534" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="white" text-anchor="middle">89</text>
+<rect x="1056" y="495" width="7" height="58" rx="0" fill="#CB4C49" stroke="none" stroke-width="1" />
+<rect x="1063" y="495" width="7" height="58" rx="0" fill="#9C9C9C" stroke="none" stroke-width="1" />
+<rect x="420" y="495" width="650" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1098" y="535" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">89/1/1</text>
+<rect x="1200" y="495" width="235" height="58" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<rect x="1200" y="495" width="280" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1504" y="535" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">42</text>
+<text x="70" y="660" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="400" fill="#222222" text-anchor="start">7B A40 strict</text>
+<rect x="420" y="620" width="643" height="58" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="741.5" y="659" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="white" text-anchor="middle">90</text>
+<rect x="1063" y="620" width="7" height="58" rx="0" fill="#9C9C9C" stroke="none" stroke-width="1" />
+<rect x="420" y="620" width="650" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1098" y="660" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">90/0/1</text>
+<rect x="1200" y="620" width="246" height="58" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<rect x="1200" y="620" width="280" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1504" y="660" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">44</text>
+<text x="70" y="785" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict</text>
+<rect x="420" y="745" width="643" height="58" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="741.5" y="784" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="white" text-anchor="middle">90</text>
+<rect x="1063" y="745" width="7" height="58" rx="0" fill="#9C9C9C" stroke="none" stroke-width="1" />
+<rect x="420" y="745" width="650" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1098" y="785" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">90/0/1</text>
+<rect x="1200" y="745" width="235" height="58" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<rect x="1200" y="745" width="280" height="58" rx="0" fill="none" stroke="#555555" stroke-width="2" />
+<text x="1504" y="785" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">42</text>
+<rect x="70" y="872" width="34" height="28" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="118" y="896" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">Pass</text>
+<rect x="320" y="872" width="34" height="28" rx="0" fill="#CB4C49" stroke="none" stroke-width="1" />
+<text x="368" y="896" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">Fail</text>
+<rect x="570" y="872" width="34" height="28" rx="0" fill="#9C9C9C" stroke="none" stroke-width="1" />
+<text x="618" y="896" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">Skipped</text>
+<rect x="820" y="872" width="34" height="28" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="868" y="896" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">Manual review</text>
+<text x="70" y="960" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#666666" text-anchor="start">The skipped row is the synthetic attachment marker because attachments were disabled for these runs.</text>
+</svg>

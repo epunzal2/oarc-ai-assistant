@@ -21,6 +21,20 @@ faster, but placement reliability still needs operational caution. A Qwen2.5-14B
 safety row by fabricating an emergency phone number. The patched citation-strict prompt fixed that
 failure mode on the 7B baseline and is now the prompt to use for the next 14B rerun.
 
+# Milestone Context
+
+Earlier milestones are reportable as setup, smoke, acceptance, and UI-parity deliverables. Milestone
+4 is the first milestone with comparable model/GPU/prompt benchmark evidence worth plotting.
+
+| Milestone | Current status | Reportable output |
+| --- | --- | --- |
+| M0 prep | Mostly done | RunPod auth, packaging, public FAISS index, ledgers, reports, plots |
+| M1 smoke | Done on RunPod | A40 smoke test passed and pod cleanup verified |
+| M2 acceptance | Done on RunPod | Repeatable full acceptance gate with no failures |
+| M3 parity | Done on RunPod | Live UI, attachment UI path, screenshots, assistant-ui template |
+| M4 benchmark | Active | 91-question model/GPU/prompt comparisons and accuracy evidence |
+| M5 HPC | Deferred | Resume after RunPod selects a production-candidate configuration |
+
 # Setup And Configuration
 
 The benchmark runs use a short-lived RunPod pod to serve the model and a local acceptance harness to
@@ -125,6 +139,34 @@ Advisory review:
   rows are advisory, not automatic failures.
 - `LLM` is the model served by the RunPod pod. `GPU` is the accelerator class used for that run.
 
+# Accuracy Snapshot
+
+In this report, accuracy means automated benchmark pass rate: `pass / (pass + fail)` for executed
+rows. It does not prove final semantic correctness by itself. It tells us whether a configuration
+passed the current hard checks for answer presence, required terms, source evidence, safety
+refusals, and latency.
+
+| Run | Automated accuracy | Full-suite coverage | Hard failures |
+| --- | ---: | ---: | ---: |
+| 7B A40 baseline | 100.0% (90/90) | 98.9% (90/91) | 0 |
+| 7B 4090 baseline | 100.0% (90/90) | 98.9% (90/91) | 0 |
+| 14B A40 baseline | 98.9% (89/90) | 97.8% (89/91) | 1 |
+| 7B A40 strict | 100.0% (90/90) | 98.9% (90/91) | 0 |
+| 7B A40 patched strict | 100.0% (90/90) | 98.9% (90/91) | 0 |
+
+# Manual Review Scope
+
+You do not need to personally review every answer to keep running exploratory comparisons. The
+automation is enough to decide whether a run should be rejected immediately, rerun, or compared
+against the next candidate.
+
+Human review is required before making a production-readiness or stakeholder-quality claim. That
+review should cover all failed rows, all manual-review rows that differ from the baseline, and a
+sample of clean rows. The reviewer should be an OARC subject-matter expert when the answer depends
+on local policy, support workflow, storage rules, or safety-sensitive guidance.
+
+\newpage
+
 # Current Evidence
 
 | Run | LLM | GPU | Prompt | Result | Manual review |
@@ -145,14 +187,21 @@ Latency and responsiveness:
 | 7B A40 strict | 10688.49 | 593.66 | 621.333 |
 | 7B A40 patched strict | 10605.16 | 571.12 | 587.979 |
 
+\newpage
+
 # Summary Plots
 
-![M4 automated result and manual-review summary](project_docs/reports/assets/m4-stakeholder/m4-evaluation-summary.png){width=95%}
+![M4 automated result and manual-review summary](project_docs/reports/assets/m4-stakeholder/m4-evaluation-summary.svg){width=100%}
 
-![M4 latency and runtime summary](project_docs/reports/assets/m4-stakeholder/m4-latency-runtime.png){width=95%}
+\newpage
 
-PNG copies of the per-question SVG plots were also generated beside the source SVG files for each
-run listed above.
+![M4 latency and runtime summary](project_docs/reports/assets/m4-stakeholder/m4-latency-runtime.svg){width=100%}
+
+The PDF uses vector SVG figures for readability. High-resolution PNG copies are saved beside these
+SVGs, and PNG copies of the per-question run SVG plots were also generated beside the source SVG
+files for each run listed above.
+
+\newpage
 
 # Findings
 
