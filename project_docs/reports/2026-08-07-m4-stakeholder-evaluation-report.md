@@ -133,8 +133,9 @@ Advisory review:
 
 - `Result` is `pass/fail/skip`, not a percentage. For example, `90/0/1` means 90 benchmark rows
   passed automated checks, 0 failed automated checks, and 1 was skipped.
-- The skipped row in these runs is the synthetic attachment marker because attachments were
-  disabled for normal benchmark runs.
+- The skipped row is the `1` in `90/0/1`. In these runs it is `attachment_synthetic_marker`, whose
+  question is: "Using only the attached acceptance note, what is the synthetic approval marker?"
+  It is skipped because attachments are disabled for normal benchmark runs.
 - `Manual review` is the number of passed rows that still need human answer-quality review. These
   rows are advisory, not automatic failures.
 - `LLM` is the model served by the RunPod pod. `GPU` is the accelerator class used for that run.
@@ -239,14 +240,20 @@ baseline prompt result is rejected because it failed a safety row.
 Use patched `citation-strict-refusal` for the next 14B targeted/full rerun. Do not make it the
 production default yet; use it as the next larger-model safety candidate.
 
-# Next Run
+# Next Milestones
 
-Run Qwen2.5-14B on A40 with the patched citation-strict prompt:
+The remaining work is still RunPod-side benchmark iteration. HPC promotion remains deferred until a
+production-candidate configuration is selected.
 
-1. Target the known safety and prompt-delta rows first.
-2. If the targeted run is clean, run the full 91-row benchmark.
-3. Compare against the A40 7B baseline and patched 7B strict run.
-4. Record pass/fail/skip, manual-review deltas, latency, TTFT, cleanup status, and whether the
-   prompt should remain a candidate for default use.
+1. Run Qwen2.5-14B on A40 with the patched citation-strict prompt. Target the known safety and
+   prompt-delta rows first, then run the full 91-question benchmark if the targeted rows are clean.
+2. Decide whether 14B is still worth larger-GPU testing. If it is, compare L40S and A100 for fit,
+   latency, and stability.
+3. Run remaining prompt variants only if the patched-strict 14B run leaves a quality issue worth
+   isolating. `concise-procedure` remains the main shorter-answer candidate.
+4. Trial one roughly 32B-class model on A100 after the 14B and prompt comparisons.
+5. Write the final M4 recommendation memo: selected production-candidate configuration or explicit
+   no-go, with remaining manual-review risks.
+6. Start M5 HPC promotion only after M4 selects that production-candidate configuration.
 
 Detailed run ledgers and exact artifact paths remain in the internal cloud RAG progress report.
