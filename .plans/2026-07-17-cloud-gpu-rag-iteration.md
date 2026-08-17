@@ -197,12 +197,14 @@ target.
   frozen 91-question suite on A40 7B.
 - [x] Run the patched-strict 14B full rerun on A40 against the 100-question benchmark. It passed
   safety checks but failed three content rows, so it is recorded as informative but not promoted.
-- [ ] Triage the three patched-strict 14B 100-row failures:
+- [x] Triage the three patched-strict 14B 100-row failures:
   `amarel_acl_share_file`, `amarel_split_large_box_files`, and
-  `slurm_maintenance_reservation_check`.
-- [ ] Rerun the selected 7B patched-strict reference configuration on the same 100-question
-  benchmark for apples-to-apples comparison.
-- [ ] Defer remaining prompt variants unless the 100-row runs leave a quality issue worth
+  `slurm_maintenance_reservation_check`. Added targeted command-reference coverage for ACL
+  sharing, large Box file splitting, and Slurm maintenance reservation checks.
+- [x] Rerun the selected 7B patched-strict reference configuration on the same 100-question
+  benchmark for apples-to-apples comparison. Final run
+  `logs/rag_v1_acceptance/cloud/runpod/20260817T200209Z` passed `100/100`.
+- [x] Defer remaining prompt variants unless the 100-row runs leave a quality issue worth
   isolating; `concise-procedure` remains a shorter-answer candidate for later A/B comparison.
 - [ ] Trial `Qwen/Qwen2.5-32B-Instruct` on `NVIDIA A100 80GB PCIe` after the 14B and prompt
   comparisons. Treat L40S for 32B as a separate quantization/serving experiment unless vLLM memory
@@ -220,10 +222,10 @@ Milestone 4 deliverables:
   source-quality notes.
 - [ ] Larger-GPU report: 14B on L40S/A100 if A40 is promising or blocked, with fit/performance/cost
   decision.
-- [ ] Prompt-variant report: recorded prompt selector plus baseline/current, patched
-  citation-strict, and concise-procedure comparisons. Patched citation-strict has a clean
-  91-question A40 7B historical gate and a 97/3 100-question A40 14B result; it is not yet the
-  production default.
+- [x] Prompt-variant report: recorded prompt selector plus baseline/current and patched
+  citation-strict comparisons. Patched citation-strict has a clean 91-question A40 7B historical
+  gate, a clean 100-question A40 7B reference, and a 97/3 100-question A40 14B result. Defer
+  `concise-procedure` until a specific answer-length or verbosity issue needs isolation.
 - [ ] 32B trial report: Qwen2.5-32B on A100, including memory/serving outcome, quality deltas, and
   whether 32B is worth further optimization.
 - [ ] Milestone 4 recommendation memo: chosen production-candidate config or explicit no-go,
@@ -266,10 +268,18 @@ The active benchmark is now the 100-row non-attachment suite at
 passed `97`, failed `3`, had `50` advisory manual-review IDs, p95 latency `18023.28` ms, p95 TTFT
 `948.41` ms, runtime `1036.958` seconds, estimated cost `$0.1234737889`, and
 `promotion_ready=false`. The failed rows were `amarel_acl_share_file`,
-`amarel_split_large_box_files`, and `slurm_maintenance_reservation_check`. The next benchmark
-evidence steps are, in order: triage the three 14B failures, rerun the selected 7B patched-strict
-reference on the same 100-row suite, then decide whether 14B warrants L40S/A100 tests. Vast setup,
-Vast comparison, and HPC promotion are deferred while RunPod is the active iteration provider.
+`amarel_split_large_box_files`, and `slurm_maintenance_reservation_check`.
+
+Those three rows were triaged as real answer-quality misses against legitimate guide expectations.
+The patch added targeted command-reference hints for ACL inspection/grants, Box split/checksum
+workflows, and Slurm maintenance reservation checks. The selected 7B patched-strict reference run
+`logs/rag_v1_acceptance/cloud/runpod/20260817T200209Z` then executed all `100` rows, skipped `0`,
+passed `100`, failed `0`, had `49` advisory manual-review IDs, p95 latency `10869.69` ms, p95 TTFT
+`768.38` ms, runtime `767.967` seconds, estimated cost `$0.0743032148`, and
+`promotion_ready=true`. The next benchmark evidence steps are, in order: rerun the 100-row 7B
+patched-strict reference on RTX 4090 for cost/runtime parity, review or reduce the `49` advisory
+manual-review rows, then decide whether 14B warrants L40S/A100 tests. Vast setup, Vast comparison,
+and HPC promotion are deferred while RunPod is the active iteration provider.
 
 Written progress report:
 `project_docs/reports/2026-08-04-cloud-rag-progress-report.md`. Update that report after each
@@ -320,6 +330,9 @@ Default 7B-class estimate:
 - Current 100-row benchmark: the warm RunPod A40 14B patched-strict run
   `logs/rag_v1_acceptance/cloud/runpod/20260817T165621Z` ran in `1036.958` seconds and cost
   `$0.1234737889` by balance delta.
+- Current 100-row 7B reference: the warm RunPod A40 7B patched-strict run
+  `logs/rag_v1_acceptance/cloud/runpod/20260817T200209Z` ran in `767.967` seconds and cost
+  `$0.0743032148` by balance delta.
 
 Most first-run time is image boot, dependency install, model download, and local FAISS indexing.
 Always destroy/terminate the instance after the run; stopped resources can still incur storage
@@ -596,6 +609,18 @@ by this plan.
   `hg1kq9t9o0rebx` was deleted by the runner; post-run `runpodctl pod list` returned `[]` and
   `currentSpendPerHr=0`. Decision: do not promote 14B yet; triage retrieval/prompt behavior for
   the three failures, then rerun the 7B patched-strict reference on the same 100-row suite.
+- 2026-08-17: Triaged the three 14B patched-strict 100-row failures as legitimate command-procedure
+  gaps: ACL sharing needed `getfacl`/`setfacl`, large Box transfer needed the 50 GB
+  split/checksum/reassembly workflow, and maintenance reservations needed the `scontrol show res |
+  grep aint` workflow. Added targeted command-reference coverage and reran the selected
+  `Qwen/Qwen2.5-7B-Instruct` patched `citation-strict-refusal` reference on RunPod A40. Final run
+  `logs/rag_v1_acceptance/cloud/runpod/20260817T200209Z` executed `100`, skipped `0`, passed `100`,
+  failed `0`, had `49` advisory manual-review IDs, p95 latency `10869.69` ms, p95 TTFT `768.38` ms,
+  runtime `767.967` seconds, estimated cost `$0.0743032148`, and `promotion_ready=true`. Pod
+  `wogqbp3suesmpq` was deleted by the runner; post-run `runpodctl pod list` returned `[]` and
+  `currentSpendPerHr=0`. Decision: use this run as the current 100-row 7B A40 reference, run the
+  same 100-row 7B patched-strict configuration on RTX 4090 next, and keep 14B GPU expansion
+  secondary unless a larger-model quality question remains after manual-review sampling.
 
 # Provider References
 

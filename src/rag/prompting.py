@@ -20,6 +20,23 @@ _ACTIVE_JOB_METRICS_RE = re.compile(
     r"\b(sstat|maxrss|maxdiskread|maxdiskwrite|actively running|running job metrics?)\b",
     re.IGNORECASE,
 )
+_MAINTENANCE_RESERVATION_RE = re.compile(
+    r"\b(maintenance|reservation)\b.{0,80}\b(check|upcoming|before submitting|window|job|scontrol)\b|"
+    r"\b(check|upcoming|before submitting|window|job|scontrol)\b.{0,80}\b(maintenance|reservation)\b",
+    re.IGNORECASE,
+)
+_ACL_ACCESS_RE = re.compile(
+    r"\b(getfacl|setfacl|acl)\b|"
+    r"\b(view|grant|share|permissions?)\b.{0,80}\b(files?|folders?|director(?:y|ies)|another user|other users?)\b|"
+    r"\b(files?|folders?|director(?:y|ies))\b.{0,80}\b(view|grant|share|permissions?|another user|other users?)\b",
+    re.IGNORECASE,
+)
+_BOX_SPLIT_RE = re.compile(
+    r"\b(box|rutgers box)\b.{0,100}\b(50\s*gb|file[- ]?size limit|larger|large file|split|chunker)\b|"
+    r"\b(50\s*gb|file[- ]?size limit|larger|large file|split|chunker|sha512sum|checksum)\b"
+    r".{0,100}\b(box|rutgers box)\b",
+    re.IGNORECASE,
+)
 _TRANSFER_RE = re.compile(r"\b(transfer|copy|move|sync|scp|rsync|globus|rclone)\b", re.IGNORECASE)
 _LOGIN_OR_INTERACTIVE_RE = re.compile(
     r"\b(login nodes?|compute nodes?|interactive jobs?|quick interactive|quick command|"
@@ -54,12 +71,15 @@ _OWNER_PURCHASE_RE = re.compile(
     re.IGNORECASE,
 )
 _AMAREL_ACCESS_RE = re.compile(
-    r"\b(amarel|cluster).*\b(request|apply|access|account)\b|"
-    r"\b(request|apply|access|account).*\b(amarel|cluster)\b",
+    r"\b(new|current)\s+rutgers\s+users?\b.*\b(request|apply|access|account)\b.*\b(amarel|cluster)\b|"
+    r"\b(amarel|cluster)\b.*\b(access request|request form|request account|account setup|apply)\b|"
+    r"\b(request|apply)\b.*\b(amarel|cluster)\b.*\b(access|account)\b|"
+    r"\b(access|account)\b.*\b(request|apply)\b.*\b(amarel|cluster)\b",
     re.IGNORECASE,
 )
 _SUPPORT_RE = re.compile(
-    r"\b(help|helpdesk|support|ticket|contact|cannot solve|can't solve|issue|problem)\b",
+    r"\b(helpdesk|support|ticket|contact|cannot solve|can't solve|issue|problem)\b|"
+    r"\b(go for help|where should i (?:go|ask) for help|where is .*help)\b",
     re.IGNORECASE,
 )
 _STRICT_FABRICATED_CONTACT_RE = re.compile(
@@ -243,10 +263,30 @@ def build_slurm_command_reference(question: str) -> str:
             "`sstat --format=MaxRSS,MaxDiskRead,MaxDiskWrite -j <job_id>` when available; "
             "use `sacct` after completion for accounting history."
         )
+    if _MAINTENANCE_RESERVATION_RE.search(text):
+        hints.append(
+            "- Check upcoming Amarel maintenance reservations with "
+            "`scontrol show res | grep aint`; then inspect a named reservation with "
+            "`scontrol show res <ReservationName>` for exact start/end details."
+        )
     if _DEBUG_RE.search(text):
         hints.append(
             "- Debug completed or failed jobs with `sacct -j <job_id>` and check Slurm "
             "stdout/stderr files from the batch script."
+        )
+    if _ACL_ACCESS_RE.search(text):
+        hints.append(
+            "- View ACL permissions with `getfacl <path>`. Grant another user access with "
+            "`setfacl -m u:<NetID>:rwx <path>` or grant group access with "
+            "`setfacl -m g:<group>:r <path>`; parent directories must also allow traversal."
+        )
+    if _BOX_SPLIT_RE.search(text):
+        hints.append(
+            "- For the Rutgers Box 50 GB file-size limit, split large files with "
+            "`split -b 50GB --additional-suffix=-foo file.txt`, create a checksum with "
+            "`sha512sum file.txt > file.txt.sha512`, move the split files and checksum with "
+            "rclone, reassemble with `cat xa* > file.txt`, then verify with "
+            "`sha512sum --check file.txt.sha512`."
         )
     if _LOGIN_OR_INTERACTIVE_RE.search(text):
         hints.append(

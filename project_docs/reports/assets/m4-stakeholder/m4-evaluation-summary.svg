@@ -1,73 +1,82 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1260" width="1900" height="1260">
-<rect x="0" y="0" width="1900" height="1260" fill="white" />
-<text x="80" y="90" font-family="Helvetica, Arial, sans-serif" font-size="58" font-weight="700" fill="#222222" text-anchor="start">Automated accuracy and review queue</text>
-<text x="80" y="138" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#666666" text-anchor="start">Pass/fail is row-count based; manual review is advisory, not a hard failure.</text>
-<text x="520" y="215" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">Automated result</text>
-<text x="1335" y="215" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">Result</text>
-<text x="1535" y="215" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">Manual review</text>
-<text x="80" y="299" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#222222" text-anchor="start">7B A40 baseline</text>
-<text x="80" y="335" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | A40 | baseline | rows 90</text>
-<rect x="520" y="260" width="760.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="520" y="260" width="760.00" height="60" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="900.0" y="300" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">90</text>
-<text x="1335" y="300" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">90/0</text>
-<rect x="1535" y="260" width="220.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="1535" y="260" width="171.60" height="60" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1780" y="300" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">39</text>
-<text x="80" y="434" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#222222" text-anchor="start">7B 4090 baseline</text>
-<text x="80" y="470" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | RTX 4090 | baseline | rows 90</text>
-<rect x="520" y="395" width="760.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="520" y="395" width="760.00" height="60" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="900.0" y="435" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">90</text>
-<text x="1335" y="435" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">90/0</text>
-<rect x="1535" y="395" width="220.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="1535" y="395" width="180.40" height="60" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1780" y="435" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">41</text>
-<text x="80" y="569" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#222222" text-anchor="start">14B A40 baseline</text>
-<text x="80" y="605" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-14B | A40 | baseline | rows 90</text>
-<rect x="520" y="530" width="760.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="520" y="530" width="751.56" height="60" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<rect x="1271.5555555555557" y="530" width="8.44" height="60" rx="0" fill="#CB4C49" stroke="none" stroke-width="1" />
-<text x="895.7777777777778" y="570" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">89</text>
-<text x="1287.5555555555557" y="570" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="white" text-anchor="middle">1</text>
-<text x="1335" y="570" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">89/1</text>
-<rect x="1535" y="530" width="220.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="1535" y="530" width="184.80" height="60" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1780" y="570" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">42</text>
-<text x="80" y="704" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#222222" text-anchor="start">7B A40 strict</text>
-<text x="80" y="740" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | A40 | strict | rows 90</text>
-<rect x="520" y="665" width="760.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="520" y="665" width="760.00" height="60" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="900.0" y="705" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">90</text>
-<text x="1335" y="705" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">90/0</text>
-<rect x="1535" y="665" width="220.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="1535" y="665" width="193.60" height="60" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1780" y="705" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">44</text>
-<text x="80" y="839" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict</text>
-<text x="80" y="875" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | A40 | patched strict | rows 90</text>
-<rect x="520" y="800" width="760.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="520" y="800" width="760.00" height="60" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="900.0" y="840" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">90</text>
-<text x="1335" y="840" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">90/0</text>
-<rect x="1535" y="800" width="220.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="1535" y="800" width="184.80" height="60" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1780" y="840" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">42</text>
-<text x="80" y="974" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#222222" text-anchor="start">14B A40 patched strict</text>
-<text x="80" y="1010" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-14B | A40 | patched strict | rows 100</text>
-<rect x="520" y="935" width="760.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="520" y="935" width="737.20" height="60" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<rect x="1257.2" y="935" width="22.80" height="60" rx="0" fill="#CB4C49" stroke="none" stroke-width="1" />
-<text x="888.6" y="975" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">97</text>
-<text x="1273.2" y="975" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="white" text-anchor="middle">3</text>
-<text x="1335" y="975" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">97/3</text>
-<rect x="1535" y="935" width="220.00" height="60" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
-<rect x="1535" y="935" width="220.00" height="60" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1780" y="975" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="#222222" text-anchor="start">50</text>
-<rect x="80" y="1125" width="36.00" height="28" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="132" y="1150" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">Pass</text>
-<rect x="340" y="1125" width="36.00" height="28" rx="0" fill="#CB4C49" stroke="none" stroke-width="1" />
-<text x="392" y="1150" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">Fail</text>
-<rect x="600" y="1125" width="36.00" height="28" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="652" y="1150" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">Manual review</text>
-<text x="80" y="1202" font-family="Helvetica, Arial, sans-serif" font-size="27" font-weight="400" fill="#666666" text-anchor="start">Historical rows use 90 executed questions; the latest 14B row uses the expanded 100-question suite.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2200 1500" width="2200" height="1500">
+<rect x="0" y="0" width="2200" height="1500" fill="white" />
+<text x="80" y="90" font-family="Helvetica, Arial, sans-serif" font-size="60" font-weight="700" fill="#222222" text-anchor="start">Automated accuracy and review queue</text>
+<text x="80" y="140" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#666666" text-anchor="start">Pass/fail is row-count based; manual review is advisory, not a hard failure.</text>
+<text x="660" y="220" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">Automated result</text>
+<text x="1510" y="220" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">Result</text>
+<text x="1760" y="220" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#222222" text-anchor="start">Manual review</text>
+<text x="80" y="299" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">7B A40 baseline</text>
+<text x="80" y="336" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | A40 | baseline | rows 90</text>
+<rect x="660" y="260" width="780.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="660" y="260" width="780.00" height="64" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1050.0" y="303" font-family="Helvetica, Arial, sans-serif" font-size="29" font-weight="700" fill="white" text-anchor="middle">90</text>
+<text x="1510" y="303" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">90/0</text>
+<rect x="1760" y="260" width="250.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="1760" y="260" width="195.00" height="64" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="2070" y="303" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">39</text>
+<text x="80" y="444" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">7B 4090 baseline</text>
+<text x="80" y="481" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | RTX 4090 | baseline | rows 90</text>
+<rect x="660" y="405" width="780.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="660" y="405" width="780.00" height="64" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1050.0" y="448" font-family="Helvetica, Arial, sans-serif" font-size="29" font-weight="700" fill="white" text-anchor="middle">90</text>
+<text x="1510" y="448" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">90/0</text>
+<rect x="1760" y="405" width="250.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="1760" y="405" width="205.00" height="64" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="2070" y="448" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">41</text>
+<text x="80" y="589" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">14B A40 baseline</text>
+<text x="80" y="626" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-14B | A40 | baseline | rows 90</text>
+<rect x="660" y="550" width="780.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="660" y="550" width="771.33" height="64" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<rect x="1431.3333333333335" y="550" width="8.67" height="64" rx="0" fill="#CB4C49" stroke="none" stroke-width="1" />
+<text x="1045.6666666666667" y="593" font-family="Helvetica, Arial, sans-serif" font-size="29" font-weight="700" fill="white" text-anchor="middle">89</text>
+<text x="1435.6666666666667" y="593" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="white" text-anchor="middle">1</text>
+<text x="1510" y="593" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">89/1</text>
+<rect x="1760" y="550" width="250.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="1760" y="550" width="210.00" height="64" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="2070" y="593" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">42</text>
+<text x="80" y="734" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">7B A40 strict</text>
+<text x="80" y="771" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | A40 | strict | rows 90</text>
+<rect x="660" y="695" width="780.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="660" y="695" width="780.00" height="64" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1050.0" y="738" font-family="Helvetica, Arial, sans-serif" font-size="29" font-weight="700" fill="white" text-anchor="middle">90</text>
+<text x="1510" y="738" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">90/0</text>
+<rect x="1760" y="695" width="250.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="1760" y="695" width="220.00" height="64" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="2070" y="738" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">44</text>
+<text x="80" y="879" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict</text>
+<text x="80" y="916" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | A40 | patched strict | rows 90</text>
+<rect x="660" y="840" width="780.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="660" y="840" width="780.00" height="64" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1050.0" y="883" font-family="Helvetica, Arial, sans-serif" font-size="29" font-weight="700" fill="white" text-anchor="middle">90</text>
+<text x="1510" y="883" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">90/0</text>
+<rect x="1760" y="840" width="250.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="1760" y="840" width="210.00" height="64" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="2070" y="883" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">42</text>
+<text x="80" y="1024" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">14B A40 patched strict</text>
+<text x="80" y="1061" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-14B | A40 | patched strict | rows 100</text>
+<rect x="660" y="985" width="780.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="660" y="985" width="756.60" height="64" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<rect x="1416.6" y="985" width="23.40" height="64" rx="0" fill="#CB4C49" stroke="none" stroke-width="1" />
+<text x="1038.3" y="1028" font-family="Helvetica, Arial, sans-serif" font-size="29" font-weight="700" fill="white" text-anchor="middle">97</text>
+<text x="1428.3" y="1028" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="white" text-anchor="middle">3</text>
+<text x="1510" y="1028" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">97/3</text>
+<rect x="1760" y="985" width="250.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="1760" y="985" width="250.00" height="64" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="2070" y="1028" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">50</text>
+<text x="80" y="1169" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict ref</text>
+<text x="80" y="1206" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="400" fill="#666666" text-anchor="start">Qwen2.5-7B | A40 | patched strict | rows 100</text>
+<rect x="660" y="1130" width="780.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="660" y="1130" width="780.00" height="64" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1050.0" y="1173" font-family="Helvetica, Arial, sans-serif" font-size="29" font-weight="700" fill="white" text-anchor="middle">100</text>
+<text x="1510" y="1173" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">100/0</text>
+<rect x="1760" y="1130" width="250.00" height="64" rx="0" fill="#FFFFFF" stroke="#555555" stroke-width="2" />
+<rect x="1760" y="1130" width="245.00" height="64" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="2070" y="1173" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#222222" text-anchor="start">49</text>
+<rect x="80" y="1340" width="36.00" height="28" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="132" y="1365" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">Pass</text>
+<rect x="340" y="1340" width="36.00" height="28" rx="0" fill="#CB4C49" stroke="none" stroke-width="1" />
+<text x="392" y="1365" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">Fail</text>
+<rect x="600" y="1340" width="36.00" height="28" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="652" y="1365" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">Manual review</text>
+<text x="80" y="1417" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#666666" text-anchor="start">Historical rows use 90 executed questions; current comparison rows use the expanded 100-question suite.</text>
 </svg>

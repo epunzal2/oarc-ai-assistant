@@ -1,82 +1,94 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1510" width="1800" height="1510">
-<rect x="0" y="0" width="1800" height="1510" fill="white" />
-<text x="80" y="90" font-family="Helvetica, Arial, sans-serif" font-size="58" font-weight="700" fill="#222222" text-anchor="start">Latency and runtime comparison</text>
-<text x="80" y="138" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="400" fill="#666666" text-anchor="start">Lower is better. TTFT means time to first token.</text>
-<text x="80" y="205" font-family="Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#222222" text-anchor="start">p95 latency</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2100 1780" width="2100" height="1780">
+<rect x="0" y="0" width="2100" height="1780" fill="white" />
+<text x="80" y="90" font-family="Helvetica, Arial, sans-serif" font-size="60" font-weight="700" fill="#222222" text-anchor="start">Latency and runtime comparison</text>
+<text x="80" y="140" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="400" fill="#666666" text-anchor="start">Lower is better. TTFT means time to first token.</text>
+<text x="80" y="205" font-family="Helvetica, Arial, sans-serif" font-size="39" font-weight="700" fill="#222222" text-anchor="start">p95 latency</text>
 <text x="90" y="287" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 baseline</text>
-<rect x="560" y="255" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="255" width="478.20" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="1388" y="287" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.77s</text>
+<rect x="690" y="255" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="255" width="537.98" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1640" y="287" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.77s</text>
 <text x="90" y="345" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B 4090 baseline</text>
-<rect x="560" y="313" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="313" width="250.88" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="1388" y="345" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">5.65s</text>
+<rect x="690" y="313" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="313" width="282.24" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1640" y="345" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">5.65s</text>
 <text x="90" y="403" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 baseline</text>
-<rect x="560" y="371" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="371" width="746.61" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="1388" y="403" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">16.82s</text>
+<rect x="690" y="371" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="371" width="839.94" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1640" y="403" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">16.82s</text>
 <text x="90" y="461" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 strict</text>
-<rect x="560" y="429" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="429" width="474.43" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="1388" y="461" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.69s</text>
+<rect x="690" y="429" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="429" width="533.73" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1640" y="461" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.69s</text>
 <text x="90" y="519" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict</text>
-<rect x="560" y="487" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="487" width="470.73" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="1388" y="519" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.61s</text>
+<rect x="690" y="487" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="487" width="529.57" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1640" y="519" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.61s</text>
 <text x="90" y="577" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 patched strict</text>
-<rect x="560" y="545" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="545" width="800.00" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
-<text x="1388" y="577" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">18.02s</text>
-<line x1="80" y1="625" x2="1700" y2="625" stroke="#DDDDDD" stroke-width="2" />
-<text x="80" y="665" font-family="Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#222222" text-anchor="start">p95 time to first token</text>
-<text x="90" y="747" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 baseline</text>
-<rect x="560" y="715" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="715" width="721.97" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
-<text x="1388" y="747" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.86s</text>
-<text x="90" y="805" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B 4090 baseline</text>
-<rect x="560" y="773" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="773" width="507.63" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
-<text x="1388" y="805" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.61s</text>
-<text x="90" y="863" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 baseline</text>
-<rect x="560" y="831" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="831" width="800.00" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
-<text x="1388" y="863" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.95s</text>
-<text x="90" y="921" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 strict</text>
-<rect x="560" y="889" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="889" width="497.61" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
-<text x="1388" y="921" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.59s</text>
-<text x="90" y="979" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict</text>
-<rect x="560" y="947" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="947" width="478.72" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
-<text x="1388" y="979" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.57s</text>
-<text x="90" y="1037" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 patched strict</text>
-<rect x="560" y="1005" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="1005" width="794.96" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
-<text x="1388" y="1037" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.95s</text>
-<line x1="80" y1="1085" x2="1700" y2="1085" stroke="#DDDDDD" stroke-width="2" />
-<text x="80" y="1125" font-family="Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#222222" text-anchor="start">runtime</text>
-<text x="90" y="1207" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 baseline</text>
-<rect x="560" y="1175" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="1175" width="464.32" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1388" y="1207" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.03m</text>
-<text x="90" y="1265" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B 4090 baseline</text>
-<rect x="560" y="1233" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="1233" width="299.26" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1388" y="1265" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">6.46m</text>
-<text x="90" y="1323" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 baseline</text>
-<rect x="560" y="1291" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="1291" width="763.16" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1388" y="1323" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">16.49m</text>
-<text x="90" y="1381" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 strict</text>
-<rect x="560" y="1349" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="1349" width="479.35" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1388" y="1381" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.36m</text>
-<text x="90" y="1439" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict</text>
-<rect x="560" y="1407" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="1407" width="453.62" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1388" y="1439" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">9.80m</text>
-<text x="90" y="1497" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 patched strict</text>
-<rect x="560" y="1465" width="800.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
-<rect x="560" y="1465" width="800.00" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
-<text x="1388" y="1497" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">17.28m</text>
+<rect x="690" y="545" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="545" width="900.00" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1640" y="577" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">18.02s</text>
+<text x="90" y="635" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict ref</text>
+<rect x="690" y="603" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="603" width="542.78" height="42" rx="0" fill="#477EAE" stroke="none" stroke-width="1" />
+<text x="1640" y="635" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.87s</text>
+<line x1="80" y1="696" x2="2020" y2="696" stroke="#DDDDDD" stroke-width="2" />
+<text x="80" y="761" font-family="Helvetica, Arial, sans-serif" font-size="39" font-weight="700" fill="#222222" text-anchor="start">p95 time to first token</text>
+<text x="90" y="843" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 baseline</text>
+<rect x="690" y="811" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="811" width="812.22" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
+<text x="1640" y="843" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.86s</text>
+<text x="90" y="901" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B 4090 baseline</text>
+<rect x="690" y="869" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="869" width="571.09" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
+<text x="1640" y="901" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.61s</text>
+<text x="90" y="959" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 baseline</text>
+<rect x="690" y="927" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="927" width="900.00" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
+<text x="1640" y="959" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.95s</text>
+<text x="90" y="1017" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 strict</text>
+<rect x="690" y="985" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="985" width="559.81" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
+<text x="1640" y="1017" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.59s</text>
+<text x="90" y="1075" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict</text>
+<rect x="690" y="1043" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1043" width="538.56" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
+<text x="1640" y="1075" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.57s</text>
+<text x="90" y="1133" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 patched strict</text>
+<rect x="690" y="1101" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1101" width="894.33" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
+<text x="1640" y="1133" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.95s</text>
+<text x="90" y="1191" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict ref</text>
+<rect x="690" y="1159" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1159" width="724.57" height="42" rx="0" fill="#5D8F52" stroke="none" stroke-width="1" />
+<text x="1640" y="1191" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">0.77s</text>
+<line x1="80" y1="1252" x2="2020" y2="1252" stroke="#DDDDDD" stroke-width="2" />
+<text x="80" y="1317" font-family="Helvetica, Arial, sans-serif" font-size="39" font-weight="700" fill="#222222" text-anchor="start">runtime</text>
+<text x="90" y="1399" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 baseline</text>
+<rect x="690" y="1367" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1367" width="522.36" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="1640" y="1399" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.03m</text>
+<text x="90" y="1457" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B 4090 baseline</text>
+<rect x="690" y="1425" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1425" width="336.67" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="1640" y="1457" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">6.46m</text>
+<text x="90" y="1515" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 baseline</text>
+<rect x="690" y="1483" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1483" width="858.56" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="1640" y="1515" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">16.49m</text>
+<text x="90" y="1573" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 strict</text>
+<rect x="690" y="1541" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1541" width="539.27" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="1640" y="1573" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">10.36m</text>
+<text x="90" y="1631" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict</text>
+<rect x="690" y="1599" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1599" width="510.32" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="1640" y="1631" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">9.80m</text>
+<text x="90" y="1689" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">14B A40 patched strict</text>
+<rect x="690" y="1657" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1657" width="900.00" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="1640" y="1689" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">17.28m</text>
+<text x="90" y="1747" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#222222" text-anchor="start">7B A40 patched strict ref</text>
+<rect x="690" y="1715" width="900.00" height="42" rx="0" fill="#FFFFFF" stroke="#DDDDDD" stroke-width="1" />
+<rect x="690" y="1715" width="666.54" height="42" rx="0" fill="#D19236" stroke="none" stroke-width="1" />
+<text x="1640" y="1747" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#222222" text-anchor="start">12.80m</text>
 </svg>

@@ -87,6 +87,30 @@ def test_command_reference_covers_benchmark_metric_and_owner_contacts() -> None:
     assert "ordinary support issues" in owner
 
 
+def test_command_reference_covers_acl_box_split_and_maintenance_rows() -> None:
+    acl = build_slurm_command_reference(
+        "What commands help me view and grant another Amarel user access to one of my files?"
+    )
+    box_split = build_slurm_command_reference(
+        "How does the Amarel guide suggest handling a file larger than the Rutgers Box "
+        "file-size limit?"
+    )
+    maintenance = build_slurm_command_reference(
+        "How can I check for upcoming Amarel maintenance reservations before submitting a job?"
+    )
+
+    assert "getfacl <path>" in acl
+    assert "setfacl -m u:<NetID>:rwx <path>" in acl
+    assert "parent directories" in acl
+    assert "50 GB file-size limit" in box_split
+    assert "split -b 50GB --additional-suffix=-foo file.txt" in box_split
+    assert "sha512sum file.txt > file.txt.sha512" in box_split
+    assert "cat xa* > file.txt" in box_split
+    assert "sha512sum --check file.txt.sha512" in box_split
+    assert "scontrol show res | grep aint" in maintenance
+    assert "scontrol show res <ReservationName>" in maintenance
+
+
 def test_prompt_inputs_include_command_reference_and_context() -> None:
     inputs = build_rag_prompt_inputs(
         question="How do I submit a Slurm batch job on Amarel?",

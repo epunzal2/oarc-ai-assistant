@@ -22,10 +22,11 @@ The benchmark has now been expanded to 100 executed, non-attachment questions. A
 testing remains separate so the main model/GPU/prompt comparisons are not distorted by one skipped
 attachment row.
 
-Current finding: the patched citation-strict Qwen2.5-14B run on A40 did not become a production
-candidate. It fixed the earlier 14B safety failure mode, but the expanded 100-question run produced
-3 hard content failures. The 7B A40 patched-strict run remains the cleanest quality reference until
-it is rerun on the same 100-question suite.
+Current finding: the patched citation-strict Qwen2.5-7B run on A40 is the cleanest 100-question
+reference so far. It passed all 100 executed rows after targeted fixes for three procedure gaps
+found in the 14B run. The patched citation-strict Qwen2.5-14B run on A40 remains informative but is
+not a production candidate because it produced 3 hard content failures on the same 100-question
+suite.
 
 # Milestone Context
 
@@ -88,14 +89,19 @@ for OARC-specific facts, refuse requests to ignore sources or fabricate details,
 phone numbers, emails, URLs, partitions, accounts, quotas, paths, credentials, ticket fields, or
 emergency procedures.
 
-The patched strict prompt also includes explicit command-reference hints for two earlier failure
-areas:
+The patched strict prompt also includes explicit command-reference hints for earlier failure areas:
 
 - Amarel storage roles: `/home/<NetID>` for backed-up home/configuration files,
   `/projects/<storage_ID>` for backed-up project/group data, and `/scratch/<NetID>` for temporary
   job input/output that is not backed up.
 - GPU jobs: include both local GPU partition guidance and GRES, for example
   `#SBATCH --partition=gpu` plus `#SBATCH --gres=gpu:1`.
+- ACL sharing: use `getfacl` to inspect permissions and `setfacl -m u:<NetID>:rwx <path>` or group
+  ACLs to grant access, while checking parent-directory traversal.
+- Large Box transfers: split files around the 50 GB Box limit, record `sha512sum`, transfer chunks,
+  reassemble with `cat`, and verify the checksum.
+- Maintenance reservations: use `scontrol show res | grep aint` and inspect a named reservation with
+  `scontrol show res <ReservationName>`.
 
 Example baseline-style user prompt:
 
@@ -174,6 +180,7 @@ useful for trend context, but future model/GPU/prompt comparisons should use the
 | 7B A40 strict | Qwen2.5-7B | A40 | strict | 90 | 90/0 | 100.0% | 44 |
 | 7B A40 patched strict | Qwen2.5-7B | A40 | patched strict | 90 | 90/0 | 100.0% | 42 |
 | 14B A40 patched strict | Qwen2.5-14B | A40 | patched strict | 100 | 97/3 | 97.0% | 50 |
+| 7B A40 patched strict reference | Qwen2.5-7B | A40 | patched strict | 100 | 100/0 | 100.0% | 49 |
 
 Latency and responsiveness:
 
@@ -185,6 +192,7 @@ Latency and responsiveness:
 | 7B A40 strict | 10688.49 | 593.66 | 621.333 |
 | 7B A40 patched strict | 10605.16 | 571.12 | 587.979 |
 | 14B A40 patched strict | 18023.28 | 948.41 | 1036.958 |
+| 7B A40 patched strict reference | 10869.69 | 768.38 | 767.967 |
 
 \newpage
 
@@ -221,7 +229,10 @@ Patched strict 7B:
 
 - Fixed the two reviewed strict-prompt regressions: `amarel_storage` and `slurm_request_gpu`.
 - Passed the earlier 90-row benchmark with no hard failures.
-- Remains the cleanest quality reference until rerun on the expanded 100-row benchmark.
+- After the latest targeted command-reference fixes, passed the expanded 100-row benchmark with no
+  hard failures.
+- Manual review remains advisory but large: 49 rows need qualitative review before production-quality
+  claims.
 
 Patched strict 14B on the 100-row suite:
 
@@ -232,9 +243,17 @@ Patched strict 14B on the 100-row suite:
   checksum, and reassembly guidance.
 - Failed `slurm_maintenance_reservation_check`: answer gave a status-page suggestion instead of the
   expected `scontrol show res` reservation check.
-- Decision: do not promote 14B yet. The next useful work is retrieval/prompt triage for these three
-  rows, then a 7B A40 patched-strict rerun on the same 100-row suite for an apples-to-apples
-  reference.
+- Decision: do not promote 14B yet. These failures were triaged as real procedure gaps and used to
+  improve the patched strict command reference.
+
+100-row 7B patched strict reference:
+
+- Passed all three formerly failing procedure rows on the same 100-row suite.
+- `amarel_acl_share_file` now returns the expected ACL workflow with guide source evidence.
+- `amarel_split_large_box_files` and `slurm_maintenance_reservation_check` now pass hard checks but
+  remain advisory manual-review rows because retrieved source hints still do not show the exact
+  `cluster_user_guide` source.
+- Decision: use this as the current 100-row 7B A40 reference for the next GPU/runtime comparison.
 
 # Current Decision
 
@@ -244,12 +263,13 @@ reviewed manual-review risks, and acceptable UI/attachment behavior.
 
 # Next Milestones
 
-1. Triage the three 14B patched-strict failures. Start with retrieval ranking for the relevant
-   `cluster_user_guide` chunks before changing answer expectations.
-2. Rerun the 100-question suite on the 7B A40 patched-strict reference config.
-3. If 7B passes 100/100 and 14B still fails after triage, keep 7B as the quality baseline and use
-   4090/L40S only for speed and placement comparisons.
-4. If 14B becomes clean, compare 14B on L40S and A100 for fit, latency, and stability.
+1. Rerun the 100-question 7B patched-strict reference on RTX 4090 to compare runtime and placement
+   stability against A40.
+2. Review the 49 advisory manual-review rows from the clean 100-row 7B reference. Prioritize rows
+   that changed versus 14B and rows where source metadata missed the expected guide.
+3. Keep 7B as the quality baseline unless manual review shows a larger-model answer-quality benefit
+   worth additional GPU testing.
+4. Compare 14B on L40S and A100 only if there is a specific 14B quality hypothesis to test.
 5. Run prompt variants only when they isolate a specific failure. `concise-procedure` remains the
    shorter-answer candidate.
 6. Trial one roughly 32B-class model on A100 after 14B and prompt comparisons are informative.
