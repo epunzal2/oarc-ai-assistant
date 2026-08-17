@@ -1,7 +1,7 @@
 ---
 title: "OARC RAG Chatbot M4 Evaluation Report"
 subtitle: "RunPod exploration and benchmark evidence"
-date: "2026-08-11"
+date: "2026-08-17"
 geometry: margin=0.75in
 fontsize: 10pt
 colorlinks: false
@@ -12,9 +12,9 @@ colorlinks: false
 Milestone 4 is an exploratory RunPod benchmark loop for the OARC RAG chatbot. It is not a
 production launch report, procurement recommendation, or final HPC deployment decision.
 
-The current question set is a 91-row benchmark used to compare model, GPU, retrieval, context, and
-prompt choices. It combines the 34-row blocking smoke/regression gate with 57 reviewed comparison
-questions and one synthetic attachment marker row that is skipped unless attachments are enabled.
+The reported question set is a 90-row non-attachment benchmark used to compare model, GPU,
+retrieval, context, and prompt choices. Attachment-specific testing is held out of these stakeholder
+results until attachments are enabled for normal benchmark runs.
 
 Current finding: the Qwen2.5-7B A40 configuration remains the quality baseline. A 4090 run was
 faster, but placement reliability still needs operational caution. A Qwen2.5-14B A40 run failed a
@@ -32,7 +32,7 @@ Earlier milestones are reportable as setup, smoke, acceptance, and UI-parity del
 | M1 smoke | Done on RunPod | A40 smoke test passed and pod cleanup verified |
 | M2 acceptance | Done on RunPod | Repeatable full acceptance gate with no failures |
 | M3 parity | Done on RunPod | Live UI, attachment UI path, screenshots, assistant-ui template |
-| M4 benchmark | Active | 91-question model/GPU/prompt comparisons and accuracy evidence |
+| M4 benchmark | Active | 90-question model/GPU/prompt comparisons and accuracy evidence |
 | M5 HPC | Deferred | Resume after RunPod selects a production-candidate configuration |
 
 # Setup And Configuration
@@ -52,10 +52,21 @@ evaluate the chatbot through the same OpenAI-compatible gateway used by the UI.
 | Corpus posture | Public/non-sensitive corpus bundle only |
 | Private data posture | ServiceNow exports and secrets are not transferred |
 | Answer capture | Full-answer transcripts for benchmark evidence |
-| Attachments | Disabled for normal runs; synthetic marker row is skipped |
+| Attachments | Held out of reported benchmark results until attachment testing is enabled |
 
 This setup is intentionally temporary. Each cloud run should prove answer quality, safety,
 latency, and cleanup behavior before the configuration is considered for HPC promotion.
+
+GPU scope:
+
+- A40 is a useful first larger-model GPU because it has enough VRAM for the current full-precision
+  14B serving path and is cheaper to use for early quality checks.
+- L40S is the same broad 48 GB VRAM class as A40, but it is a newer and faster GPU; it should be
+  treated as a performance and availability comparison, not as identical hardware.
+- A100, especially 80 GB, is a higher-memory and higher-bandwidth class. It is the better first
+  target for a roughly 32B-class model and for any 14B run that needs more headroom.
+- The current blocker for 14B is answer safety under the baseline prompt, not GPU fit. That is why
+  the next 14B test should rerun the patched strict prompt before spending time on L40S/A100.
 
 # Prompt Variants
 
@@ -131,11 +142,10 @@ Advisory review:
 
 # How To Read Current Evidence
 
-- `Result` is `pass/fail/skip`, not a percentage. For example, `90/0/1` means 90 benchmark rows
-  passed automated checks, 0 failed automated checks, and 1 was skipped.
-- The skipped row is the `1` in `90/0/1`. In these runs it is `attachment_synthetic_marker`, whose
-  question is: "Using only the attached acceptance note, what is the synthetic approval marker?"
-  It is skipped because attachments are disabled for normal benchmark runs.
+- `Result` is `pass/fail` for the 90 reported non-attachment rows. For example, `90/0` means 90
+  benchmark rows passed automated checks and 0 failed automated checks.
+- Attachment-specific rows are excluded from these stakeholder results until attachment handling is
+  enabled in normal benchmark runs.
 - `Manual review` is the number of passed rows that still need human answer-quality review. These
   rows are advisory, not automatic failures.
 - `LLM` is the model served by the RunPod pod. `GPU` is the accelerator class used for that run.
@@ -147,13 +157,13 @@ rows. It does not prove final semantic correctness by itself. It tells us whethe
 passed the current hard checks for answer presence, required terms, source evidence, safety
 refusals, and latency.
 
-| Run | Automated accuracy | Full-suite coverage | Hard failures |
+| Run | Automated accuracy | Reported coverage | Hard failures |
 | --- | ---: | ---: | ---: |
-| 7B A40 baseline | 100.0% (90/90) | 98.9% (90/91) | 0 |
-| 7B 4090 baseline | 100.0% (90/90) | 98.9% (90/91) | 0 |
-| 14B A40 baseline | 98.9% (89/90) | 97.8% (89/91) | 1 |
-| 7B A40 strict | 100.0% (90/90) | 98.9% (90/91) | 0 |
-| 7B A40 patched strict | 100.0% (90/90) | 98.9% (90/91) | 0 |
+| 7B A40 baseline | 100.0% (90/90) | 100.0% (90/90) | 0 |
+| 7B 4090 baseline | 100.0% (90/90) | 100.0% (90/90) | 0 |
+| 14B A40 baseline | 98.9% (89/90) | 100.0% (90/90) | 1 |
+| 7B A40 strict | 100.0% (90/90) | 100.0% (90/90) | 0 |
+| 7B A40 patched strict | 100.0% (90/90) | 100.0% (90/90) | 0 |
 
 # Manual Review Scope
 
@@ -163,8 +173,8 @@ against the next candidate.
 
 Human review is required before making a production-readiness or stakeholder-quality claim. That
 review should cover all failed rows, all manual-review rows that differ from the baseline, and a
-sample of clean rows. The reviewer should be an OARC subject-matter expert when the answer depends
-on local policy, support workflow, storage rules, or safety-sensitive guidance.
+sample of clean rows. Use an OARC subject-matter expert for local policy, support workflow,
+storage-rule, or safety-sensitive answers.
 
 \newpage
 
@@ -172,11 +182,11 @@ on local policy, support workflow, storage rules, or safety-sensitive guidance.
 
 | Run | LLM | GPU | Prompt | Result | Manual review |
 | --- | --- | --- | --- | ---: | ---: |
-| 7B A40 baseline | Qwen2.5-7B | A40 | baseline | 90/0/1 | 39 |
-| 7B 4090 baseline | Qwen2.5-7B | RTX 4090 | baseline | 90/0/1 | 41 |
-| 14B A40 baseline | Qwen2.5-14B | A40 | baseline | 89/1/1 | 42 |
-| 7B A40 strict | Qwen2.5-7B | A40 | strict | 90/0/1 | 44 |
-| 7B A40 patched strict | Qwen2.5-7B | A40 | patched strict | 90/0/1 | 42 |
+| 7B A40 baseline | Qwen2.5-7B | A40 | baseline | 90/0 | 39 |
+| 7B 4090 baseline | Qwen2.5-7B | RTX 4090 | baseline | 90/0 | 41 |
+| 14B A40 baseline | Qwen2.5-14B | A40 | baseline | 89/1 | 42 |
+| 7B A40 strict | Qwen2.5-7B | A40 | strict | 90/0 | 44 |
+| 7B A40 patched strict | Qwen2.5-7B | A40 | patched strict | 90/0 | 42 |
 
 Latency and responsiveness:
 
@@ -208,7 +218,7 @@ files for each run listed above.
 
 4090 versus A40:
 
-- Same automated result as the A40 7B baseline: 90 pass, 0 fail, 1 skipped.
+- Same automated result as the A40 7B baseline: 90 pass, 0 fail.
 - Faster than A40 in this run.
 - Added two advisory manual-review rows that were reviewed as content-acceptable.
 - Still needs pinned placement discipline because unpinned RunPod 4090 placement was unreliable.
@@ -223,7 +233,7 @@ files for each run listed above.
 
 Patched citation-strict versus first citation-strict run:
 
-- Same automated result: 90 pass, 0 fail, 1 skipped.
+- Same automated result: 90 pass, 0 fail.
 - Manual-review inspection found two real regressions: `amarel_storage` and `slurm_request_gpu`.
 - The prompt-reference patch fixed both rows.
 - Manual-review count dropped from 44 to 42.
@@ -246,14 +256,18 @@ The remaining work is still RunPod-side benchmark iteration. HPC promotion remai
 production-candidate configuration is selected.
 
 1. Run Qwen2.5-14B on A40 with the patched citation-strict prompt. Target the known safety and
-   prompt-delta rows first, then run the full 91-question benchmark if the targeted rows are clean.
-2. Decide whether 14B is still worth larger-GPU testing. If it is, compare L40S and A100 for fit,
+   prompt-delta rows first, then run the full 90-question benchmark if the targeted rows are clean.
+2. Expand the reported benchmark to 100 executed non-attachment questions with reviewed expected
+   answers and checks, then freeze that 100-row set for future comparisons. There is no technical
+   barrier to 100 questions; the only requirement is adding high-value rows instead of padding the
+   suite with redundant Slurm command variants.
+3. Decide whether 14B is still worth larger-GPU testing. If it is, compare L40S and A100 for fit,
    latency, and stability.
-3. Run remaining prompt variants only if the patched-strict 14B run leaves a quality issue worth
+4. Run remaining prompt variants only if the patched-strict 14B run leaves a quality issue worth
    isolating. `concise-procedure` remains the main shorter-answer candidate.
-4. Trial one roughly 32B-class model on A100 after the 14B and prompt comparisons.
-5. Write the final M4 recommendation memo: selected production-candidate configuration or explicit
+5. Trial one roughly 32B-class model on A100 after the 14B and prompt comparisons.
+6. Write the final M4 recommendation memo: selected production-candidate configuration or explicit
    no-go, with remaining manual-review risks.
-6. Start M5 HPC promotion only after M4 selects that production-candidate configuration.
+7. Start M5 HPC promotion only after M4 selects that production-candidate configuration.
 
 Detailed run ledgers and exact artifact paths remain in the internal cloud RAG progress report.
