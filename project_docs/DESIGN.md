@@ -460,6 +460,7 @@ Detailed plan: `.plans/2026-04-28-phase-5-quality-ops-readiness.md`.
 Phase 5 planning can begin because the gateway/client API contract is proven on HPC. The backend
 path has passed through `scripts/deployment/hpc/run_phase3_openwebui_verification.sbatch`; remaining
 UI-client setup should not block retrieval-quality and operations planning.
+HPC-derived settings remain provisional until load tests establish concurrency and timeout limits.
 
 This phase keeps project documentation under `project_docs/` and plans under `.plans/`; `docs/`
 remains reserved for corpus-related RAG content.

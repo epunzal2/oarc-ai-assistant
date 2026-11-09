@@ -1,54 +1,60 @@
 # RAG System for OARC Documentation
 
-This project implements a Retrieval-Augmented Generation (RAG) system to answer questions about the
-Amarel cluster from OARC, Slurm, and prepared ServiceNow-derived sources. The canonical current
-architecture guide is [`project_docs/ARCHITECTURE.md`](project_docs/ARCHITECTURE.md).
+The OARC AI Assistant answers questions about the Amarel cluster using retrieval-augmented
+generation over Rutgers OARC guides, Slurm documentation, and other HPC references.
 
-## RAG Architecture Flowchart
+## Architecture
 
-This flowchart shows the main data and runtime path. See the architecture guide for the full
-gateway, evaluation, telemetry, and script contracts.
+The chat UI at `/ui` and OpenAI-compatible clients send questions to the same FastAPI endpoint,
+`POST /v1/chat/completions`. For a grounded answer, the LangChain pipeline retrieves passages and
+sends them with the question to the configured model. The gateway returns the answer and its
+sources. For a streamed response, source metadata arrives in the final response chunk.
 
 ```mermaid
-graph TD
-    subgraph Data Ingestion
-        A[ServiceNow Tickets]
-        B[Google Sites Documentation]
-    end
-
-    subgraph Processing
-        C[run_pipeline.sh: Cleaning, preparation, and chunking]
-        D[Embedding Model]
-    end
-
-    subgraph Storage
-        E[FAISS Index: Vector Store]
-    end
-
-    subgraph Retrieval
-        F[User Query]
-        G[Query Embedding]
-        H[Retrieve Relevant Documents]
-    end
-
-    subgraph Generation
-        I[Configured LLM Provider]
-        J[Generated Answer]
-    end
-
-    A --> C
-    B --> C
-    C --> D
-    D --> E
-    F --> G
-    G --> H
-    E --> H
-    H --> I
-    F --> I
-    I --> J
+flowchart LR
+    Docs["OARC and HPC documents"] --> Build["Chunk and embed"]
+    Build --> Index["FAISS or Qdrant"]
+    UI["Chat UI or API client"] --> API["FastAPI gateway"]
+    API --> Service["RAGService"]
+    Service --> Chain["LangChain RAG pipeline"]
+    Index -->|passages| Chain
+    Chain -->|question and context| Model["LLM provider"]
+    Model -->|answer| Chain
+    Chain -->|answer and sources| Service
+    Service --> API
+    API -->|JSON or event stream| UI
 ```
 
-### HPC Installation Notes
+The diagram shows vector retrieval. The pipeline also supports keyword search and an opt-in hybrid
+mode that combines vector and keyword results. Model providers include llama.cpp, Hugging Face,
+vLLM, and SGLang. The acceptance suite exercises the same gateway that serves chat.
+See the [architecture guide](project_docs/ARCHITECTURE.md) for provider, evaluation, and telemetry
+contracts.
+
+## Repository tree
+
+```text
+.
+├── src/
+│   ├── rag/
+│   │   ├── api.py              FastAPI routes and streaming responses
+│   │   ├── service.py          Request handling and source metadata
+│   │   ├── rag_pipeline.py     Retrieval, prompt assembly, and generation
+│   │   ├── ui_app/             React chat client
+│   │   └── ui_static/          Built assets served by FastAPI
+│   └── evaluation/             Acceptance checks and embedding benchmarks
+├── scripts/
+│   ├── rag/                    Corpus import and index construction
+│   ├── deployment/             Local, Mac mini, and HPC launchers
+│   └── evaluation/             Evaluation entry points
+├── configs/                    Model, source, and evaluation settings
+├── data/evaluation/            Benchmark questions and reference answers
+├── docs/                       Retrieval corpus and operator runbooks
+├── project_docs/               Architecture, design notes, and reports
+└── tests/unit/                 Python unit and contract tests
+```
+
+## HPC Installation Notes
 
 If you opt into local `llama_cpp` inference and encounter OS-related errors during the installation
 of `llama-cpp-python` (such as GLIBC incompatibility), you may need to install it from source. The
@@ -68,14 +74,6 @@ this repo via:
 
 The hosted workflow resolves `VLLM_BASE_URL`, `VLLM_HEALTH_URL`, and `VLLM_MODEL` from explicit
 environment variables first, then from `VLLM_ENDPOINT_DIR/vllm-endpoint.json` when present.
-
-## Architecture
-
-The system is built with Python, LangChain, FastAPI, FAISS/Qdrant, and pluggable LLM providers
-including local `llama_cpp`, Hugging Face endpoints, vLLM, and SGLang. The canonical architecture
-guide is [`project_docs/ARCHITECTURE.md`](project_docs/ARCHITECTURE.md). The older
-[`architecture/architecture.md`](architecture/architecture.md) path is kept only as a compatibility
-pointer.
 
 ## RAG Evaluation Test Suite
 
