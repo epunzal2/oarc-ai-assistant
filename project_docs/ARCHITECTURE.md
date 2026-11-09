@@ -561,6 +561,47 @@ of record for automation; the Markdown report is for operator promotion review. 
 manual-review item is not auto-passed because the Mac mini's small models can produce structurally
 valid but inaccurate answers.
 
+### GPU hardware and sizing
+
+Capacities are nominal VRAM per GPU. Each row describes a recorded project run.
+
+| Environment | NVIDIA GPU | VRAM and memory | Architecture | Recorded use |
+| --- | --- | --- | --- | --- |
+| RunPod | A40 | 48 GB GDDR6 ECC | Ampere | 100-question 7B reference and 14B comparison |
+| RunPod | GeForce RTX 4090 | 24 GB GDDR6X | Ada Lovelace | 90-question 7B comparison |
+| RunPod | A100 PCIe | 80 GB HBM2e | Ampere | Targeted 32B and 7B runs |
+| RunPod | H100 PCIe | 80 GB HBM2e | Hopper | 100-question 7B RAG versus raw-model comparison |
+| Amarel | A100 PCIe | 40 GB HBM2 | Ampere | Earlier chat and evaluation jobs on `gpu027` |
+| Amarel | L40S | 48 GB GDDR6 ECC | Ada Lovelace | Earlier inference smoke test on `gpuk008` |
+
+The Amarel vLLM verification job (`54243573`) requested one GPU on `gpu-redhat` and ran on
+`gpu022`. Its report identifies the model and confirms a response with sources. The GPU model and
+VRAM for that particular allocation are unknown. The 32 GB in its Slurm script is host RAM.
+
+The [Amarel verification report](phase3_hpc_openwebui_report.md) records the job.
+The [August RunPod benchmark][benchmark] covers the A40 and RTX 4090. Subsequent RunPod ledgers
+record the A100 80 GB tests on August 24 and September 1 and the H100 test on September 1, 2026.
+The Amarel device names come from the saved output for jobs `46711800` and `46693155`.
+
+NVIDIA lists the memory and compute features for the [A40][a40], [RTX 4090][4090],
+[A100][a100], [H100 PCIe][h100], and [L40S][l40s]. For example, the A100 uses high-bandwidth
+memory, the L40S has fourth-generation Tensor Cores, and the H100 adds a Transformer Engine.
+
+Qwen2.5-7B-Instruct has 7.61 billion parameters. At two bytes per parameter, the weights alone
+take about 15.2 GB. vLLM also needs runtime memory and a key/value cache for active tokens.
+Longer requests and more simultaneous requests increase cache demand. The 24 GB RTX 4090 ran the
+7B comparison. The 80 GB A100 ran the targeted 32B test with an 8,192-token context limit.
+The September 1 run used an H100 because A40 and A100 placement was unavailable.
+See the [model card](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct) and
+[vLLM memory guide](https://docs.vllm.ai/en/stable/configuration/conserving_memory/).
+
+[benchmark]: reports/2026-08-07-m4-stakeholder-evaluation-report.md
+[a40]: https://www.nvidia.com/en-us/data-center/a40/
+[4090]: https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/
+[a100]: https://www.nvidia.com/en-us/data-center/a100/
+[h100]: https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/
+[l40s]: https://www.nvidia.com/en-us/data-center/l40s/
+
 ### Cloud GPU RAG Acceptance Iteration
 
 `src/evaluation/cloud_acceptance.py` wraps the same acceptance harness for short-lived cloud GPU
